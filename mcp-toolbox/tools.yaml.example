@@ -1,0 +1,209 @@
+# MCP Toolbox for Databases - Configuration Example
+# This file demonstrates various source types and tool configurations
+# Copy this file to tools.yaml and customize for your environment
+
+# ============================================================================
+# SOURCES - Define your database connections
+# ============================================================================
+sources:
+  # AlloyDB for PostgreSQL (Production)
+  # Uses IAM authentication and private IP
+  my-alloydb-production:
+    kind: alloydb-postgres
+    project: ${GCP_PROJECT_ID}
+    region: us-central1
+    cluster: my-cluster
+    instance: my-primary-instance
+    database: production_db
+    user: ${ALLOYDB_USER}
+    password: ${ALLOYDB_PASSWORD}
+    ipType: "private"  # Options: "public" or "private"
+
+  # AlloyDB for PostgreSQL (Development)
+  # Uses password authentication and public IP
+  my-alloydb-dev:
+    kind: alloydb-postgres
+    project: ${GCP_PROJECT_ID}
+    region: us-central1
+    cluster: dev-cluster
+    instance: dev-instance
+    database: dev_db
+    user: ${DEV_USER}
+    password: ${DEV_PASSWORD}
+    ipType: "public"
+
+  # Local PostgreSQL (for testing)
+  local-postgres:
+    kind: postgres
+    host: 127.0.0.1
+    port: 5432
+    database: local_db
+    user: ${LOCAL_USER}
+    password: ${LOCAL_PASSWORD}
+
+  # BigQuery (for analytics)
+  my-bigquery:
+    kind: bigquery
+    project: ${GCP_PROJECT_ID}
+    dataset: analytics_dataset
+
+# ============================================================================
+# TOOLS - Define actions that AI agents can perform
+# ============================================================================
+tools:
+  # Example: Query users by email
+  find-user-by-email:
+    kind: postgres-sql
+    source: my-alloydb-production
+    description: Find a user by their email address
+    parameters:
+      - name: email
+        type: string
+        description: The email address to search for
+    statement: |
+      SELECT id, name, email, created_at, last_login
+      FROM users
+      WHERE email = $1;
+
+  # Example: Search with pattern matching
+  search-users:
+    kind: postgres-sql
+    source: my-alloydb-production
+    description: Search for users by name or email pattern
+    parameters:
+      - name: search_term
+        type: string
+        description: The search term to match against name or email
+    statement: |
+      SELECT id, name, email, created_at
+      FROM users
+      WHERE name ILIKE '%' || $1 || '%'
+         OR email ILIKE '%' || $1 || '%'
+      ORDER BY created_at DESC
+      LIMIT 50;
+
+  # Example: Get database statistics
+  get-table-stats:
+    kind: postgres-sql
+    source: my-alloydb-production
+    description: Get row count and size statistics for a table
+    parameters:
+      - name: table_name
+        type: string
+        description: The name of the table to analyze
+    statement: |
+      SELECT 
+        schemaname,
+        tablename,
+        pg_size_pretty(pg_total_relation_size(schemaname||'.'||tablename)) AS total_size,
+        pg_size_pretty(pg_relation_size(schemaname||'.'||tablename)) AS table_size,
+        (SELECT count(*) FROM information_schema.tables WHERE table_name = $1) AS row_count
+      FROM pg_tables
+      WHERE tablename = $1;
+
+  # Example: List all tables
+  list-tables:
+    kind: postgres-sql
+    source: my-alloydb-production
+    description: List all tables in the database
+    statement: |
+      SELECT 
+        table_schema,
+        table_name,
+        table_type
+      FROM information_schema.tables
+      WHERE table_schema NOT IN ('pg_catalog', 'information_schema')
+      ORDER BY table_schema, table_name;
+
+  # Example: BigQuery analytics query
+  get-daily-metrics:
+    kind: bigquery-sql
+    source: my-bigquery
+    description: Get daily metrics from analytics data
+    parameters:
+      - name: start_date
+        type: string
+        description: Start date in YYYY-MM-DD format
+      - name: end_date
+        type: string
+        description: End date in YYYY-MM-DD format
+    statement: |
+      SELECT 
+        DATE(timestamp) as date,
+        COUNT(*) as total_events,
+        COUNT(DISTINCT user_id) as unique_users
+      FROM `${GCP_PROJECT_ID}.analytics_dataset.events`
+      WHERE DATE(timestamp) BETWEEN @start_date AND @end_date
+      GROUP BY date
+      ORDER BY date;
+
+# ============================================================================
+# TOOLSETS - Group tools for different use cases
+# ============================================================================
+toolsets:
+  # User management tools
+  user-management:
+    - find-user-by-email
+    - search-users
+
+  # Database administration tools
+  database-admin:
+    - list-tables
+    - get-table-stats
+
+  # Analytics tools
+  analytics:
+    - get-daily-metrics
+
+  # All tools
+  all-tools:
+    - find-user-by-email
+    - search-users
+    - get-table-stats
+    - list-tables
+    - get-daily-metrics
+
+# ============================================================================
+# PROMPTS - Define reusable prompts for LLM interactions
+# ============================================================================
+prompts:
+  analyze-query-performance:
+    description: "Analyze SQL query performance and suggest optimizations"
+    messages:
+      - content: |
+          Please analyze the following SQL query for performance issues and suggest improvements:
+          
+          Query:
+          {{.query}}
+          
+          Database: {{.database_type}}
+          
+          Consider:
+          - Index usage
+          - Join optimization
+          - Query structure
+          - Potential bottlenecks
+    arguments:
+      - name: "query"
+        description: "The SQL query to analyze"
+      - name: "database_type"
+        description: "The type of database (e.g., PostgreSQL, AlloyDB)"
+
+  generate-test-data:
+    description: "Generate realistic test data for a database table"
+    messages:
+      - content: |
+          Generate realistic test data for the following table schema:
+          
+          {{.schema}}
+          
+          Requirements:
+          - Generate {{.row_count}} rows
+          - Ensure data is realistic and follows common patterns
+          - Include edge cases
+          - Format as INSERT statements
+    arguments:
+      - name: "schema"
+        description: "The table schema definition"
+      - name: "row_count"
+        description: "Number of rows to generate"

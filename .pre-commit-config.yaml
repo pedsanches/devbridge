@@ -1,0 +1,56 @@
+# Pre-commit hooks for DevBridge
+# Install: poetry run pre-commit install
+# Run all: poetry run pre-commit run --all-files
+
+repos:
+  # Ruff - Python linting and formatting
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.8.6
+    hooks:
+      - id: ruff
+        args: [--fix, --exit-non-zero-on-fix]
+      - id: ruff-format
+
+  # mypy - Python type checking
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v1.14.1
+    hooks:
+      - id: mypy
+        additional_dependencies:
+          - pydantic>=2.0
+          - types-redis
+          - types-requests
+        args: [--ignore-missing-imports]
+
+  # General hooks
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+        args: [--unsafe]  # Allow custom tags
+      - id: check-json
+      - id: check-added-large-files
+        args: [--maxkb=1000]
+      - id: check-merge-conflict
+      - id: detect-private-key
+      - id: check-case-conflict
+
+  # Conventional commits
+  - repo: https://github.com/compilerla/conventional-pre-commit
+    rev: v4.0.0
+    hooks:
+      - id: conventional-pre-commit
+        stages: [commit-msg]
+        args: [feat, fix, docs, refactor, test, chore, ci, perf]
+
+  # Frontend - ESLint (if frontend exists)
+  # - repo: local
+  #   hooks:
+  #     - id: eslint
+  #       name: ESLint
+  #       entry: pnpm --filter frontend lint
+  #       language: system
+  #       files: \.(ts|tsx)$
+  #       pass_filenames: false

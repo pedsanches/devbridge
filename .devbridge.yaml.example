@@ -1,0 +1,86 @@
+# ============================================================
+# DevBridge Repository Configuration
+# ============================================================
+# Place this file in the root of monitored repositories
+# to configure how DevBridge analyzes and reports on them.
+# ============================================================
+
+# Repository identification
+repository:
+  name: "my-project"
+  description: "Brief description of the repository"
+  team: "engineering"
+
+# Business context - defines how technical work maps to business value
+business:
+  # Strategic pillars that this repository supports
+  pillars:
+    - id: "conv_rate"
+      name: "Conversion Rate"
+      description: "Improvements that increase user conversion"
+      
+    - id: "reliability"
+      name: "System Reliability"
+      description: "Uptime, performance, incident reduction"
+      
+    - id: "dev_velocity"
+      name: "Developer Velocity"
+      description: "Faster delivery, less friction"
+      
+    - id: "security"
+      name: "Security & Compliance"
+      description: "Security improvements and compliance"
+
+  # Explicit metrics for financial impact (optional)
+  # DevBridge will NEVER fabricate these values
+  metrics:
+    - id: "checkout_value"
+      name: "Average Checkout Value"
+      value: 150.00
+      currency: "BRL"
+      
+    - id: "hourly_revenue"
+      name: "Revenue per Hour"
+      value: 5000.00
+      currency: "BRL"
+
+# Path patterns to analyze (glob syntax)
+analysis:
+  include:
+    - "src/**/*.py"
+    - "app/**/*.py"
+    - "frontend/src/**/*.tsx"
+  exclude:
+    - "**/tests/**"
+    - "**/migrations/**"
+    - "**/*.test.ts"
+
+# Notification preferences
+notifications:
+  slack:
+    enabled: true
+    channel: "#eng-updates"
+    
+  # When to send summaries
+  daily_summary:
+    enabled: true
+    time: "09:00"
+    timezone: "America/Sao_Paulo"
+    
+  # Real-time notifications for specific events
+  real_time:
+    - event: "production_deploy"
+      channel: "#deploys"
+    - event: "security_fix"
+      channel: "#security"
+
+# Translation preferences
+translation:
+  # Target audience for translations
+  audience: "product_managers"
+  
+  # Language for output
+  language: "pt-BR"
+  
+  # Level of technical detail (low, medium, high)
+  technical_detail: "low"

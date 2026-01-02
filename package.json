@@ -1,0 +1,22 @@
+{
+    "name": "devbridge",
+    "version": "0.1.0",
+    "private": true,
+    "license": "MIT",
+    "scripts": {
+        "setup": "./scripts/setup.sh",
+        "dev": "./scripts/dev.sh",
+        "build": "pnpm -r build",
+        "test": "pnpm -r test",
+        "lint": "pnpm -r lint",
+        "clean": "pnpm -r exec rm -rf node_modules dist .next"
+    },
+    "devDependencies": {
+        "turbo": "^2.0.0"
+    },
+    "packageManager": "pnpm@9.0.0",
+    "engines": {
+        "node": ">=20.0.0",
+        "pnpm": ">=9.0.0"
+    }
+}

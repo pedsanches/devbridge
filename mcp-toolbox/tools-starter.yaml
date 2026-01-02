@@ -1,0 +1,77 @@
+# Starter Configuration for MCP Toolbox
+# This is a minimal working configuration for testing
+
+# Note: This configuration is designed for local PostgreSQL testing
+# For AlloyDB, see tools.yaml.example
+
+sources:
+  # Local PostgreSQL for testing
+  local-postgres:
+    kind: postgres
+    host: "127.0.0.1"
+    port: 5432
+    database: "postgres"
+    user: "pedrosanches"
+    password: "dummy"
+
+tools:
+  # List all databases
+  list-databases:
+    kind: postgres-sql
+    source: local-postgres
+    description: List all databases in the PostgreSQL instance
+    statement: |
+      SELECT 
+        datname as database_name,
+        pg_size_pretty(pg_database_size(datname)) as size,
+        datcollate as collation
+      FROM pg_database
+      WHERE datistemplate = false
+      ORDER BY datname;
+
+  # List all tables
+  list-tables:
+    kind: postgres-sql
+    source: local-postgres
+    description: List all tables in the current database
+    statement: |
+      SELECT 
+        schemaname as schema,
+        tablename as table_name,
+        pg_size_pretty(pg_total_relation_size(schemaname||'.'||tablename)) as total_size
+      FROM pg_tables
+      WHERE schemaname NOT IN ('pg_catalog', 'information_schema')
+      ORDER BY schemaname, tablename;
+
+  # Get table info
+  describe-table:
+    kind: postgres-sql
+    source: local-postgres
+    description: Get detailed information about a table's columns
+    parameters:
+      - name: table_name
+        type: string
+        description: The name of the table to describe
+    statement: |
+      SELECT 
+        column_name,
+        data_type,
+        character_maximum_length,
+        is_nullable,
+        column_default
+      FROM information_schema.columns
+      WHERE table_name = $1
+      ORDER BY ordinal_position;
+
+toolsets:
+  # Basic exploration tools
+  explore:
+    - list-databases
+    - list-tables
+    - describe-table
+
+  # All tools
+  all:
+    - list-databases
+    - list-tables
+    - describe-table

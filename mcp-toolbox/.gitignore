@@ -1,0 +1,50 @@
+# MCP Toolbox .gitignore
+# Protect sensitive configuration and credentials
+
+# Environment files with secrets
+.env
+.env.*
+!.env.example
+
+# Actual configuration files (may contain secrets)
+tools.yaml
+config.yaml
+
+# Keep example files
+!tools.yaml.example
+!tools-starter.yaml
+!config.yaml.example
+
+# Logs
+*.log
+logs/
+
+# Temporary files
+*.tmp
+*.temp
+.DS_Store
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Backup files
+*.bak
+*.backup
+
+# Database files (if using SQLite for testing)
+*.db
+*.sqlite
+*.sqlite3
+
+# Credentials
+credentials.json
+service-account*.json
+*-key.json
+
+# Local test data
+test-data/
+tmp/

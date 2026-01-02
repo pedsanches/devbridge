@@ -1,0 +1,114 @@
+# ============================================================
+# DevBridge - Docker Compose (Development)
+# ============================================================
+# Usage: docker-compose up -d
+# ============================================================
+
+services:
+  # ============================================================
+  # PostgreSQL - Primary Database
+  # ============================================================
+  postgres:
+    image: postgres:15-alpine
+    container_name: devbridge-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: devbridge
+      POSTGRES_PASSWORD: devbridge
+      POSTGRES_DB: devbridge
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./scripts/init-db.sql:/docker-entrypoint-initdb.d/init-db.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U devbridge -d devbridge"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ============================================================
+  # Redis - Cache & Celery Broker
+  # ============================================================
+  redis:
+    image: redis:7-alpine
+    container_name: devbridge-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ============================================================
+  # Qdrant - Vector Database
+  # ============================================================
+  qdrant:
+    image: qdrant/qdrant:latest
+    container_name: devbridge-qdrant
+    restart: unless-stopped
+    ports:
+      - "6333:6333"
+      - "6334:6334"
+    volumes:
+      - qdrant_data:/qdrant/storage
+    environment:
+      QDRANT__SERVICE__GRPC_PORT: 6334
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:6333/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ============================================================
+  # Microsoft Presidio - PII Detection & Anonymization
+  # ============================================================
+  presidio-analyzer:
+    image: mcr.microsoft.com/presidio-analyzer:latest
+    container_name: devbridge-presidio-analyzer
+    restart: unless-stopped
+    ports:
+      - "5001:5001"
+    environment:
+      # Support Portuguese and English
+      - ANALYZER_CONF_FILE=/app/analyzer-config.yml
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  presidio-anonymizer:
+    image: mcr.microsoft.com/presidio-anonymizer:latest
+    container_name: devbridge-presidio-anonymizer
+    restart: unless-stopped
+    ports:
+      - "5002:5002"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5002/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+# ============================================================
+# Volumes
+# ============================================================
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+  qdrant_data:
+    driver: local
+
+# ============================================================
+# Networks (optional, for service isolation)
+# ============================================================
+networks:
+  default:
+    name: devbridge-network

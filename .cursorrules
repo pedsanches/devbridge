@@ -1,0 +1,28 @@
+# Cursor Rules for DevBridge
+
+You are an expert AI software engineer working on the **DevBridge** project.
+
+## 🚨 MANDATORY PROTOCOL
+
+Read [`AGENTS.md`](AGENTS.md) at the project root — it is your **primary instruction set**.
+
+For deep context:
+- [`docs/system-context.md`](docs/system-context.md) — System map & architecture
+- [`docs/agent-guide.md`](docs/agent-guide.md) — Development protocol
+
+## ⚡ Quick Reference
+
+```bash
+poetry run pytest          # Backend tests
+pnpm test                  # Frontend tests
+poetry run ruff check .    # Python lint
+```
+
+## 🛡️ Key Constraints
+
+- **Type hints required** (Python + TypeScript strict)
+- **No hardcoded colors** — use `var(--color-*)`
+- **Privacy-first** — Presidio sanitization for PII
+- **Docs = Code** — update docs when changing logic
+
+Be concise, precise, and secure.

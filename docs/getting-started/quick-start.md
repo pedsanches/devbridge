@@ -1,0 +1,90 @@
+# Quick Start
+
+Levante o DevBridge em **5 minutos**.
+
+## Pré-requisitos
+
+- Docker e Docker Compose
+- Git
+- API Key do Anthropic (Claude)
+- Token do GitHub
+
+## Passos
+
+### 1. Clone o Repositório
+
+```bash
+git clone https://github.com/seu-usuario/devbridge.git
+cd devbridge
+```
+
+### 2. Configure as Variáveis de Ambiente
+
+```bash
+cp .env.example .env
+```
+
+Edite `.env` com suas credenciais:
+
+```env
+# AI
+ANTHROPIC_API_KEY=sk-ant-api03-...
+
+# GitHub
+GITHUB_TOKEN=ghp_...
+GITHUB_WEBHOOK_SECRET=seu-secret-aleatorio
+
+# Database (padrão para Docker)
+DATABASE_URL=postgresql://devbridge:devbridge@localhost:5432/devbridge
+
+# Redis
+REDIS_URL=redis://localhost:6379/0
+```
+
+### 3. Inicie a Infraestrutura
+
+```bash
+docker-compose up -d
+```
+
+Isso levanta:
+- PostgreSQL (porta 5432)
+- Redis (porta 6379)
+- Qdrant (porta 6333)
+- API (porta 8000)
+- Worker Celery
+
+### 4. Verifique o Status
+
+```bash
+# Verificar se todos os containers estão rodando
+docker-compose ps
+
+# Verificar logs
+docker-compose logs -f api
+```
+
+### 5. Configure um Repositório
+
+```bash
+curl -X POST http://localhost:8000/api/repos \
+  -H "Content-Type: application/json" \
+  -d '{
+    "url": "https://github.com/seu-usuario/seu-repo",
+    "webhook_enabled": true
+  }'
+```
+
+### 6. Teste o Chat
+
+```bash
+curl -X POST http://localhost:8000/api/chat \
+  -H "Content-Type: application/json" \
+  -d '{"message": "O que o time fez essa semana?"}'
+```
+
+## Próximos Passos
+
+- [Instalação detalhada](installation.md) - para desenvolvimento local
+- [Configuração](configuration.md) - todas as opções disponíveis
+- [Arquitetura](../architecture/overview.md) - entenda como funciona
