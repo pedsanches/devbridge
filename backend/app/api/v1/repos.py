@@ -4,92 +4,139 @@ Repository Endpoints.
 CRUD operations for monitored repositories.
 """
 
-from typing import Any
+from fastapi import APIRouter, HTTPException, Query
 
-from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel, HttpUrl
+from app.api.deps import DbSession
+from app.schemas import (
+    PaginatedResponse,
+    RepositoryCreate,
+    RepositoryResponse,
+    RepositoryUpdate,
+)
+from app.services import repository_service
 
 router = APIRouter()
 
 
-class RepoCreate(BaseModel):
-    """Schema for creating a new repository."""
-
-    url: HttpUrl
-    name: str | None = None
-    description: str | None = None
-
-
-class RepoResponse(BaseModel):
-    """Schema for repository response."""
-
-    id: str
-    url: str
-    name: str
-    description: str | None
-    status: str
-
-
-@router.get("")
-async def list_repos() -> dict[str, Any]:
+@router.get("", response_model=PaginatedResponse)
+async def list_repos(
+    db: DbSession,
+    page: int = Query(1, ge=1, description="Page number"),
+    page_size: int = Query(20, ge=1, le=100, description="Items per page"),
+    is_active: bool | None = Query(None, description="Filter by active status"),
+) -> PaginatedResponse:
     """
     List all monitored repositories.
 
+    Args:
+        db: Database session.
+        page: Page number (1-indexed).
+        page_size: Number of items per page.
+        is_active: Filter by active status.
+
     Returns:
-        List of repositories.
+        Paginated list of repositories.
     """
-    # TODO: Implement database query
-    return {
-        "data": [],
-        "total": 0,
-        "page": 1,
-        "page_size": 20,
-    }
+    skip = (page - 1) * page_size
+    repositories, total = await repository_service.get_repositories(
+        db,
+        skip=skip,
+        limit=page_size,
+        is_active=is_active,
+    )
+
+    return PaginatedResponse.create(
+        data=[RepositoryResponse.model_validate(repo) for repo in repositories],
+        total=total,
+        page=page,
+        page_size=page_size,
+    )
 
 
-@router.post("", response_model=RepoResponse, status_code=201)
-async def create_repo(repo: RepoCreate) -> RepoResponse:
+@router.post("", response_model=RepositoryResponse, status_code=201)
+async def create_repo(db: DbSession, repo: RepositoryCreate) -> RepositoryResponse:
     """
     Add a new repository to monitor.
 
     Args:
+        db: Database session.
         repo: Repository creation data.
 
     Returns:
         Created repository.
     """
-    # TODO: Implement database insert
-    return RepoResponse(
-        id="placeholder-id",
-        url=str(repo.url),
-        name=repo.name or "Unnamed",
-        description=repo.description,
-        status="pending",
-    )
+    # Check if repo already exists
+    url_str = str(repo.url)
+    parts = url_str.rstrip("/").split("/")
+    name = repo.name or f"{parts[-2]}/{parts[-1]}" if len(parts) >= 2 else None
+
+    if name:
+        existing = await repository_service.get_repository_by_name(db, name)
+        if existing:
+            raise HTTPException(
+                status_code=409,
+                detail=f"Repository '{name}' already exists",
+            )
+
+    repository = await repository_service.create_repository(db, repo)
+    return RepositoryResponse.model_validate(repository)
 
 
-@router.get("/{repo_id}", response_model=RepoResponse)
-async def get_repo(repo_id: str) -> RepoResponse:
+@router.get("/{repo_id}", response_model=RepositoryResponse)
+async def get_repo(db: DbSession, repo_id: str) -> RepositoryResponse:
     """
     Get a specific repository by ID.
 
     Args:
+        db: Database session.
         repo_id: Repository ID.
 
     Returns:
         Repository details.
     """
-    # TODO: Implement database query
-    raise HTTPException(status_code=404, detail="Repository not found")
+    repository = await repository_service.get_repository_by_id(db, repo_id)
+    if not repository:
+        raise HTTPException(status_code=404, detail="Repository not found")
+
+    return RepositoryResponse.model_validate(repository)
+
+
+@router.patch("/{repo_id}", response_model=RepositoryResponse)
+async def update_repo(
+    db: DbSession,
+    repo_id: str,
+    repo_in: RepositoryUpdate,
+) -> RepositoryResponse:
+    """
+    Update a repository.
+
+    Args:
+        db: Database session.
+        repo_id: Repository ID.
+        repo_in: Update data.
+
+    Returns:
+        Updated repository.
+    """
+    repository = await repository_service.get_repository_by_id(db, repo_id)
+    if not repository:
+        raise HTTPException(status_code=404, detail="Repository not found")
+
+    updated = await repository_service.update_repository(db, repository, repo_in)
+    return RepositoryResponse.model_validate(updated)
 
 
 @router.delete("/{repo_id}", status_code=204)
-async def delete_repo(repo_id: str) -> None:
+async def delete_repo(db: DbSession, repo_id: str) -> None:
     """
     Remove a repository from monitoring.
 
     Args:
+        db: Database session.
         repo_id: Repository ID.
     """
-    # TODO: Implement database delete
-    raise HTTPException(status_code=404, detail="Repository not found")
+    repository = await repository_service.get_repository_by_id(db, repo_id)
+    if not repository:
+        raise HTTPException(status_code=404, detail="Repository not found")
+
+    await repository_service.delete_repository(db, repository)

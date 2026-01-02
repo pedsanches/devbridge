@@ -4,7 +4,7 @@ Health Check Endpoints.
 Provides endpoints for monitoring application health.
 """
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 from fastapi import APIRouter
@@ -45,7 +45,7 @@ async def health_check() -> HealthResponse:
         status="healthy",
         version=settings.VERSION,
         environment=settings.ENVIRONMENT,
-        timestamp=datetime.now(timezone.utc).isoformat(),
+        timestamp=datetime.now(UTC).isoformat(),
         services=services,
     )
 
