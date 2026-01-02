@@ -5,6 +5,7 @@ Shared Pydantic schemas used across multiple endpoints.
 """
 
 from datetime import datetime
+from typing import Any
 
 from pydantic import BaseModel, ConfigDict
 
@@ -40,7 +41,7 @@ class PaginationParams(BaseModel):
 class PaginatedResponse(BaseModel):
     """Generic paginated response wrapper."""
 
-    data: list
+    data: list[Any]
     total: int
     page: int
     page_size: int
@@ -49,7 +50,7 @@ class PaginatedResponse(BaseModel):
     @classmethod
     def create(
         cls,
-        data: list,
+        data: list[Any],
         total: int,
         page: int,
         page_size: int,

@@ -8,7 +8,7 @@ All settings are validated at startup.
 from functools import lru_cache
 from typing import Literal
 
-from pydantic import Field, PostgresDsn, RedisDsn
+from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -42,16 +42,14 @@ class Settings(BaseSettings):
     # ============================================================
     # Database
     # ============================================================
-    DATABASE_URL: PostgresDsn = Field(
-        default="postgresql://devbridge:devbridge@localhost:5432/devbridge"
-    )
+    DATABASE_URL: str = Field(default="postgresql://devbridge:devbridge@localhost:5432/devbridge")
     DATABASE_POOL_SIZE: int = 5
     DATABASE_MAX_OVERFLOW: int = 10
 
     # ============================================================
     # Redis
     # ============================================================
-    REDIS_URL: RedisDsn = Field(default="redis://localhost:6379/0")
+    REDIS_URL: str = Field(default="redis://localhost:6379/0")
     CELERY_BROKER_URL: str = "redis://localhost:6379/1"
     CELERY_RESULT_BACKEND: str = "redis://localhost:6379/2"
 
