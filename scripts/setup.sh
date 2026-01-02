@@ -22,15 +22,16 @@ SKIP_PRECOMMIT=false
 # Env Vars for Installer
 export POETRY_REQUESTS_TIMEOUT=300
 export PIP_DEFAULT_TIMEOUT=300
+export COMPOSE_HTTP_TIMEOUT=300
 
 # Parse arguments
 while [[ $# -gt 0 ]]; do
     case $1 in
         --skip-docker) SKIP_DOCKER=true; shift ;;
         --skip-precommit) SKIP_PRECOMMIT=true; shift ;;
-        --help) 
+        --help)
             echo "Usage: ./scripts/setup.sh [--skip-docker] [--skip-precommit]"
-            exit 0 
+            exit 0
             ;;
         *) echo "Unknown option: $1"; exit 1 ;;
     esac
@@ -44,14 +45,14 @@ log_error() { echo -e "${RED}[ERROR]${NC} $1"; }
 # Check required tools
 check_requirements() {
     log_info "Checking requirements..."
-    
+
     local missing=()
-    
+
     command -v python3 >/dev/null 2>&1 || missing+=("python3")
     command -v poetry >/dev/null 2>&1 || missing+=("poetry")
     command -v node >/dev/null 2>&1 || missing+=("node")
     command -v pnpm >/dev/null 2>&1 || missing+=("pnpm")
-    
+
     if [[ "$SKIP_DOCKER" == false ]]; then
         command -v docker >/dev/null 2>&1 || missing+=("docker")
         if ! command -v docker-compose >/dev/null 2>&1; then
@@ -60,7 +61,7 @@ check_requirements() {
             fi
         fi
     fi
-    
+
     if [[ ${#missing[@]} -gt 0 ]]; then
         log_error "Missing required tools: ${missing[*]}"
         echo ""
@@ -70,14 +71,14 @@ check_requirements() {
         echo "  - docker: https://docs.docker.com/get-docker/"
         exit 1
     fi
-    
+
     log_success "All requirements met"
 }
 
 # Setup environment file
 setup_env() {
     log_info "Setting up environment..."
-    
+
     if [[ ! -f .env ]]; then
         cp .env.example .env
         log_success "Created .env from .env.example"
@@ -90,7 +91,7 @@ setup_env() {
 # Install backend dependencies
 setup_backend() {
     log_info "Setting up backend..."
-    
+
     if [[ -d backend ]]; then
         cd backend
         poetry install
@@ -104,7 +105,7 @@ setup_backend() {
 # Install frontend dependencies
 setup_frontend() {
     log_info "Setting up frontend..."
-    
+
     if [[ -d frontend ]]; then
         cd frontend
         pnpm install
@@ -121,9 +122,9 @@ setup_precommit() {
         log_info "Skipping pre-commit setup"
         return
     fi
-    
+
     log_info "Setting up pre-commit hooks..."
-    
+
     if [[ -f .pre-commit-config.yaml ]]; then
         if [[ -d backend ]]; then
             cd backend
@@ -143,9 +144,9 @@ setup_docker() {
         log_info "Skipping Docker setup"
         return
     fi
-    
+
     log_info "Starting Docker services..."
-    
+
     if [[ -f docker-compose.yml ]]; then
         if command -v docker-compose >/dev/null 2>&1; then
             docker-compose up -d
@@ -161,18 +162,18 @@ setup_docker() {
 # Create secrets directory
 setup_secrets() {
     log_info "Setting up secrets directory..."
-    
+
     mkdir -p secrets
-    
+
     if [[ ! -f secrets/.gitkeep ]]; then
         touch secrets/.gitkeep
     fi
-    
+
     # Add to gitignore if not present
     if ! grep -q "secrets/" .gitignore 2>/dev/null; then
         echo "secrets/" >> .gitignore
     fi
-    
+
     log_success "Secrets directory ready"
 }
 
@@ -183,7 +184,7 @@ main() {
     echo "║                  DevBridge Setup                         ║"
     echo "╚══════════════════════════════════════════════════════════╝"
     echo ""
-    
+
     check_requirements
     setup_env
     setup_secrets
@@ -191,7 +192,7 @@ main() {
     setup_frontend
     setup_precommit
     setup_docker
-    
+
     echo ""
     echo "╔══════════════════════════════════════════════════════════╗"
     echo "║                  Setup Complete! 🎉                       ║"

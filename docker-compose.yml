@@ -8,24 +8,24 @@ services:
   # ============================================================
   # PostgreSQL - Primary Database
   # ============================================================
-  postgres:
-    image: postgres:15-alpine
-    container_name: devbridge-postgres
-    restart: unless-stopped
-    environment:
-      POSTGRES_USER: devbridge
-      POSTGRES_PASSWORD: devbridge
-      POSTGRES_DB: devbridge
-    ports:
-      - "5432:5432"
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-      - ./scripts/init-db.sql:/docker-entrypoint-initdb.d/init-db.sql:ro
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U devbridge -d devbridge"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
+  # postgres:
+  #   image: postgres:15-alpine
+  #   container_name: devbridge-postgres
+  #   restart: unless-stopped
+  #   environment:
+  #     POSTGRES_USER: devbridge
+  #     POSTGRES_PASSWORD: devbridge
+  #     POSTGRES_DB: devbridge
+  #   ports:
+  #     - "5432:5432"
+  #   volumes:
+  #     - postgres_data:/var/lib/postgresql/data
+  #     - ./scripts/init-db.sql:/docker-entrypoint-initdb.d/init-db.sql:ro
+  #   healthcheck:
+  #     test: ["CMD-SHELL", "pg_isready -U devbridge -d devbridge"]
+  #     interval: 10s
+  #     timeout: 5s
+  #     retries: 5
 
   # ============================================================
   # Redis - Cache & Celery Broker
@@ -40,7 +40,7 @@ services:
       - redis_data:/data
     command: redis-server --appendonly yes
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: [ "CMD", "redis-cli", "ping" ]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -60,7 +60,7 @@ services:
     environment:
       QDRANT__SERVICE__GRPC_PORT: 6334
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:6333/health"]
+      test: [ "CMD", "curl", "-f", "http://localhost:6333/health" ]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -78,7 +78,7 @@ services:
       # Support Portuguese and English
       - ANALYZER_CONF_FILE=/app/analyzer-config.yml
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:5001/health"]
+      test: [ "CMD", "curl", "-f", "http://localhost:5001/health" ]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -90,7 +90,7 @@ services:
     ports:
       - "5002:5002"
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:5002/health"]
+      test: [ "CMD", "curl", "-f", "http://localhost:5002/health" ]
       interval: 30s
       timeout: 10s
       retries: 3
