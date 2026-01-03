@@ -14,6 +14,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.config import settings
 from app.schemas import ActivityCreate, ActivityType
 from app.services import activity_service, repository_service
+from app.services.github_service import github_service
 
 
 class SyncService:
@@ -38,18 +39,7 @@ class SyncService:
         since: datetime | None = None,
         per_page: int = 30,
     ) -> list[dict[str, Any]]:
-        """
-        Fetch commits from GitHub API.
-
-        Args:
-            owner: Repository owner.
-            repo: Repository name.
-            since: Only commits after this date.
-            per_page: Number of commits to fetch.
-
-        Returns:
-            List of commit data dictionaries.
-        """
+        """Fetch commits from GitHub API."""
         url = f"{self.BASE_URL}/repos/{owner}/{repo}/commits"
         params: dict[str, Any] = {"per_page": per_page}
         if since:
@@ -68,18 +58,7 @@ class SyncService:
         state: str = "all",
         per_page: int = 30,
     ) -> list[dict[str, Any]]:
-        """
-        Fetch pull requests from GitHub API.
-
-        Args:
-            owner: Repository owner.
-            repo: Repository name.
-            state: Filter by state (open, closed, all).
-            per_page: Number of PRs to fetch.
-
-        Returns:
-            List of PR data dictionaries.
-        """
+        """Fetch pull requests from GitHub API."""
         url = f"{self.BASE_URL}/repos/{owner}/{repo}/pulls"
         params = {"state": state, "per_page": per_page}
 
@@ -95,6 +74,7 @@ class SyncService:
         repo_name: str,
         max_commits: int = 50,
         max_prs: int = 20,
+        fetch_diffs: bool = True,
     ) -> dict[str, int]:
         """
         Sync a repository's commits and PRs to the database.
@@ -104,6 +84,7 @@ class SyncService:
             repo_name: Repository name in "owner/repo" format.
             max_commits: Maximum commits to sync.
             max_prs: Maximum PRs to sync.
+            fetch_diffs: Whether to fetch full diff content for each commit/PR.
 
         Returns:
             Dict with counts of synced items.
@@ -134,12 +115,23 @@ class SyncService:
             message = commit.get("commit", {}).get("message", "")
             author = commit.get("commit", {}).get("author", {}).get("name", "unknown")
 
+            # Build content with diff if requested
+            content = message
+            if fetch_diffs and sha:
+                diff = await github_service.get_commit_diff(owner, name, sha)
+                if diff:
+                    # Limit diff size to avoid huge content
+                    diff_preview = diff[:5000] if len(diff) > 5000 else diff
+                    if len(diff) > 5000:
+                        diff_preview += "\n... (diff truncated)"
+                    content = f"{message}\n\n---\n## Diff:\n```diff\n{diff_preview}\n```"
+
             activity_in = ActivityCreate(
                 repository_id=repo.id,
                 external_id=sha[:12],
                 type=ActivityType.COMMIT,
                 title=message.split("\n")[0][:100],
-                content=message,
+                content=content,
                 author=author,
             )
 
@@ -156,12 +148,22 @@ class SyncService:
             user = pr.get("user", {}).get("login", "unknown")
             state = pr.get("state", "open")
 
+            # Build content with diff if requested
+            content = body
+            if fetch_diffs and pr_number:
+                diff = await github_service.get_pr_diff(owner, name, pr_number)
+                if diff:
+                    diff_preview = diff[:5000] if len(diff) > 5000 else diff
+                    if len(diff) > 5000:
+                        diff_preview += "\n... (diff truncated)"
+                    content = f"{body}\n\n---\n## Diff:\n```diff\n{diff_preview}\n```"
+
             activity_in = ActivityCreate(
                 repository_id=repo.id,
                 external_id=str(pr_number),
                 type=ActivityType.PULL_REQUEST,
                 title=f"[{state.upper()}] {title}"[:100],
-                content=body,
+                content=content,
                 author=user,
             )
 
