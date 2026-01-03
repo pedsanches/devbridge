@@ -6,7 +6,7 @@ API for conversational queries about development activities.
 
 from fastapi import APIRouter
 
-from app.api.deps import DbSession
+from app.api.deps import CurrentOrgId, CurrentUserRequired, DbSession
 from app.schemas.chat import ChatRequest, ChatResponse
 from app.services.chat_service import chat_service
 
@@ -14,7 +14,12 @@ router = APIRouter()
 
 
 @router.post("", response_model=ChatResponse)
-async def chat(db: DbSession, request: ChatRequest) -> ChatResponse:
+async def chat(
+    db: DbSession,
+    request: ChatRequest,
+    _current_user: CurrentUserRequired,
+    org_id: CurrentOrgId,
+) -> ChatResponse:
     """
     Send a message and get an AI-generated response about activities.
 
@@ -29,6 +34,8 @@ async def chat(db: DbSession, request: ChatRequest) -> ChatResponse:
     Args:
         db: Database session.
         request: Chat request with message and optional filters.
+        _current_user: Authenticated user (required).
+        org_id: Current organization context.
 
     Returns:
         AI-generated response with activity context.
@@ -38,6 +45,7 @@ async def chat(db: DbSession, request: ChatRequest) -> ChatResponse:
         query=request.message,
         repository=request.repository,
         author=request.author,
+        org_id=org_id,
     )
 
     return ChatResponse(

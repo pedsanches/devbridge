@@ -6,7 +6,7 @@ API for viewing activities and business updates.
 
 from fastapi import APIRouter, HTTPException, Query
 
-from app.api.deps import DbSession
+from app.api.deps import CurrentOrgId, DbSession
 from app.schemas import (
     ActivityWithUpdate,
     PaginatedResponse,
@@ -19,6 +19,7 @@ router = APIRouter()
 @router.get("", response_model=PaginatedResponse)
 async def list_activities(
     db: DbSession,
+    org_id: CurrentOrgId,
     repository_id: str | None = Query(None, description="Filter by repository"),
     page: int = Query(1, ge=1, description="Page number"),
     page_size: int = Query(20, ge=1, le=100, description="Items per page"),
@@ -28,6 +29,7 @@ async def list_activities(
 
     Args:
         db: Database session.
+        org_id: Current organization ID (from session).
         repository_id: Filter by repository ID.
         page: Page number (1-indexed).
         page_size: Number of items per page.
@@ -38,6 +40,7 @@ async def list_activities(
     skip = (page - 1) * page_size
     activities, total = await activity_service.get_activities(
         db,
+        organization_id=org_id,
         repository_id=repository_id,
         skip=skip,
         limit=page_size,

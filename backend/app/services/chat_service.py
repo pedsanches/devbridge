@@ -23,6 +23,7 @@ class ChatService:
         self,
         db: AsyncSession,
         *,
+        org_id: str | None = None,
         repository_name: str | None = None,
         author: str | None = None,
         days: int = 7,
@@ -38,6 +39,10 @@ class ChatService:
             .order_by(Activity.created_at.desc())
             .limit(limit)
         )
+
+        # Multi-tenant filter
+        if org_id:
+            query = query.where(Repository.organization_id == org_id)
 
         if repository_name:
             query = query.where(Repository.name.ilike(f"%{repository_name}%"))
@@ -72,6 +77,7 @@ class ChatService:
         self,
         db: AsyncSession,
         activity_ids: list[UUID],
+        org_id: str | None = None,
     ) -> list[dict[str, Any]]:
         """Get activities by their IDs."""
         query = (
@@ -79,6 +85,10 @@ class ChatService:
             .join(Repository, Activity.repository_id == Repository.id)
             .where(Activity.id.in_(activity_ids))
         )
+
+        # Multi-tenant filter
+        if org_id:
+            query = query.where(Repository.organization_id == org_id)
 
         result = await db.execute(query)
         rows = result.all()
@@ -164,7 +174,7 @@ class ChatService:
                     UUID(r["activity_id"]) for r in search_results if r.get("activity_id")
                 ]
                 if activity_ids:
-                    activities = await self.get_activities_by_ids(db, activity_ids)
+                    activities = await self.get_activities_by_ids(db, activity_ids, org_id=org_id)
                     search_method = "semantic"
 
         # Fall back to SQL-based search
@@ -181,6 +191,7 @@ class ChatService:
 
             activities = await self.get_context_activities(
                 db,
+                org_id=org_id,
                 repository_name=repository,
                 author=author,
                 days=days,

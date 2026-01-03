@@ -6,7 +6,7 @@ CRUD operations for monitored repositories with multi-tenant isolation.
 
 from fastapi import APIRouter, HTTPException, Query
 
-from app.api.deps import DbSession
+from app.api.deps import CurrentOrgId, DbSession
 from app.schemas import (
     PaginatedResponse,
     RepositoryCreate,
@@ -14,20 +14,14 @@ from app.schemas import (
     RepositoryUpdate,
 )
 from app.services import repository_service
-from app.services.repository_service import DEFAULT_ORG_ID
 
 router = APIRouter()
-
-
-# TODO: Replace with actual org_id from JWT/session after Auth implementation
-def get_current_org_id() -> str:
-    """Get current organization ID. Uses default until auth is implemented."""
-    return DEFAULT_ORG_ID
 
 
 @router.get("", response_model=PaginatedResponse)
 async def list_repos(
     db: DbSession,
+    org_id: CurrentOrgId,
     page: int = Query(1, ge=1, description="Page number"),
     page_size: int = Query(20, ge=1, le=100, description="Items per page"),
     is_active: bool | None = Query(None, description="Filter by active status"),
@@ -44,7 +38,6 @@ async def list_repos(
     Returns:
         Paginated list of repositories.
     """
-    org_id = get_current_org_id()
     skip = (page - 1) * page_size
     repositories, total = await repository_service.get_repositories(
         db,
@@ -63,18 +56,20 @@ async def list_repos(
 
 
 @router.post("", response_model=RepositoryResponse, status_code=201)
-async def create_repo(db: DbSession, repo: RepositoryCreate) -> RepositoryResponse:
+async def create_repo(
+    db: DbSession, repo: RepositoryCreate, org_id: CurrentOrgId
+) -> RepositoryResponse:
     """
     Add a new repository to monitor.
 
     Args:
         db: Database session.
         repo: Repository creation data.
+        org_id: Current organization context.
 
     Returns:
         Created repository.
     """
-    org_id = get_current_org_id()
 
     # Check if repo already exists in this org
     url_str = str(repo.url)
@@ -94,18 +89,18 @@ async def create_repo(db: DbSession, repo: RepositoryCreate) -> RepositoryRespon
 
 
 @router.get("/{repo_id}", response_model=RepositoryResponse)
-async def get_repo(db: DbSession, repo_id: str) -> RepositoryResponse:
+async def get_repo(db: DbSession, repo_id: str, org_id: CurrentOrgId) -> RepositoryResponse:
     """
     Get a specific repository by ID.
 
     Args:
         db: Database session.
         repo_id: Repository ID.
+        org_id: Current organization context.
 
     Returns:
         Repository details.
     """
-    org_id = get_current_org_id()
     repository = await repository_service.get_repository_by_id(db, org_id, repo_id)
     if not repository:
         raise HTTPException(status_code=404, detail="Repository not found")
@@ -118,6 +113,7 @@ async def update_repo(
     db: DbSession,
     repo_id: str,
     repo_in: RepositoryUpdate,
+    org_id: CurrentOrgId,
 ) -> RepositoryResponse:
     """
     Update a repository.
@@ -126,11 +122,11 @@ async def update_repo(
         db: Database session.
         repo_id: Repository ID.
         repo_in: Update data.
+        org_id: Current organization context.
 
     Returns:
         Updated repository.
     """
-    org_id = get_current_org_id()
     repository = await repository_service.get_repository_by_id(db, org_id, repo_id)
     if not repository:
         raise HTTPException(status_code=404, detail="Repository not found")
@@ -140,15 +136,15 @@ async def update_repo(
 
 
 @router.delete("/{repo_id}", status_code=204)
-async def delete_repo(db: DbSession, repo_id: str) -> None:
+async def delete_repo(db: DbSession, repo_id: str, org_id: CurrentOrgId) -> None:
     """
     Remove a repository from monitoring.
 
     Args:
         db: Database session.
         repo_id: Repository ID.
+        org_id: Current organization context.
     """
-    org_id = get_current_org_id()
     repository = await repository_service.get_repository_by_id(db, org_id, repo_id)
     if not repository:
         raise HTTPException(status_code=404, detail="Repository not found")

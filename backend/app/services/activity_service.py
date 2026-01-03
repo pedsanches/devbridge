@@ -17,6 +17,7 @@ from app.schemas import ActivityCreate, BusinessUpdateCreate
 async def get_activities(
     db: AsyncSession,
     *,
+    organization_id: str | None = None,
     repository_id: str | None = None,
     activity_type: ActivityType | None = None,
     skip: int = 0,
@@ -28,6 +29,7 @@ async def get_activities(
 
     Args:
         db: Database session.
+        organization_id: Filter by organization ID (multi-tenant).
         repository_id: Filter by repository ID.
         activity_type: Filter by activity type (COMMIT/PULL_REQUEST).
         skip: Number of records to skip.
@@ -37,7 +39,13 @@ async def get_activities(
     Returns:
         Tuple of (activities list, total count).
     """
+    from app.models import Repository
+
     query = select(Activity)
+
+    # Multi-tenant: filter by organization through repository
+    if organization_id:
+        query = query.join(Repository).where(Repository.organization_id == organization_id)
 
     if repository_id:
         query = query.where(Activity.repository_id == repository_id)
@@ -48,6 +56,10 @@ async def get_activities(
 
     # Get total count
     count_query = select(Activity.id)
+    if organization_id:
+        count_query = count_query.join(Repository).where(
+            Repository.organization_id == organization_id
+        )
     if repository_id:
         count_query = count_query.where(Activity.repository_id == repository_id)
     if activity_type:
