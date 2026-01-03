@@ -1,30 +1,35 @@
 """
 Repository Service.
 
-Business logic for Repository CRUD operations.
+Business logic for Repository CRUD operations with multi-tenant isolation.
 """
 
 from uuid import uuid4
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import Repository
 from app.schemas import RepositoryCreate, RepositoryUpdate
 
+# Default organization ID for backwards compatibility
+DEFAULT_ORG_ID = "00000000-0000-0000-0000-000000000001"
+
 
 async def get_repositories(
     db: AsyncSession,
+    organization_id: str,
     *,
     skip: int = 0,
     limit: int = 20,
     is_active: bool | None = None,
 ) -> tuple[list[Repository], int]:
     """
-    Get list of repositories with optional filtering.
+    Get list of repositories for an organization.
 
     Args:
         db: Database session.
+        organization_id: Organization UUID (tenant isolation).
         skip: Number of records to skip.
         limit: Maximum number of records to return.
         is_active: Filter by active status.
@@ -32,17 +37,20 @@ async def get_repositories(
     Returns:
         Tuple of (repositories list, total count).
     """
-    query = select(Repository)
+    # Base query with tenant isolation
+    query = select(Repository).where(Repository.organization_id == organization_id)
 
     if is_active is not None:
         query = query.where(Repository.is_active == is_active)
 
     # Get total count
-    count_query = select(Repository.id)
+    count_query = select(func.count(Repository.id)).where(
+        Repository.organization_id == organization_id
+    )
     if is_active is not None:
         count_query = count_query.where(Repository.is_active == is_active)
     count_result = await db.execute(count_query)
-    total = len(count_result.all())
+    total = count_result.scalar() or 0
 
     # Get paginated results
     query = query.offset(skip).limit(limit).order_by(Repository.created_at.desc())
@@ -52,43 +60,70 @@ async def get_repositories(
     return repositories, total
 
 
-async def get_repository_by_id(db: AsyncSession, repo_id: str) -> Repository | None:
+async def get_repository_by_id(
+    db: AsyncSession,
+    organization_id: str,
+    repo_id: str,
+) -> Repository | None:
     """
-    Get a repository by ID.
+    Get a repository by ID within an organization.
 
     Args:
         db: Database session.
+        organization_id: Organization UUID (tenant isolation).
         repo_id: Repository UUID.
 
     Returns:
         Repository if found, None otherwise.
     """
-    result = await db.execute(select(Repository).where(Repository.id == repo_id))
+    result = await db.execute(
+        select(Repository).where(
+            Repository.id == repo_id,
+            Repository.organization_id == organization_id,
+        )
+    )
     return result.scalar_one_or_none()
 
 
-async def get_repository_by_name(db: AsyncSession, name: str) -> Repository | None:
+async def get_repository_by_name(
+    db: AsyncSession,
+    organization_id: str,
+    name: str,
+) -> Repository | None:
     """
-    Get a repository by name (owner/repo format).
+    Get a repository by name within an organization.
 
     Args:
         db: Database session.
+        organization_id: Organization UUID (tenant isolation).
         name: Repository name in owner/repo format.
 
     Returns:
         Repository if found, None otherwise.
     """
-    result = await db.execute(select(Repository).where(Repository.name == name))
+    result = await db.execute(
+        select(Repository).where(
+            Repository.name == name,
+            Repository.organization_id == organization_id,
+        )
+    )
     return result.scalar_one_or_none()
 
 
-async def create_repository(db: AsyncSession, repo_in: RepositoryCreate) -> Repository:
+async def create_repository(
+    db: AsyncSession,
+    organization_id: str,
+    repo_in: RepositoryCreate,
+    team_id: str | None = None,
+) -> Repository:
     """
-    Create a new repository.
+    Create a new repository within an organization.
 
     Args:
         db: Database session.
+        organization_id: Organization UUID (tenant isolation).
         repo_in: Repository creation data.
+        team_id: Optional team UUID.
 
     Returns:
         Created repository.
@@ -102,6 +137,8 @@ async def create_repository(db: AsyncSession, repo_in: RepositoryCreate) -> Repo
 
     repository = Repository(
         id=str(uuid4()),
+        organization_id=organization_id,
+        team_id=team_id,
         name=name,
         owner=owner,
         url=url_str,
@@ -125,7 +162,7 @@ async def update_repository(
 
     Args:
         db: Database session.
-        repo: Existing repository.
+        repo: Existing repository (already verified for tenant access).
         repo_in: Update data.
 
     Returns:
@@ -148,7 +185,7 @@ async def delete_repository(db: AsyncSession, repo: Repository) -> None:
 
     Args:
         db: Database session.
-        repo: Repository to delete.
+        repo: Repository to delete (already verified for tenant access).
     """
     await db.delete(repo)
     await db.flush()

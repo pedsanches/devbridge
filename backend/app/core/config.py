@@ -81,12 +81,20 @@ class Settings(BaseSettings):
     SLACK_CHANNEL_DEFAULT: str = "#devbridge-alerts"
 
     # ============================================================
-    # Security
+    # Security / Auth
     # ============================================================
     SECRET_KEY: str = "change-me-in-production"
+    JWT_SECRET_KEY: str = "change-me-in-production-jwt-secret-256-bits"
     JWT_ALGORITHM: str = "HS256"
-    JWT_EXPIRATION_MINUTES: int = 30
-    JWT_REFRESH_EXPIRATION_DAYS: int = 7
+    JWT_EXPIRE_DAYS: int = 7
+    MAGIC_LINK_EXPIRE_MINUTES: int = 15
+
+    # ============================================================
+    # Email (Resend)
+    # ============================================================
+    RESEND_API_KEY: str = ""
+    EMAIL_FROM: str = "DevBridge <noreply@devbridge.io>"
+    FRONTEND_URL: str = "http://localhost:3000"
 
     # ============================================================
     # Privacy (Presidio)

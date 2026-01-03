@@ -2,12 +2,30 @@
 
 from app.models.activity import Activity, ActivityType, BusinessUpdate, ImpactLevel
 from app.models.base import Base, TimestampMixin, UUIDMixin
+from app.models.magic_link import MagicLink
+from app.models.membership import MemberRole, Membership
+from app.models.organization import Organization, PlanType
+from app.models.organization_settings import OrganizationSettings
 from app.models.repo import Repository
+from app.models.team import Team
+from app.models.user import User
 
 __all__ = [
+    # Base
     "Base",
     "TimestampMixin",
     "UUIDMixin",
+    # Multi-tenancy
+    "Organization",
+    "PlanType",
+    "Team",
+    "User",
+    "Membership",
+    "MemberRole",
+    "OrganizationSettings",
+    # Auth
+    "MagicLink",
+    # Core
     "Repository",
     "Activity",
     "BusinessUpdate",

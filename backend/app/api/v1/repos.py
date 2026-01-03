@@ -1,7 +1,7 @@
 """
 Repository Endpoints.
 
-CRUD operations for monitored repositories.
+CRUD operations for monitored repositories with multi-tenant isolation.
 """
 
 from fastapi import APIRouter, HTTPException, Query
@@ -14,8 +14,15 @@ from app.schemas import (
     RepositoryUpdate,
 )
 from app.services import repository_service
+from app.services.repository_service import DEFAULT_ORG_ID
 
 router = APIRouter()
+
+
+# TODO: Replace with actual org_id from JWT/session after Auth implementation
+def get_current_org_id() -> str:
+    """Get current organization ID. Uses default until auth is implemented."""
+    return DEFAULT_ORG_ID
 
 
 @router.get("", response_model=PaginatedResponse)
@@ -26,7 +33,7 @@ async def list_repos(
     is_active: bool | None = Query(None, description="Filter by active status"),
 ) -> PaginatedResponse:
     """
-    List all monitored repositories.
+    List all monitored repositories for the current organization.
 
     Args:
         db: Database session.
@@ -37,9 +44,11 @@ async def list_repos(
     Returns:
         Paginated list of repositories.
     """
+    org_id = get_current_org_id()
     skip = (page - 1) * page_size
     repositories, total = await repository_service.get_repositories(
         db,
+        organization_id=org_id,
         skip=skip,
         limit=page_size,
         is_active=is_active,
@@ -65,20 +74,22 @@ async def create_repo(db: DbSession, repo: RepositoryCreate) -> RepositoryRespon
     Returns:
         Created repository.
     """
-    # Check if repo already exists
+    org_id = get_current_org_id()
+
+    # Check if repo already exists in this org
     url_str = str(repo.url)
     parts = url_str.rstrip("/").split("/")
     name = repo.name or f"{parts[-2]}/{parts[-1]}" if len(parts) >= 2 else None
 
     if name:
-        existing = await repository_service.get_repository_by_name(db, name)
+        existing = await repository_service.get_repository_by_name(db, org_id, name)
         if existing:
             raise HTTPException(
                 status_code=409,
                 detail=f"Repository '{name}' already exists",
             )
 
-    repository = await repository_service.create_repository(db, repo)
+    repository = await repository_service.create_repository(db, org_id, repo)
     return RepositoryResponse.model_validate(repository)
 
 
@@ -94,7 +105,8 @@ async def get_repo(db: DbSession, repo_id: str) -> RepositoryResponse:
     Returns:
         Repository details.
     """
-    repository = await repository_service.get_repository_by_id(db, repo_id)
+    org_id = get_current_org_id()
+    repository = await repository_service.get_repository_by_id(db, org_id, repo_id)
     if not repository:
         raise HTTPException(status_code=404, detail="Repository not found")
 
@@ -118,7 +130,8 @@ async def update_repo(
     Returns:
         Updated repository.
     """
-    repository = await repository_service.get_repository_by_id(db, repo_id)
+    org_id = get_current_org_id()
+    repository = await repository_service.get_repository_by_id(db, org_id, repo_id)
     if not repository:
         raise HTTPException(status_code=404, detail="Repository not found")
 
@@ -135,7 +148,8 @@ async def delete_repo(db: DbSession, repo_id: str) -> None:
         db: Database session.
         repo_id: Repository ID.
     """
-    repository = await repository_service.get_repository_by_id(db, repo_id)
+    org_id = get_current_org_id()
+    repository = await repository_service.get_repository_by_id(db, org_id, repo_id)
     if not repository:
         raise HTTPException(status_code=404, detail="Repository not found")
 

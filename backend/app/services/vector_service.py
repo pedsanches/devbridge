@@ -80,6 +80,7 @@ class VectorService:
         self,
         query: str,
         limit: int = 10,
+        org_id: str | None = None,
         filter_conditions: dict[str, Any] | None = None,
     ) -> list[dict[str, Any]]:
         """
@@ -88,7 +89,8 @@ class VectorService:
         Args:
             query: Search query text.
             limit: Maximum results to return.
-            filter_conditions: Optional Qdrant filter conditions.
+            org_id: Organization ID for multi-tenant filtering.
+            filter_conditions: Optional additional Qdrant filter conditions.
 
         Returns:
             List of matching activity data with scores.
@@ -97,9 +99,19 @@ class VectorService:
         if not embedding:
             return []
 
-        query_filter = None
+        conditions = []
+
+        # Always filter by org_id when provided
+        if org_id:
+            conditions.append(
+                models.FieldCondition(
+                    key="org_id",
+                    match=models.MatchValue(value=org_id),
+                )
+            )
+
+        # Add additional filter conditions
         if filter_conditions:
-            conditions = []
             for key, value in filter_conditions.items():
                 conditions.append(
                     models.FieldCondition(
@@ -107,7 +119,8 @@ class VectorService:
                         match=models.MatchValue(value=value),
                     )
                 )
-            query_filter = models.Filter(must=conditions)
+
+        query_filter = models.Filter(must=conditions) if conditions else None
 
         results = self.client.search(
             collection_name=self.collection,

@@ -2,12 +2,13 @@
  * API Client for DevBridge Backend.
  */
 
-const API_BASE_URL = "http://localhost:8000/api/v1";
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
 
 async function fetchAPI<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
     const url = `${API_BASE_URL}${endpoint}`;
     const response = await fetch(url, {
         ...options,
+        credentials: "include", // Send cookies
         headers: { "Content-Type": "application/json", ...options.headers },
     });
 
@@ -16,6 +17,36 @@ async function fetchAPI<T>(endpoint: string, options: RequestInit = {}): Promise
         throw new Error(error.detail || `HTTP ${response.status}`);
     }
     return response.json();
+}
+
+// Auth API
+export interface User {
+    id: string;
+    email: string;
+    name: string | null;
+    organization_id: string;
+}
+
+export async function requestMagicLink(email: string): Promise<{ message: string; email: string }> {
+    return fetchAPI("/auth/magic", {
+        method: "POST",
+        body: JSON.stringify({ email }),
+    });
+}
+
+export async function verifyMagicLink(token: string): Promise<User> {
+    return fetchAPI("/auth/verify", {
+        method: "POST",
+        body: JSON.stringify({ token }),
+    });
+}
+
+export async function getCurrentUser(): Promise<User> {
+    return fetchAPI("/auth/me");
+}
+
+export async function logout(): Promise<{ message: string }> {
+    return fetchAPI("/auth/logout", { method: "POST" });
 }
 
 // Chat API

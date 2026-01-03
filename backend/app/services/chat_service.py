@@ -106,6 +106,7 @@ class ChatService:
     async def search_activities_semantic(
         self,
         query: str,
+        org_id: str | None = None,
         limit: int = 10,
     ) -> list[dict[str, Any]]:
         """
@@ -113,6 +114,7 @@ class ChatService:
 
         Args:
             query: Search query text.
+            org_id: Organization ID for multi-tenant filtering.
             limit: Maximum results.
 
         Returns:
@@ -121,7 +123,7 @@ class ChatService:
         try:
             from app.services.vector_service import vector_service
 
-            return vector_service.search(query, limit=limit)
+            return vector_service.search(query, limit=limit, org_id=org_id)
         except Exception:
             return []
 
@@ -129,6 +131,7 @@ class ChatService:
         self,
         db: AsyncSession,
         query: str,
+        org_id: str | None = None,
         repository: str | None = None,
         author: str | None = None,
         use_semantic_search: bool = True,
@@ -141,6 +144,7 @@ class ChatService:
         Args:
             db: Database session.
             query: User's question.
+            org_id: Organization ID for multi-tenant filtering.
             repository: Optional repository filter.
             author: Optional author filter.
             use_semantic_search: Whether to try semantic search first.
@@ -153,7 +157,7 @@ class ChatService:
 
         # Try semantic search first
         if use_semantic_search:
-            search_results = await self.search_activities_semantic(query, limit=15)
+            search_results = await self.search_activities_semantic(query, org_id=org_id, limit=15)
             if search_results:
                 # Get full activity data for the top results
                 activity_ids = [

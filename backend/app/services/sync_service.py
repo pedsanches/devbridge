@@ -90,7 +90,9 @@ class SyncService:
             Dict with counts of synced items.
         """
         # Get or create repository
-        repo = await repository_service.get_repository_by_name(db, repo_name)
+        repo = await repository_service.get_repository_by_name(
+            db, repository_service.DEFAULT_ORG_ID, repo_name
+        )
         if not repo:
             from pydantic import HttpUrl
 
@@ -102,7 +104,9 @@ class SyncService:
                 name=repo_name,
                 owner=owner,
             )
-            repo = await repository_service.create_repository(db, repo_create)
+            repo = await repository_service.create_repository(
+                db, repository_service.DEFAULT_ORG_ID, repo_create
+            )
 
         owner, name = repo_name.split("/")
         commits_synced = 0

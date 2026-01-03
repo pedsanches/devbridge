@@ -27,7 +27,9 @@ async def process_push_event(
         List of created activities.
     """
     # Get or create repository
-    repo = await repository_service.get_repository_by_name(db, payload.repository.full_name)
+    repo = await repository_service.get_repository_by_name(
+        db, repository_service.DEFAULT_ORG_ID, payload.repository.full_name
+    )
 
     if not repo:
         # Auto-register repository from webhook
@@ -40,7 +42,9 @@ async def process_push_event(
             name=payload.repository.full_name,
             owner=payload.repository.full_name.split("/")[0],
         )
-        repo = await repository_service.create_repository(db, repo_create)
+        repo = await repository_service.create_repository(
+            db, repository_service.DEFAULT_ORG_ID, repo_create
+        )
 
     # Process each commit
     activities: list[Activity] = []
@@ -89,7 +93,9 @@ async def process_pr_event(
         return None
 
     # Get or create repository
-    repo = await repository_service.get_repository_by_name(db, payload.repository.full_name)
+    repo = await repository_service.get_repository_by_name(
+        db, repository_service.DEFAULT_ORG_ID, payload.repository.full_name
+    )
 
     if not repo:
         # Auto-register repository from webhook
@@ -102,7 +108,9 @@ async def process_pr_event(
             name=payload.repository.full_name,
             owner=payload.repository.full_name.split("/")[0],
         )
-        repo = await repository_service.create_repository(db, repo_create)
+        repo = await repository_service.create_repository(
+            db, repository_service.DEFAULT_ORG_ID, repo_create
+        )
 
     pr = payload.pull_request
 
