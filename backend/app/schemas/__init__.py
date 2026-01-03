@@ -9,6 +9,10 @@ from app.schemas.activity import (
     BusinessUpdateResponse,
     ImpactLevel,
 )
+from app.schemas.chat import (
+    ChatRequest,
+    ChatResponse,
+)
 from app.schemas.common import (
     BaseSchema,
     ErrorResponse,
@@ -45,4 +49,7 @@ __all__ = [
     "ActivityWithUpdate",
     "BusinessUpdateCreate",
     "BusinessUpdateResponse",
+    # Chat
+    "ChatRequest",
+    "ChatResponse",
 ]

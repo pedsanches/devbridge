@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowRight, Bot, Code, GitBranch, Github, Shield } from "lucide-react";
+import { Route } from "next";
+import { ArrowRight, Bot, GitBranch, Github, MessageSquare, Shield } from "lucide-react";
 
 export default function Home() {
     return (
@@ -12,10 +13,14 @@ export default function Home() {
                         <span className="text-xl text-primary">DevBridge</span>
                     </div>
                     <nav className="flex items-center gap-6 text-sm font-medium">
-                        <Link href="/docs" className="text-secondary hover:text-primary">
+                        <Link href="/chat" className="flex items-center gap-1 text-secondary hover:text-primary">
+                            <MessageSquare className="h-4 w-4" />
+                            Chat
+                        </Link>
+                        <Link href={"/docs" as Route} className="text-secondary hover:text-primary">
                             Documentation
                         </Link>
-                        <Link href="/login" className="text-secondary hover:text-primary">
+                        <Link href={"/login" as Route} className="text-secondary hover:text-primary">
                             Sign In
                         </Link>
                     </nav>
@@ -35,10 +40,10 @@ export default function Home() {
                     </p>
                     <div className="flex gap-4">
                         <Link
-                            href="/dashboard"
+                            href="/chat"
                             className="flex items-center gap-2 rounded-lg bg-primary px-6 py-3 font-medium text-white transition-colors hover:bg-primary-hover"
                         >
-                            Get Started <ArrowRight className="h-4 w-4" />
+                            Start Chatting <ArrowRight className="h-4 w-4" />
                         </Link>
                         <Link
                             href="https://github.com/seu-usuario/devbridge"
