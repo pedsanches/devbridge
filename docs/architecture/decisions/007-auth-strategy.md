@@ -2,7 +2,7 @@
 
 **Data:** 2026-01-03
 
-**Status:** Proposed
+**Status:** Accepted
 
 **Deciders:** Time de Arquitetura
 
