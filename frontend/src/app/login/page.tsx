@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Mail, ArrowRight, Loader2, CheckCircle } from "lucide-react";
 import { requestMagicLink } from "@/services/api";
 
+
 export default function LoginPage() {
     const [email, setEmail] = useState("");
     const [isLoading, setIsLoading] = useState(false);
@@ -29,7 +30,8 @@ export default function LoginPage() {
 
     if (isSent) {
         return (
-            <div className="flex min-h-screen items-center justify-center bg-neutral-50 dark:bg-neutral-900">
+            <div className="flex min-h-screen flex-col items-center justify-center bg-neutral-50 dark:bg-neutral-900">
+
                 <div className="w-full max-w-md rounded-2xl bg-white p-8 shadow-lg dark:bg-neutral-800">
                     <div className="mb-6 flex h-16 w-16 items-center justify-center rounded-full bg-green-100 dark:bg-green-900">
                         <CheckCircle className="h-8 w-8 text-green-600 dark:text-green-400" />
@@ -53,7 +55,8 @@ export default function LoginPage() {
     }
 
     return (
-        <div className="flex min-h-screen items-center justify-center bg-neutral-50 dark:bg-neutral-900">
+        <div className="flex min-h-screen flex-col items-center justify-center bg-neutral-50 dark:bg-neutral-900">
+
             <div className="w-full max-w-md rounded-2xl bg-white p-8 shadow-lg dark:bg-neutral-800">
                 <div className="mb-6 flex h-16 w-16 items-center justify-center rounded-full bg-primary/10">
                     <Mail className="h-8 w-8 text-primary" />

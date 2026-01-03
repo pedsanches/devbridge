@@ -1,11 +1,11 @@
 "use client";
 
-import Link from "next/link";
-import { ArrowLeft, MessageSquare, Sparkles } from "lucide-react";
+import { MessageSquare, Sparkles } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
 import { ChatMessage } from "@/components/chat/ChatMessage";
 import { ChatInput } from "@/components/chat/ChatInput";
 import { sendChatMessage, ChatResponse } from "@/services/api";
+
 
 interface Message {
     id: string;
@@ -67,28 +67,7 @@ export default function ChatPage() {
 
     return (
         <div className="flex min-h-screen flex-col bg-neutral-50 dark:bg-neutral-900">
-            {/* Header */}
-            <header className="sticky top-0 z-50 border-b border-neutral-200 bg-white/80 backdrop-blur-md dark:border-neutral-800 dark:bg-neutral-900/80">
-                <div className="container mx-auto flex h-16 items-center justify-between px-4">
-                    <div className="flex items-center gap-4">
-                        <Link
-                            href="/"
-                            className="flex items-center gap-2 text-secondary hover:text-primary"
-                        >
-                            <ArrowLeft className="h-4 w-4" />
-                            <span className="text-sm">Voltar</span>
-                        </Link>
-                        <div className="flex items-center gap-2">
-                            <MessageSquare className="h-5 w-5 text-primary" />
-                            <span className="font-semibold">DevBridge Chat</span>
-                        </div>
-                    </div>
-                    <div className="flex items-center gap-2 text-sm text-secondary">
-                        <Sparkles className="h-4 w-4 text-primary" />
-                        <span>Powered by AI</span>
-                    </div>
-                </div>
-            </header>
+
 
             {/* Messages Area */}
             <main className="flex-1 overflow-y-auto">

@@ -2,30 +2,13 @@
 
 import Link from "next/link";
 import { Route } from "next";
-import { ArrowRight, Bot, GitBranch, Github, MessageSquare, Shield } from "lucide-react";
+import { ArrowRight, Bot, GitBranch, Github, Shield } from "lucide-react";
+
 
 export default function Home() {
     return (
         <div className="flex min-h-screen flex-col">
-            <header className="sticky top-0 z-50 w-full border-b border-neutral-200 bg-white/80 backdrop-blur-md dark:border-neutral-800 dark:bg-neutral-900/80">
-                <div className="container mx-auto flex h-16 items-center justify-between px-4">
-                    <div className="flex items-center gap-2 font-semibold">
-                        <span className="text-xl text-primary">DevBridge</span>
-                    </div>
-                    <nav className="flex items-center gap-6 text-sm font-medium">
-                        <Link href="/chat" className="flex items-center gap-1 text-secondary hover:text-primary">
-                            <MessageSquare className="h-4 w-4" />
-                            Chat
-                        </Link>
-                        <Link href={"/docs" as Route} className="text-secondary hover:text-primary">
-                            Documentation
-                        </Link>
-                        <Link href={"/login" as Route} className="text-secondary hover:text-primary">
-                            Sign In
-                        </Link>
-                    </nav>
-                </div>
-            </header>
+
 
             <main className="flex-1">
                 <section className="container mx-auto flex max-w-5xl flex-col items-center gap-8 py-24 text-center md:py-32">
