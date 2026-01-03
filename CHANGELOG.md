@@ -8,6 +8,10 @@ e este projeto adere ao [Semantic Versioning](https://semver.org/lang/pt-BR/).
 ## [Unreleased]
 
 ### Added
+- Autenticação via Magic Links (ADR-007)
+- Modelo de dados Multi-tenant (Organization, Team, Membership) (ADR-006)
+- Pipeline RAG com Qdrant e OpenAI embeddings
+- Busca semântica com filtro por tenant
 - Estrutura inicial de documentação
 - README modernizado com badges e quick start
 - Catálogo de regras de negócio
@@ -20,7 +24,7 @@ e este projeto adere ao [Semantic Versioning](https://semver.org/lang/pt-BR/).
 - (nenhum fix ainda)
 
 ### Security
-- (nenhuma correção de segurança ainda)
+- Implementação de sessão com httpOnly cookies
 
 ---
 

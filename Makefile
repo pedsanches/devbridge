@@ -126,6 +126,15 @@ db-rollback: ## Rollback last migration
 db-seed: ## Seed database with test data
 	@cd backend && poetry run python -m app.db.seed
 
+reset-db: ## Reset database (drop volumes and re-migrate)
+	@echo "$(BLUE)[RESET]$(NC) Resetting database..."
+	@make clean-docker
+	@make docker-up
+	@echo "$(BLUE)[RESET]$(NC) Waiting for database to be ready..."
+	@sleep 10
+	@make db-migrate
+	@echo "$(GREEN)[OK]$(NC) Database reset complete"
+
 ## ============================================================
 ## CLEANUP
 ## ============================================================
