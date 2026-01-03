@@ -4,12 +4,15 @@ import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Loader2, CheckCircle, XCircle } from "lucide-react";
 import { verifyMagicLink } from "@/services/api";
+import { useAuth } from "@/hooks/use-auth";
+
 
 export default function VerifyPage() {
     const [status, setStatus] = useState<"loading" | "success" | "error">("loading");
     const [error, setError] = useState("");
     const router = useRouter();
     const searchParams = useSearchParams();
+    const { refreshUser } = useAuth();
 
     useEffect(() => {
         const token = searchParams.get("token");
@@ -23,10 +26,11 @@ export default function VerifyPage() {
         const verify = async () => {
             try {
                 await verifyMagicLink(token);
+                await refreshUser(); // Update auth context
                 setStatus("success");
-                // Redirect after brief success message
+                // Redirect to dashboard after brief success message
                 setTimeout(() => {
-                    router.push("/chat");
+                    router.push("/dashboard");
                 }, 1500);
             } catch (err) {
                 setStatus("error");
@@ -35,10 +39,11 @@ export default function VerifyPage() {
         };
 
         verify();
-    }, [searchParams, router]);
+    }, [searchParams, router, refreshUser]);
 
     return (
-        <div className="flex min-h-screen items-center justify-center bg-neutral-50 dark:bg-neutral-900">
+        <div className="flex min-h-screen flex-col items-center justify-center bg-neutral-50 dark:bg-neutral-900">
+
             <div className="w-full max-w-md rounded-2xl bg-white p-8 text-center shadow-lg dark:bg-neutral-800">
                 {status === "loading" && (
                     <>
