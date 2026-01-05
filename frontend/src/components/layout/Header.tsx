@@ -1,9 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { Route } from "next";
 import { useRouter } from "next/navigation";
-import { MessageSquare, LayoutDashboard, LogOut, ChevronDown, User, ArrowLeft } from "lucide-react";
+import { MessageSquare, LayoutDashboard, LogOut, ChevronDown, User, ArrowLeft, Settings } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
 import { useAuth } from "@/hooks/use-auth";
 
@@ -57,7 +56,7 @@ export function Header({ variant = "default", backHref = "/", backLabel = "Volta
                     {/* Optional Back Button */}
                     {(variant === "minimal" || backHref !== "/") && (
                         <Link
-                            href={backHref as Route}
+                            href={backHref || "/"}
                             className="flex items-center gap-2 text-secondary hover:text-primary"
                         >
                             <ArrowLeft className="h-4 w-4" />
@@ -76,7 +75,7 @@ export function Header({ variant = "default", backHref = "/", backLabel = "Volta
                     {isAuthenticated && (
                         <>
                             <Link
-                                href={"/dashboard" as Route}
+                                href="/dashboard"
                                 className="flex items-center gap-1.5 rounded-md px-3 py-2 text-sm font-medium text-secondary transition-colors hover:bg-neutral-100 hover:text-primary dark:hover:bg-neutral-800"
                             >
                                 <LayoutDashboard className="h-4 w-4" />
@@ -102,10 +101,10 @@ export function Header({ variant = "default", backHref = "/", backLabel = "Volta
                                 className="flex items-center gap-2 rounded-full border border-neutral-200 bg-white px-3 py-1.5 text-sm font-medium transition-colors hover:border-primary hover:bg-neutral-50 dark:border-neutral-700 dark:bg-neutral-800 dark:hover:border-primary dark:hover:bg-neutral-700"
                             >
                                 <div className="flex h-6 w-6 items-center justify-center rounded-full bg-primary text-xs font-semibold text-white">
-                                    {user.email.charAt(0).toUpperCase()}
+                                    {user.email?.charAt(0).toUpperCase() || "U"}
                                 </div>
                                 <span className="hidden max-w-[120px] truncate sm:block">
-                                    {user.name || user.email.split("@")[0]}
+                                    {user.name || user.email?.split("@")[0] || "Usuário"}
                                 </span>
                                 <ChevronDown className={`h-4 w-4 transition-transform ${isMenuOpen ? "rotate-180" : ""}`} />
                             </button>
@@ -119,6 +118,14 @@ export function Header({ variant = "default", backHref = "/", backLabel = "Volta
                                         </p>
                                         <p className="truncate text-xs text-neutral-500">{user.email}</p>
                                     </div>
+                                    <Link
+                                        href="/settings/data-sources"
+                                        onClick={() => setIsMenuOpen(false)}
+                                        className="flex w-full items-center gap-2 px-4 py-2 text-sm text-neutral-700 hover:bg-neutral-50 dark:text-neutral-300 dark:hover:bg-neutral-800"
+                                    >
+                                        <Settings className="h-4 w-4" />
+                                        Data Sources
+                                    </Link>
                                     <button
                                         onClick={handleLogout}
                                         className="flex w-full items-center gap-2 px-4 py-2 text-sm text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/20"

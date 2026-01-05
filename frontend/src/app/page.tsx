@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import { Route } from "next";
 import { ArrowRight, Bot, GitBranch, Github, Shield } from "lucide-react";
 
 
@@ -43,8 +42,8 @@ export default function Home() {
                         <Bot className="mb-4 h-8 w-8 text-primary" />
                         <h3 className="mb-2 text-lg font-semibold">AI Translation</h3>
                         <p className="text-secondary">
-                            Automatically converts technical jargon ("Refactored API wrapper")
-                            into business value ("Improved system stability for payments").
+                            Automatically converts technical jargon (&quot;Refactored API wrapper&quot;)
+                            into business value (&quot;Improved system stability for payments&quot;).
                         </p>
                     </div>
                     <div className="rounded-xl border border-neutral-200 bg-neutral-50 p-6 dark:border-neutral-800 dark:bg-neutral-900">

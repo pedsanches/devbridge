@@ -37,6 +37,7 @@ psycopg2-binary = "^2.9.11"
 openai = "^2.14.0"
 resend = "^2.19.0"
 python-jose = {extras = ["cryptography"], version = "^3.5.0"}
+mcp = "^1.25.0"
 
 [tool.poetry.group.dev.dependencies]
 # Testing

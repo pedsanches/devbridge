@@ -10,8 +10,10 @@ from app.schemas.activity import (
     ImpactLevel,
 )
 from app.schemas.chat import (
+    ChatMetadata,
     ChatRequest,
     ChatResponse,
+    Persona,
 )
 from app.schemas.common import (
     BaseSchema,
@@ -50,6 +52,8 @@ __all__ = [
     "BusinessUpdateCreate",
     "BusinessUpdateResponse",
     # Chat
+    "ChatMetadata",
     "ChatRequest",
     "ChatResponse",
+    "Persona",
 ]

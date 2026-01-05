@@ -99,11 +99,9 @@ class SyncService:
         if token:
             self.token = token
             self.headers["Authorization"] = f"Bearer {token}"
-        
+
         # Get or create repository
-        repo = await repository_service.get_repository_by_name(
-            db, org_id, repo_name
-        )
+        repo = await repository_service.get_repository_by_name(db, org_id, repo_name)
         if not repo:
             from app.schemas import RepositoryCreate
 
@@ -113,9 +111,7 @@ class SyncService:
                 name=repo_name,
                 owner=owner,
             )
-            repo = await repository_service.create_repository(
-                db, org_id, repo_create
-            )
+            repo = await repository_service.create_repository(db, org_id, repo_create)
 
         owner, name = repo_name.split("/")
         commits_synced = 0
@@ -177,8 +173,8 @@ class SyncService:
                             diff_preview += "\n... (diff truncated)"
                         content = f"{body}\n\n---\n## Diff:\n```diff\n{diff_preview}\n```"
                 except Exception as e:
-                     print(f"Failed to fetch diff for PR #{pr_number}: {e}")
-                     # Continue without diff
+                    print(f"Failed to fetch diff for PR #{pr_number}: {e}")
+                    # Continue without diff
 
             activity_in = ActivityCreate(
                 repository_id=repo.id,
@@ -202,7 +198,7 @@ class SyncService:
     ) -> int:
         """
         Discover and import all user repositories.
-        
+
         Fetches repositories from GitHub and creates them in the database
         if they don't exist. Does NOT sync content (commits/PRs), just metadata.
 
@@ -213,7 +209,6 @@ class SyncService:
         Returns:
             Number of new repositories imported.
         """
-        from pydantic import HttpUrl
         from app.schemas import RepositoryCreate
 
         repos = await github_service.list_user_repositories()
@@ -230,7 +225,7 @@ class SyncService:
             )
             if existing:
                 continue
-            
+
             # Create
             owner = repo_data.get("owner", {}).get("login", "unknown")
             repo_create = RepositoryCreate(
@@ -238,12 +233,10 @@ class SyncService:
                 name=full_name,
                 owner=owner,
             )
-            
-            await repository_service.create_repository(
-                db, organization_id, repo_create
-            )
+
+            await repository_service.create_repository(db, organization_id, repo_create)
             imported += 1
-            
+
         return imported
 
 

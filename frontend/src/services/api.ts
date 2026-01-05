@@ -62,6 +62,7 @@ export interface ChatRequest {
     repository?: string | string[];
     author?: string;
     persona?: Persona;
+    conversationId?: string;
 }
 
 export interface ChatMetadata {
