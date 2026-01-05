@@ -79,6 +79,9 @@ class ChatService:
                     if (activity.occurred_at or activity.created_at)
                     else None,
                     "created_at": activity.created_at.isoformat() if activity.created_at else None,
+                    "files_touched": activity.files_touched,
+                    "labels": activity.labels,
+                    "linked_issues": activity.linked_issues,
                 }
             )
 
@@ -122,6 +125,9 @@ class ChatService:
                     if (activity.occurred_at or activity.created_at)
                     else None,
                     "created_at": activity.created_at.isoformat() if activity.created_at else None,
+                    "files_touched": activity.files_touched,
+                    "labels": activity.labels,
+                    "linked_issues": activity.linked_issues,
                 }
             )
 

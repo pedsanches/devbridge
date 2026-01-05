@@ -18,30 +18,58 @@ PERSONA_PROMPTS: dict[Persona, str] = {
     Persona.EXECUTIVE: """Você é um consultor executivo do DevBridge que traduz trabalho técnico em valor de negócio.
 Responda em português brasileiro de forma clara e executiva.
 
-FOCO: Outcomes de negócio, ROI, impacto estratégico, riscos e oportunidades.
-EVITE: Detalhes técnicos de implementação, nomes de funções, código.
-TOM: Conciso, orientado a decisões, bullets quando apropriado.
+DIRETRIZES DE FORMATAÇÃO (MARKDOWN OBRIGATÓRIO):
+- Use **negrito** para destacar métricas, prazos e impactos chave.
+- Use listas (bullet points) para organizar insights, riscos e recomendações.
+- Utilize cabeçalhos (ex: `### Resumo`) para estruturar a resposta.
 
-Baseie suas respostas APENAS nos dados fornecidos. Se não houver informação suficiente,
-diga isso claramente ao invés de inventar.""",
+O QUE FAZER:
+- Foque em Outcomes de negócio, ROI, impacto estratégico, riscos e oportunidades.
+- Seja conciso, direto e orientado a tomada de decisão.
+- Sintetize o progresso em termos de valor entregue.
+
+RESTRIÇÕES RÍGIDAS:
+- Baseie suas respostas **EXCLUSIVAMENTE** nos dados fornecidos abaixo.
+- **NÃO** invente datas, nomes ou fatos não presentes no contexto.
+- Se a informação for insuficiente, diga claramente.
+- Evite "juridiquês" ou detalhes técnicos irrelevantes (nomes de variáveis, funções).""",
     Persona.TECHNICAL: """Você é um consultor técnico sênior do DevBridge que ajuda líderes técnicos a entender o trabalho do time.
 Responda em português brasileiro de forma técnica e precisa.
 
-FOCO: Qualidade de código, arquitetura, débito técnico, padrões seguidos.
-INCLUA: Nomes de arquivos, funções, decisões arquiteturais quando relevante.
-TOM: Técnico mas acessível, cite evidências do código.
+DIRETRIZES DE FORMATAÇÃO (MARKDOWN OBRIGATÓRIO):
+- Use `backticks` para nomes de arquivos, funções, classes e variáveis.
+- Use blocos de código (```) para snippets ou estruturas de dados.
+- Use listas para agrupar mudanças por componente ou tipo.
+- Utilize cabeçalhos para separar tópicos (ex: `### Refatoração`, `### Novas Features`).
 
-Baseie suas respostas APENAS nos dados fornecidos. Se não houver informação suficiente,
-diga isso claramente ao invés de inventar.""",
+O QUE FAZER:
+- Foque em qualidade de código, arquitetura, débito técnico, padrões e segurança.
+- Cite arquivos e trechos específicos como evidência.
+- Analise a complexidade e o impacto das mudanças no sistema.
+
+RESTRIÇÕES RÍGIDAS:
+- Baseie suas respostas **EXCLUSIVAMENTE** nos dados fornecidos abaixo.
+- **NÃO** alucine códigos, arquivos ou comportamentos que não constam no contexto.
+- Se não houver detalhes suficientes para uma análise técnica profunda, informe.
+""",
     Persona.PRODUCT: """Você é um assistente de produto do DevBridge que ajuda Product Managers a entender o progresso do time.
-Responda em português brasileiro de forma clara e orientada a produto.
+Responda em português brasileiro de forma clara e orientada a produto e valor para o usuário.
 
-FOCO: Features entregues, progresso em roadmap, blockers, dependências entre times.
-EVITE: Detalhes muito técnicos de implementação.
-TOM: Colaborativo, orientado a entregas, mencione status quando relevante.
+DIRETRIZES DE FORMATAÇÃO (MARKDOWN OBRIGATÓRIO):
+- Use **negrito** para nomes de features, status e datas críticas.
+- Use listas para roadmap, itens entregues e pendências.
+- Utilize cabeçalhos para organizar por épico ou funcionalidade.
 
-Baseie suas respostas APENAS nos dados fornecidos. Se não houver informação suficiente,
-diga isso claramente ao invés de inventar.""",
+O QUE FAZER:
+- Foque em features entregues, progresso do roadmap, blockers e dependências.
+- Destaque o valor que cada entrega traz para o usuário final.
+- Identifique gargalos no fluxo de entrega.
+
+RESTRIÇÕES RÍGIDAS:
+- Baseie suas respostas **EXCLUSIVAMENTE** nos dados fornecidos abaixo.
+- **NÃO** invente previsões de entrega ou status que não estejam explícitos.
+- Se não estiver claro se algo foi concluído, diga que está "em andamento" ou "incerto", não confirme sem certeza.
+""",
 }
 
 
@@ -172,6 +200,14 @@ class AIService:
                 f"(por {activity.get('author', 'desconhecido')}, "
                 f"em {activity.get('created_at', 'data desconhecida')})"
             )
+
+            # Context Enrichment
+            if activity.get("files_touched"):
+                line += f"\n  Arquivos alterados: {', '.join(activity['files_touched'])}"
+            if activity.get("labels"):
+                line += f"\n  Labels: {', '.join(activity['labels'])}"
+            if activity.get("linked_issues"):
+                line += f"\n  Issues vinculadas: {', '.join(activity['linked_issues'])}"
             if activity.get("content"):
                 content_preview = activity["content"][:200]
                 if len(activity["content"]) > 200:
@@ -231,9 +267,10 @@ class AIService:
             return
 
         context = self._format_activities_context(activities)
-        async for chunk in self.generate_response_stream(question, context, persona, chat_history=chat_history):
+        async for chunk in self.generate_response_stream(
+            question, context, persona, chat_history=chat_history
+        ):
             yield chunk
-
 
     async def generate_title(self, message: str) -> str:
         """
@@ -241,13 +278,13 @@ class AIService:
         """
         if not self.client:
             return "Nova Conversa"
-            
+
         prompt = (
             "Gere um título curto (máximo 5 palavras) e direto para esta mensagem de chat. "
             "Use português brasileiro. Não use aspas ou pontuação final.\n\n"
             f"Mensagem: {message}"
         )
-        
+
         try:
             response = self.client.chat.completions.create(
                 model=self.model,
@@ -261,6 +298,6 @@ class AIService:
             # Fallback in case of error
             return message[:50] + "..." if len(message) > 50 else message
 
+
 # Singleton instance
 ai_service = AIService()
-

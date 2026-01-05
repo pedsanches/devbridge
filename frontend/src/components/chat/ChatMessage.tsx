@@ -2,6 +2,9 @@
 
 import { Bot, User } from "lucide-react";
 
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
+
 interface ChatMessageProps {
     role: "user" | "assistant";
     content: string;
@@ -21,11 +24,34 @@ export function ChatMessage({ role, content, timestamp }: ChatMessageProps) {
 
             <div
                 className={`max-w-[80%] rounded-2xl px-4 py-3 ${isUser
-                        ? "bg-primary text-white"
-                        : "bg-neutral-100 text-neutral-900 dark:bg-neutral-800 dark:text-white"
+                    ? "bg-primary text-white"
+                    : "bg-neutral-100 text-neutral-900 dark:bg-neutral-800 dark:text-white"
                     }`}
             >
-                <p className="whitespace-pre-wrap text-sm leading-relaxed">{content}</p>
+                {isUser ? (
+                    <p className="whitespace-pre-wrap text-sm leading-relaxed">{content}</p>
+                ) : (
+                    <div className="prose prose-sm dark:prose-invert max-w-none break-words leading-relaxed">
+                        <ReactMarkdown
+                            remarkPlugins={[remarkGfm]}
+                            components={{
+                                // Customize components if needed, e.g., to handle links or code blocks specifically
+                                a: ({ node, ...props }) => (
+                                    <a target="_blank" rel="noopener noreferrer" className="text-primary hover:underline" {...props} />
+                                ),
+                                // Ensure code blocks don't overflow
+                                pre: ({ node, ...props }) => (
+                                    <pre className="overflow-x-auto rounded bg-neutral-200 p-2 dark:bg-neutral-900" {...props} />
+                                ),
+                                code: ({ node, ...props }) => (
+                                    <code className="rounded bg-neutral-200 px-1 py-0.5 dark:bg-neutral-900" {...props} />
+                                )
+                            }}
+                        >
+                            {content}
+                        </ReactMarkdown>
+                    </div>
+                )}
                 {timestamp && (
                     <span
                         className={`mt-1 block text-xs ${isUser ? "text-white/70" : "text-neutral-500"
