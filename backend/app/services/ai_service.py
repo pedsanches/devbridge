@@ -298,6 +298,78 @@ class AIService:
             # Fallback in case of error
             return message[:50] + "..." if len(message) > 50 else message
 
+    async def classify_activity_tags(self, activity: dict[str, Any]) -> list[str]:
+        """
+        Classify an activity with business-value tags using LLM.
+
+        Tags:
+        - RISK_MITIGATION: Security fixes, bug fixes, stability improvements
+        - VELOCITY_ENABLER: Refactoring, tooling, CI/CD improvements
+        - COST_SAVING: Performance optimization, resource reduction
+        - FEATURE_DELIVERY: New features, user-facing improvements
+        - TECH_DEBT: Dependency updates, code cleanup
+
+        Args:
+            activity: Activity dictionary with title, content, labels, etc.
+
+        Returns:
+            List of applicable tags (can be multiple).
+        """
+        if not self.client:
+            return []
+
+        # Build activity context
+        title = activity.get("title", "")
+        content = activity.get("content", "")[:500] if activity.get("content") else ""
+        labels = ", ".join(activity.get("labels", [])) if activity.get("labels") else ""
+        files = (
+            ", ".join(activity.get("files_touched", [])[:5])
+            if activity.get("files_touched")
+            else ""
+        )
+
+        prompt = f"""Analyze this software development activity and classify it with ONE OR MORE business value tags.
+
+ACTIVITY:
+- Title: {title}
+- Labels: {labels}
+- Files Changed: {files}
+- Description: {content}
+
+AVAILABLE TAGS (select all that apply):
+- RISK_MITIGATION: Security fixes, bug fixes, stability, error handling
+- VELOCITY_ENABLER: Refactoring, tooling, CI/CD, developer experience
+- COST_SAVING: Performance optimization, caching, resource efficiency
+- FEATURE_DELIVERY: New features, user-facing functionality
+- TECH_DEBT: Dependency updates, code cleanup, migrations
+
+Respond with ONLY a JSON array of applicable tags. Example: ["FEATURE_DELIVERY", "RISK_MITIGATION"]
+If unsure, return an empty array: []"""
+
+        try:
+            response = self.client.chat.completions.create(
+                model=self.model,
+                messages=[{"role": "user", "content": prompt}],
+                max_tokens=50,
+                temperature=0.3,
+            )
+            result = response.choices[0].message.content or "[]"
+            # Parse JSON response
+            import json
+
+            tags = json.loads(result.strip())
+            # Validate tags
+            valid_tags = {
+                "RISK_MITIGATION",
+                "VELOCITY_ENABLER",
+                "COST_SAVING",
+                "FEATURE_DELIVERY",
+                "TECH_DEBT",
+            }
+            return [tag for tag in tags if tag in valid_tags]
+        except Exception:
+            return []
+
 
 # Singleton instance
 ai_service = AIService()

@@ -82,6 +82,7 @@ class ChatService:
                     "files_touched": activity.files_touched,
                     "labels": activity.labels,
                     "linked_issues": activity.linked_issues,
+                    "value_tags": activity.value_tags,
                 }
             )
 
@@ -128,6 +129,7 @@ class ChatService:
                     "files_touched": activity.files_touched,
                     "labels": activity.labels,
                     "linked_issues": activity.linked_issues,
+                    "value_tags": activity.value_tags,
                 }
             )
 

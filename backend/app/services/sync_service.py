@@ -16,6 +16,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.config import settings
 from app.schemas import ActivityCreate, ActivityType
 from app.services import activity_service, repository_service
+from app.services.ai_service import ai_service
 from app.services.github_service import github_service
 
 
@@ -156,6 +157,16 @@ class SyncService:
                 except Exception as e:
                     print(f"Failed to fetch files for {sha}: {e}")
 
+            # Auto-tagging mechanism (Phase 2)
+            # We construct a temporary dict to pass to the AI service
+            temp_activity_dict = {
+                "title": message.split("\n")[0][:100],
+                "content": content,
+                "labels": [],
+                "files_touched": files_touched or [],
+            }
+            value_tags = await ai_service.classify_activity_tags(temp_activity_dict)
+
             activity_in = ActivityCreate(
                 repository_id=repo.id,
                 external_id=sha[:12],
@@ -165,6 +176,7 @@ class SyncService:
                 author=author,
                 occurred_at=occurred_at,
                 files_touched=files_touched,
+                value_tags=value_tags,
             )
 
             _, created = await activity_service.get_or_create_activity(db, activity_in)
@@ -216,6 +228,15 @@ class SyncService:
                 matches = re.findall(issue_pattern, body, re.IGNORECASE)
                 linked_issues = list(set(matches)) if matches else None
 
+            # Auto-tagging mechanism (Phase 2)
+            temp_activity_dict = {
+                "title": title,
+                "content": content,
+                "labels": labels or [],
+                "files_touched": [],  # We don't fetch PR files yet (future improvement)
+            }
+            value_tags = await ai_service.classify_activity_tags(temp_activity_dict)
+
             activity_in = ActivityCreate(
                 repository_id=repo.id,
                 external_id=str(pr_number),
@@ -226,6 +247,7 @@ class SyncService:
                 occurred_at=occurred_at,
                 labels=labels,
                 linked_issues=linked_issues,
+                value_tags=value_tags,
             )
 
             _, created = await activity_service.get_or_create_activity(db, activity_in)

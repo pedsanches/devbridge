@@ -154,6 +154,7 @@ async def create_activity(db: AsyncSession, activity_in: ActivityCreate) -> Acti
         files_touched=activity_in.files_touched,
         labels=activity_in.labels,
         linked_issues=activity_in.linked_issues,
+        value_tags=activity_in.value_tags,
     )
 
     db.add(activity)
@@ -223,6 +224,9 @@ async def get_or_create_activity(
             changed = True
         if activity_in.linked_issues is not None:
             existing.linked_issues = activity_in.linked_issues
+            changed = True
+        if activity_in.value_tags is not None:
+            existing.value_tags = activity_in.value_tags
             changed = True
 
         if changed:
