@@ -43,6 +43,8 @@ class ActivityCreate(BaseSchema):
     files_touched: list[str] | None = None
     labels: list[str] | None = None
     linked_issues: list[str] | None = None
+    # Value Tagging (Phase 2)
+    value_tags: list[str] | None = None
 
 
 class ActivityResponse(TimestampSchema):
@@ -60,6 +62,8 @@ class ActivityResponse(TimestampSchema):
     files_touched: list[str] | None = None
     labels: list[str] | None = None
     linked_issues: list[str] | None = None
+    # Value Tagging (Phase 2)
+    value_tags: list[str] | None = None
 
 
 class ActivityWithUpdate(ActivityResponse):

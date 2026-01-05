@@ -33,6 +33,9 @@ class Activity(Base, UUIDMixin, TimestampMixin):
     labels = Column(ARRAY(String), nullable=True)  # PR labels (bug, feature, etc.)
     linked_issues = Column(ARRAY(String), nullable=True)  # Issue refs (#123, closes #456)
 
+    # Value Tagging (Phase 2)
+    value_tags = Column(ARRAY(String), nullable=True)  # RISK_MITIGATION, VELOCITY_ENABLER, etc.
+
     # Relationships
     repository = relationship("Repository", back_populates="activities")
     business_update = relationship(
