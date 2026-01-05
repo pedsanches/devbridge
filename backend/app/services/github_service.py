@@ -92,6 +92,25 @@ class GitHubService:
                 return dict(response.json())
             return None
 
+    async def list_user_repositories(self, per_page: int = 100) -> list[dict[str, Any]]:
+        """
+        List all repositories accessible to the user.
+
+        Args:
+           per_page: Number of items per page.
+
+        Returns:
+            List of repository dicts.
+        """
+        url = f"{self.BASE_URL}/user/repos"
+        params = {"per_page": per_page, "sort": "updated", "type": "all"}
+        
+        async with httpx.AsyncClient() as client:
+            response = await client.get(url, headers=self.headers, params=params, timeout=30)
+            if response.status_code == 200:
+                return response.json()
+            return []
+
 
 # Singleton instance
 github_service = GitHubService()

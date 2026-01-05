@@ -75,6 +75,8 @@ class SyncService:
         max_commits: int = 50,
         max_prs: int = 20,
         fetch_diffs: bool = True,
+        token: str | None = None,
+        organization_id: str | None = None,
     ) -> dict[str, int]:
         """
         Sync a repository's commits and PRs to the database.
@@ -85,27 +87,34 @@ class SyncService:
             max_commits: Maximum commits to sync.
             max_prs: Maximum PRs to sync.
             fetch_diffs: Whether to fetch full diff content for each commit/PR.
+            token: Optional GitHub token to use for this sync operation.
+            organization_id: Optional Organization UUID. Defaults to DEFAULT_ORG_ID.
 
         Returns:
             Dict with counts of synced items.
         """
+        org_id = organization_id or repository_service.DEFAULT_ORG_ID
+
+        # Update token if provided (TEMPORARY: This is not thread-safe for high concurrency but OK for MVP)
+        if token:
+            self.token = token
+            self.headers["Authorization"] = f"Bearer {token}"
+        
         # Get or create repository
         repo = await repository_service.get_repository_by_name(
-            db, repository_service.DEFAULT_ORG_ID, repo_name
+            db, org_id, repo_name
         )
         if not repo:
-            from pydantic import HttpUrl
-
             from app.schemas import RepositoryCreate
 
             owner, name = repo_name.split("/")
             repo_create = RepositoryCreate(
-                url=HttpUrl(f"https://github.com/{repo_name}"),
+                url=f"https://github.com/{repo_name}",
                 name=repo_name,
                 owner=owner,
             )
             repo = await repository_service.create_repository(
-                db, repository_service.DEFAULT_ORG_ID, repo_create
+                db, org_id, repo_create
             )
 
         owner, name = repo_name.split("/")
@@ -122,13 +131,18 @@ class SyncService:
             # Build content with diff if requested
             content = message
             if fetch_diffs and sha:
-                diff = await github_service.get_commit_diff(owner, name, sha)
-                if diff:
-                    # Limit diff size to avoid huge content
-                    diff_preview = diff[:5000] if len(diff) > 5000 else diff
-                    if len(diff) > 5000:
-                        diff_preview += "\n... (diff truncated)"
-                    content = f"{message}\n\n---\n## Diff:\n```diff\n{diff_preview}\n```"
+                # Add timeout protection
+                try:
+                    diff = await github_service.get_commit_diff(owner, name, sha)
+                    if diff:
+                        # Limit diff size to avoid huge content
+                        diff_preview = diff[:5000] if len(diff) > 5000 else diff
+                        if len(diff) > 5000:
+                            diff_preview += "\n... (diff truncated)"
+                        content = f"{message}\n\n---\n## Diff:\n```diff\n{diff_preview}\n```"
+                except Exception as e:
+                    print(f"Failed to fetch diff for {sha}: {e}")
+                    # Continue without diff
 
             activity_in = ActivityCreate(
                 repository_id=repo.id,
@@ -155,12 +169,16 @@ class SyncService:
             # Build content with diff if requested
             content = body
             if fetch_diffs and pr_number:
-                diff = await github_service.get_pr_diff(owner, name, pr_number)
-                if diff:
-                    diff_preview = diff[:5000] if len(diff) > 5000 else diff
-                    if len(diff) > 5000:
-                        diff_preview += "\n... (diff truncated)"
-                    content = f"{body}\n\n---\n## Diff:\n```diff\n{diff_preview}\n```"
+                try:
+                    diff = await github_service.get_pr_diff(owner, name, pr_number)
+                    if diff:
+                        diff_preview = diff[:5000] if len(diff) > 5000 else diff
+                        if len(diff) > 5000:
+                            diff_preview += "\n... (diff truncated)"
+                        content = f"{body}\n\n---\n## Diff:\n```diff\n{diff_preview}\n```"
+                except Exception as e:
+                     print(f"Failed to fetch diff for PR #{pr_number}: {e}")
+                     # Continue without diff
 
             activity_in = ActivityCreate(
                 repository_id=repo.id,
@@ -176,6 +194,57 @@ class SyncService:
                 prs_synced += 1
 
         return {"commits_synced": commits_synced, "prs_synced": prs_synced}
+
+    async def discover_user_repositories(
+        self,
+        db: AsyncSession,
+        organization_id: str,
+    ) -> int:
+        """
+        Discover and import all user repositories.
+        
+        Fetches repositories from GitHub and creates them in the database
+        if they don't exist. Does NOT sync content (commits/PRs), just metadata.
+
+        Args:
+            db: Database session.
+            organization_id: Organization UUID.
+
+        Returns:
+            Number of new repositories imported.
+        """
+        from pydantic import HttpUrl
+        from app.schemas import RepositoryCreate
+
+        repos = await github_service.list_user_repositories()
+        imported = 0
+
+        for repo_data in repos:
+            full_name = repo_data.get("full_name")
+            if not full_name:
+                continue
+
+            # Check if exists
+            existing = await repository_service.get_repository_by_name(
+                db, organization_id, full_name
+            )
+            if existing:
+                continue
+            
+            # Create
+            owner = repo_data.get("owner", {}).get("login", "unknown")
+            repo_create = RepositoryCreate(
+                url=repo_data.get("html_url", f"https://github.com/{full_name}"),
+                name=full_name,
+                owner=owner,
+            )
+            
+            await repository_service.create_repository(
+                db, organization_id, repo_create
+            )
+            imported += 1
+            
+        return imported
 
 
 # Singleton instance

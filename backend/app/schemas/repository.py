@@ -12,7 +12,7 @@ from app.schemas.common import BaseSchema, TimestampSchema
 class RepositoryCreate(BaseSchema):
     """Schema for creating a new repository."""
 
-    url: HttpUrl
+    url: str | HttpUrl
     name: str | None = None  # Will be extracted from URL if not provided
     owner: str | None = None  # Will be extracted from URL if not provided
 

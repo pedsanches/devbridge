@@ -2,10 +2,12 @@
 Security utilities.
 
 JWT token creation and verification for authentication.
+Fernet encryption for sensitive data storage.
 """
 
 from datetime import UTC, datetime, timedelta
 
+from cryptography.fernet import Fernet
 from jose import JWTError, jwt
 
 from app.core.config import settings
@@ -60,3 +62,45 @@ def decode_access_token(token: str) -> dict | None:
         return payload
     except JWTError:
         return None
+
+
+# --- Fernet Encryption for Sensitive Data ---
+
+def _get_fernet() -> Fernet:
+    """Get Fernet instance using JWT secret as key base."""
+    # Derive a 32-byte key from JWT secret (Fernet requires URL-safe base64 key)
+    import base64
+    import hashlib
+
+    key = hashlib.sha256(settings.JWT_SECRET_KEY.encode()).digest()
+    fernet_key = base64.urlsafe_b64encode(key)
+    return Fernet(fernet_key)
+
+
+def encrypt_token(plaintext: str) -> bytes:
+    """
+    Encrypt a sensitive token (e.g., GitHub PAT).
+
+    Args:
+        plaintext: The token string to encrypt.
+
+    Returns:
+        Encrypted bytes.
+    """
+    fernet = _get_fernet()
+    return fernet.encrypt(plaintext.encode())
+
+
+def decrypt_token(encrypted: bytes) -> str:
+    """
+    Decrypt a previously encrypted token.
+
+    Args:
+        encrypted: The encrypted bytes.
+
+    Returns:
+        Decrypted token string.
+    """
+    fernet = _get_fernet()
+    return fernet.decrypt(encrypted).decode()
+

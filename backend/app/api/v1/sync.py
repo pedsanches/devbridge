@@ -7,7 +7,7 @@ API endpoints for synchronizing GitHub repository data.
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 
-from app.api.deps import DbSession
+from app.api.deps import DbSession, CurrentOrgId, CurrentUserRequired
 from app.services.sync_service import sync_service
 
 router = APIRouter()
@@ -31,7 +31,12 @@ class SyncResponse(BaseModel):
 
 
 @router.post("", response_model=SyncResponse)
-async def sync_repository(db: DbSession, request: SyncRequest) -> SyncResponse:
+async def sync_repository(
+    db: DbSession, 
+    request: SyncRequest,
+    org_id: CurrentOrgId,
+    _current_user: CurrentUserRequired,
+) -> SyncResponse:
     """
     Sync a GitHub repository to the local database.
 
@@ -41,16 +46,25 @@ async def sync_repository(db: DbSession, request: SyncRequest) -> SyncResponse:
     Args:
         db: Database session.
         request: Sync request with repo name and limits.
+        org_id: Current organization context.
+        _current_user: Authenticated user.
 
     Returns:
         Sync results with counts.
     """
     try:
+        from app.services import settings_service
+        
+        # Get stored token
+        token = await settings_service.get_github_token(db, org_id)
+        
         result = await sync_service.sync_repository(
             db,
             repo_name=request.repo_name,
             max_commits=request.max_commits,
             max_prs=request.max_prs,
+            token=token,
+            organization_id=org_id,
         )
 
         return SyncResponse(
