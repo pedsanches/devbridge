@@ -59,7 +59,7 @@ export type Persona = "executive" | "technical" | "product";
 
 export interface ChatRequest {
     message: string;
-    repository?: string;
+    repository?: string | string[];
     author?: string;
     persona?: Persona;
 }
