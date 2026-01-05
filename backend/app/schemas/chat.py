@@ -6,7 +6,6 @@ Implements BR-011 (structured output) and BR-030 (persona-based responses).
 """
 
 from enum import Enum
-
 from uuid import UUID
 
 from pydantic import BaseModel, Field
@@ -42,9 +41,7 @@ class ChatMetadata(BaseModel):
     confidence_score: float = Field(
         ge=0.0, le=1.0, default=0.8, description="AI confidence in response"
     )
-    persona_used: Persona = Field(
-        default=Persona.PRODUCT, description="Persona used for response"
-    )
+    persona_used: Persona = Field(default=Persona.PRODUCT, description="Persona used for response")
 
 
 class ChatResponse(BaseModel):
@@ -59,8 +56,6 @@ class ChatResponse(BaseModel):
     conversation_id: UUID | None = Field(
         None, description="Conversation ID associated with this interaction"
     )
-
-
 
 
 class StreamingChatResponse(BaseModel):

@@ -2,6 +2,12 @@
 
 from app.models.activity import Activity, ActivityType, BusinessUpdate, ImpactLevel
 from app.models.base import Base, TimestampMixin, UUIDMixin
+from app.models.conversation import (
+    ChatMessage,
+    Conversation,
+    ConversationStatus,
+    MessageRole,
+)
 from app.models.magic_link import MagicLink
 from app.models.membership import MemberRole, Membership
 from app.models.organization import Organization, PlanType
@@ -31,4 +37,9 @@ __all__ = [
     "BusinessUpdate",
     "ActivityType",
     "ImpactLevel",
+    # Chat
+    "Conversation",
+    "ChatMessage",
+    "ConversationStatus",
+    "MessageRole",
 ]

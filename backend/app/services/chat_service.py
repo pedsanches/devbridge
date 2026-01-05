@@ -212,6 +212,7 @@ class ChatService:
             )
 
         # Persist User Message
+        assert conversation_id is not None
         await conversation_service.add_message(
             conversation_id=conversation_id,
             role=MessageRole.USER,
