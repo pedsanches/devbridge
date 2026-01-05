@@ -1,6 +1,6 @@
 import enum
 
-from sqlalchemy import Column, DateTime, Enum, ForeignKey, String, Text, Uuid
+from sqlalchemy import ARRAY, Column, DateTime, Enum, ForeignKey, String, Text, Uuid
 from sqlalchemy.orm import Mapped, relationship
 
 from app.models.base import Base, TimestampMixin, UUIDMixin
@@ -27,6 +27,11 @@ class Activity(Base, UUIDMixin, TimestampMixin):
     content = Column(Text, nullable=True)  # Commit message or PR body
     author = Column(String, nullable=False)
     occurred_at = Column(DateTime(timezone=True), nullable=True)
+
+    # Context enrichment fields (Phase 1)
+    files_touched = Column(ARRAY(String), nullable=True)  # List of filenames changed
+    labels = Column(ARRAY(String), nullable=True)  # PR labels (bug, feature, etc.)
+    linked_issues = Column(ARRAY(String), nullable=True)  # Issue refs (#123, closes #456)
 
     # Relationships
     repository = relationship("Repository", back_populates="activities")

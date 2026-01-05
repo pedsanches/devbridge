@@ -39,6 +39,10 @@ class ActivityCreate(BaseSchema):
     content: str | None = None
     author: str
     occurred_at: datetime | None = None
+    # Context enrichment fields
+    files_touched: list[str] | None = None
+    labels: list[str] | None = None
+    linked_issues: list[str] | None = None
 
 
 class ActivityResponse(TimestampSchema):
@@ -52,6 +56,10 @@ class ActivityResponse(TimestampSchema):
     content: str | None
     author: str
     occurred_at: datetime | None
+    # Context enrichment fields
+    files_touched: list[str] | None = None
+    labels: list[str] | None = None
+    linked_issues: list[str] | None = None
 
 
 class ActivityWithUpdate(ActivityResponse):
