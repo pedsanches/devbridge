@@ -32,6 +32,7 @@ export function ChatInterface({ conversationId, initialMessages }: ChatInterface
     const [error, setError] = useState<string | null>(null);
     const [persona, setPersona] = useState<Persona>("product");
     const [selectedRepos, setSelectedRepos] = useState<string[]>([]);
+    const [currentConversationId, setCurrentConversationId] = useState<string | undefined>(conversationId);
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const router = useRouter();
 
@@ -49,6 +50,11 @@ export function ChatInterface({ conversationId, initialMessages }: ChatInterface
             setMessages(initialMessages);
         }
     }, [initialMessages]);
+
+    // Sync currentConversationId with prop when it changes
+    useEffect(() => {
+        setCurrentConversationId(conversationId);
+    }, [conversationId]);
 
     const handleSendMessage = useCallback(async (content: string) => {
         setError(null);
@@ -92,16 +98,31 @@ export function ChatInterface({ conversationId, initialMessages }: ChatInterface
         };
         setMessages((prev) => [...prev, assistantMessage]);
 
+        // Track conversation ID from stream
+        let streamConversationId: string | undefined = currentConversationId;
+
         // Stream the response
         await sendChatMessageStream(
             {
                 message: content,
                 persona,
-                conversationId,
+                conversationId: currentConversationId,
                 repository: repositories,
             },
             // onChunk
             (chunk) => {
+                // Check if this is a metadata event
+                try {
+                    const parsed = JSON.parse(chunk);
+                    if (parsed.type === "metadata" && parsed.conversation_id) {
+                        streamConversationId = parsed.conversation_id;
+                        setCurrentConversationId(parsed.conversation_id);
+                        return; // Don't add metadata to message content
+                    }
+                } catch {
+                    // Not JSON, it's a text chunk
+                }
+
                 setMessages((prev) =>
                     prev.map((msg) =>
                         msg.id === assistantId
@@ -121,15 +142,10 @@ export function ChatInterface({ conversationId, initialMessages }: ChatInterface
                 );
                 setIsLoading(false);
 
-                // If it was a new conversation, we might want to refresh sidebar or redirect
-                // But since layout refreshes on params change, maybe just router.refresh() if needed?
-                // Actually, if conversationId was null, backend creates one.
-                // We should probably redirect to the new ID if we want to persist context URL.
-                // However, without the backend returning ID in stream easily readable before end,
-                // we might need to handle this.
-                // The current stream implementation (SSE) just sends text chunks.
-                // If we want the ID, we might need a custom event or header.
-                // For now, let's keep it simple.
+                // If we got a new conversation ID and we're on /chat (no ID), redirect
+                if (streamConversationId && !conversationId) {
+                    router.push(`/chat/${streamConversationId}`);
+                }
             },
             // onError
             (err) => {
@@ -148,7 +164,7 @@ export function ChatInterface({ conversationId, initialMessages }: ChatInterface
                 setIsLoading(false);
             }
         );
-    }, [persona, conversationId]);
+    }, [persona, conversationId, selectedRepos, router]);
 
     return (
         <div className="flex h-full flex-col bg-neutral-50 dark:bg-neutral-900">

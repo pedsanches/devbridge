@@ -5,6 +5,7 @@ Pydantic schemas for Activity and BusinessUpdate models.
 """
 
 from enum import Enum
+from uuid import UUID
 
 from app.schemas.common import BaseSchema, TimestampSchema
 
@@ -30,7 +31,7 @@ class ImpactLevel(str, Enum):
 class ActivityCreate(BaseSchema):
     """Schema for creating an activity."""
 
-    repository_id: str
+    repository_id: UUID
     external_id: str  # GitHub SHA or PR number
     type: ActivityType
     title: str
@@ -41,8 +42,8 @@ class ActivityCreate(BaseSchema):
 class ActivityResponse(TimestampSchema):
     """Schema for activity response."""
 
-    id: str
-    repository_id: str
+    id: UUID
+    repository_id: UUID
     external_id: str
     type: ActivityType
     title: str
@@ -62,7 +63,7 @@ class ActivityWithUpdate(ActivityResponse):
 class BusinessUpdateCreate(BaseSchema):
     """Schema for creating a business update."""
 
-    activity_id: str
+    activity_id: UUID
     summary: str
     impact_level: ImpactLevel = ImpactLevel.LOW
     category: str | None = None
@@ -71,8 +72,8 @@ class BusinessUpdateCreate(BaseSchema):
 class BusinessUpdateResponse(TimestampSchema):
     """Schema for business update response."""
 
-    id: str
-    activity_id: str
+    id: UUID
+    activity_id: UUID
     summary: str
     impact_level: ImpactLevel
     category: str | None

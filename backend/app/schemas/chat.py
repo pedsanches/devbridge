@@ -29,8 +29,12 @@ class ChatRequest(BaseModel):
         default=Persona.PRODUCT, description="User persona for response adaptation"
     )
     conversation_id: UUID | None = Field(
-        None, description="ID of the active conversation (optional)"
+        None,
+        alias="conversationId",
+        description="ID of the active conversation (optional)",
     )
+
+    model_config = {"populate_by_name": True}
 
 
 class ChatMetadata(BaseModel):

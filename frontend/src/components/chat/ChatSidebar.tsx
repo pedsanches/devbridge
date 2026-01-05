@@ -30,7 +30,7 @@ export function ChatSidebar() {
 
     useEffect(() => {
         fetchConversations();
-    }, [activeId]); // Refresh when changing chat to ensuring title updates
+    }, [activeId, pathname]); // Refresh when changing chat or pathname to ensure new conversations appear
 
     const handleDelete = async (e: React.MouseEvent, id: string) => {
         e.preventDefault();

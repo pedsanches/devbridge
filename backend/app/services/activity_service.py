@@ -4,7 +4,7 @@ Activity Service.
 Business logic for Activity and BusinessUpdate operations.
 """
 
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -18,7 +18,7 @@ async def get_activities(
     db: AsyncSession,
     *,
     organization_id: str | None = None,
-    repository_id: str | None = None,
+    repository_id: UUID | None = None,
     activity_type: ActivityType | None = None,
     skip: int = 0,
     limit: int = 20,
@@ -78,7 +78,7 @@ async def get_activities(
 
 async def get_activity_by_id(
     db: AsyncSession,
-    activity_id: str,
+    activity_id: UUID,
     include_update: bool = False,
 ) -> Activity | None:
     """
@@ -102,7 +102,7 @@ async def get_activity_by_id(
 
 async def get_activity_by_external_id(
     db: AsyncSession,
-    repository_id: str,
+    repository_id: UUID,
     external_id: str,
 ) -> Activity | None:
     """

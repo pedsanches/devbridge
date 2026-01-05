@@ -78,6 +78,7 @@ async def chat_stream(
     Send a message and get a streaming AI-generated response.
 
     Uses Server-Sent Events (SSE) to stream the response in real-time.
+    Creates or updates conversations and persists messages.
 
     Args:
         db: Database session.
@@ -86,9 +87,41 @@ async def chat_stream(
         org_id: Current organization context.
 
     Returns:
-        Streaming response with AI-generated text chunks.
+        Streaming response with AI-generated text chunks and metadata.
     """
+    import json
+    from uuid import UUID
+
+    from app.models.conversation import MessageRole
     from app.services.ai_service import ai_service
+    from app.services.conversation_service import ConversationService
+
+    conversation_service = ConversationService(db)
+
+    # Get or create conversation
+    if request.conversation_id:
+        conversation = await conversation_service.get_conversation(
+            request.conversation_id, UUID(org_id)
+        )
+        if not conversation or conversation.user_id != _current_user.id:
+            # Invalid conversation_id, create new one
+            conversation = await conversation_service.create_conversation(
+                user_id=_current_user.id,
+                organization_id=UUID(org_id),
+            )
+    else:
+        # Create new conversation
+        conversation = await conversation_service.create_conversation(
+            user_id=_current_user.id,
+            organization_id=UUID(org_id),
+        )
+
+    # Save user message
+    await conversation_service.add_message(
+        conversation_id=conversation.id,
+        role=MessageRole.USER,
+        content=request.message,
+    )
 
     # Get activities for context
     activities = await chat_service.get_context_activities(
@@ -99,10 +132,39 @@ async def chat_stream(
     )
 
     async def generate():
+        # Send metadata first with conversation_id
+        metadata = {"type": "metadata", "conversation_id": str(conversation.id)}
+        yield f"data: {json.dumps(metadata)}\n\n"
+
+        # Accumulate response for saving
+        full_response = ""
+
+        # Stream AI response
         async for chunk in ai_service.summarize_activities_stream(
             activities, request.message, request.persona
         ):
+            full_response += chunk
             yield f"data: {chunk}\n\n"
+
+        # Save assistant message BEFORE sending [DONE]
+        # This ensures the message is persisted before the client closes the connection
+        await conversation_service.add_message(
+            conversation_id=conversation.id,
+            role=MessageRole.ASSISTANT,
+            content=full_response,
+        )
+
+        # Generate title if this is the first exchange (2 messages total)
+        # Need to refresh conversation to get updated message_count
+        updated_conv = await conversation_service.get_conversation(conversation.id, UUID(org_id))
+        if updated_conv and updated_conv.message_count == 2 and not updated_conv.title:
+            from app.schemas.conversation import ConversationUpdate
+
+            title = await conversation_service.generate_title(request.message)
+            await conversation_service.update_conversation(
+                conversation.id, UUID(org_id), ConversationUpdate(title=title)
+            )
+
         yield "data: [DONE]\n\n"
 
     return StreamingResponse(
