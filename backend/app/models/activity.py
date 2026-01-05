@@ -1,6 +1,6 @@
 import enum
 
-from sqlalchemy import Column, Enum, ForeignKey, String, Text, Uuid
+from sqlalchemy import Column, DateTime, Enum, ForeignKey, String, Text, Uuid
 from sqlalchemy.orm import Mapped, relationship
 
 from app.models.base import Base, TimestampMixin, UUIDMixin
@@ -26,6 +26,7 @@ class Activity(Base, UUIDMixin, TimestampMixin):
     title = Column(String, nullable=False)
     content = Column(Text, nullable=True)  # Commit message or PR body
     author = Column(String, nullable=False)
+    occurred_at = Column(DateTime(timezone=True), nullable=True)
 
     # Relationships
     repository = relationship("Repository", back_populates="activities")

@@ -9,7 +9,7 @@ from datetime import UTC, datetime, timedelta
 from typing import Any
 from uuid import UUID
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import Activity, Repository
@@ -36,8 +36,8 @@ class ChatService:
         query = (
             select(Activity, Repository.name.label("repo_name"))
             .join(Repository, Activity.repository_id == Repository.id)
-            .where(Activity.created_at >= since)
-            .order_by(Activity.created_at.desc())
+            .where(func.coalesce(Activity.occurred_at, Activity.created_at) >= since)
+            .order_by(func.coalesce(Activity.occurred_at, Activity.created_at).desc())
             .limit(limit)
         )
 
@@ -75,6 +75,9 @@ class ChatService:
                     "content": activity.content,
                     "author": activity.author,
                     "repository": repo_name,
+                    "date": (activity.occurred_at or activity.created_at).isoformat()
+                    if (activity.occurred_at or activity.created_at)
+                    else None,
                     "created_at": activity.created_at.isoformat() if activity.created_at else None,
                 }
             )
@@ -115,6 +118,9 @@ class ChatService:
                     "content": activity.content,
                     "author": activity.author,
                     "repository": repo_name,
+                    "date": (activity.occurred_at or activity.created_at).isoformat()
+                    if (activity.occurred_at or activity.created_at)
+                    else None,
                     "created_at": activity.created_at.isoformat() if activity.created_at else None,
                 }
             )

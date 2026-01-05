@@ -5,6 +5,7 @@ Service for synchronizing GitHub repository data to local database.
 Fetches commits and PRs from GitHub API and creates Activities.
 """
 
+from contextlib import suppress
 from datetime import datetime
 from typing import Any
 
@@ -140,6 +141,12 @@ class SyncService:
                     print(f"Failed to fetch diff for {sha}: {e}")
                     # Continue without diff
 
+            commit_date_str = commit.get("commit", {}).get("author", {}).get("date")
+            occurred_at = None
+            if commit_date_str:
+                with suppress(ValueError):
+                    occurred_at = datetime.fromisoformat(commit_date_str.replace("Z", "+00:00"))
+
             activity_in = ActivityCreate(
                 repository_id=repo.id,
                 external_id=sha[:12],
@@ -147,6 +154,7 @@ class SyncService:
                 title=message.split("\n")[0][:100],
                 content=content,
                 author=author,
+                occurred_at=occurred_at,
             )
 
             _, created = await activity_service.get_or_create_activity(db, activity_in)
@@ -176,6 +184,12 @@ class SyncService:
                     print(f"Failed to fetch diff for PR #{pr_number}: {e}")
                     # Continue without diff
 
+            created_at_str = pr.get("created_at")
+            occurred_at = None
+            if created_at_str:
+                with suppress(ValueError):
+                    occurred_at = datetime.fromisoformat(created_at_str.replace("Z", "+00:00"))
+
             activity_in = ActivityCreate(
                 repository_id=repo.id,
                 external_id=str(pr_number),
@@ -183,6 +197,7 @@ class SyncService:
                 title=f"[{state.upper()}] {title}"[:100],
                 content=content,
                 author=user,
+                occurred_at=occurred_at,
             )
 
             _, created = await activity_service.get_or_create_activity(db, activity_in)

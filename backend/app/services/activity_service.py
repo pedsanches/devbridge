@@ -68,8 +68,14 @@ async def get_activities(
     count_result = await db.execute(count_query)
     total = len(count_result.all())
 
+    from sqlalchemy import func
+
     # Get paginated results
-    query = query.offset(skip).limit(limit).order_by(Activity.created_at.desc())
+    query = (
+        query.offset(skip)
+        .limit(limit)
+        .order_by(func.coalesce(Activity.occurred_at, Activity.created_at).desc())
+    )
     result = await db.execute(query)
     activities = list(result.scalars().all())
 
@@ -144,6 +150,7 @@ async def create_activity(db: AsyncSession, activity_in: ActivityCreate) -> Acti
         title=activity_in.title,
         content=activity_in.content,
         author=activity_in.author,
+        occurred_at=activity_in.occurred_at,
     )
 
     db.add(activity)

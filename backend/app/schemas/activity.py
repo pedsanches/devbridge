@@ -4,6 +4,7 @@ Activity Schemas.
 Pydantic schemas for Activity and BusinessUpdate models.
 """
 
+from datetime import datetime
 from enum import Enum
 from uuid import UUID
 
@@ -37,6 +38,7 @@ class ActivityCreate(BaseSchema):
     title: str
     content: str | None = None
     author: str
+    occurred_at: datetime | None = None
 
 
 class ActivityResponse(TimestampSchema):
@@ -49,6 +51,7 @@ class ActivityResponse(TimestampSchema):
     title: str
     content: str | None
     author: str
+    occurred_at: datetime | None
 
 
 class ActivityWithUpdate(ActivityResponse):

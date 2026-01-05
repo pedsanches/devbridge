@@ -15,6 +15,7 @@ interface ActivityItem {
     content: string | null;
     author: string;
     created_at: string;
+    occurred_at: string | null;
     business_update: {
         id: string;
         summary: string;
@@ -152,9 +153,6 @@ export default function DashboardPage() {
                                                 <h3 className="font-medium text-neutral-900 dark:text-white">
                                                     {activity.title}
                                                 </h3>
-                                                <span className="text-xs text-secondary">
-                                                    {activity.type === "COMMIT" ? "Commit" : "Pull Request"} • {activity.author}
-                                                </span>
                                             </div>
                                         </div>
                                         {activity.business_update && (
@@ -186,16 +184,32 @@ export default function DashboardPage() {
                                         </p>
                                     )}
 
-                                    <div className="mt-3 flex items-center justify-between text-xs text-secondary">
-                                        <span>por {activity.author}</span>
-                                        <span>
-                                            {new Date(activity.created_at).toLocaleDateString("pt-BR", {
-                                                day: "2-digit",
-                                                month: "short",
-                                                hour: "2-digit",
-                                                minute: "2-digit",
-                                            })}
-                                        </span>
+                                    <div className="mt-3 flex flex-col gap-1 text-[10px] text-secondary sm:flex-row sm:items-center sm:justify-between sm:text-xs">
+                                        <div className="flex items-center gap-2">
+                                            <span>por {activity.author}</span>
+                                            <span className="hidden sm:inline">•</span>
+                                            <span>{activity.type === "COMMIT" ? "Commit" : "Pull Request"}</span>
+                                        </div>
+                                        <div className="flex flex-col gap-1 sm:flex-row sm:gap-4">
+                                            {activity.occurred_at && (
+                                                <span title="Data real do evento no GitHub">
+                                                    Ocorrido em: {new Date(activity.occurred_at).toLocaleDateString("pt-BR", {
+                                                        day: "2-digit",
+                                                        month: "short",
+                                                        hour: "2-digit",
+                                                        minute: "2-digit",
+                                                    })}
+                                                </span>
+                                            )}
+                                            <span title="Data em que foi sincronizado com DevBridge">
+                                                Sincro em: {new Date(activity.created_at).toLocaleDateString("pt-BR", {
+                                                    day: "2-digit",
+                                                    month: "short",
+                                                    hour: "2-digit",
+                                                    minute: "2-digit",
+                                                })}
+                                            </span>
+                                        </div>
                                     </div>
                                 </div>
                             ))}
