@@ -2,17 +2,49 @@
 Chat Schemas.
 
 Pydantic schemas for chat request/response.
+Implements BR-011 (structured output) and BR-030 (persona-based responses).
 """
 
+from enum import Enum
+
+from uuid import UUID
+
 from pydantic import BaseModel, Field
+
+
+class Persona(str, Enum):
+    """User persona for adapting AI responses (BR-030)."""
+
+    EXECUTIVE = "executive"  # CEO/C-Level: Focus on outcomes, ROI, strategic impact
+    TECHNICAL = "technical"  # CTO/Tech Lead: Technical details, architecture, code quality
+    PRODUCT = "product"  # PM: Features delivered, roadmap progress, blockers
 
 
 class ChatRequest(BaseModel):
     """Schema for chat request."""
 
     message: str = Field(..., description="User's question or message")
-    repository: str | None = Field(None, description="Filter by repository name")
+    repository: str | list[str] | None = Field(None, description="Filter by repository name(s)")
     author: str | None = Field(None, description="Filter by author")
+    persona: Persona = Field(
+        default=Persona.PRODUCT, description="User persona for response adaptation"
+    )
+    conversation_id: UUID | None = Field(
+        None, description="ID of the active conversation (optional)"
+    )
+
+
+class ChatMetadata(BaseModel):
+    """Structured metadata about the chat response (BR-011)."""
+
+    activities_count: int = Field(..., description="Number of activities used as context")
+    search_method: str = Field("sql", description="Method used: 'semantic' or 'sql'")
+    confidence_score: float = Field(
+        ge=0.0, le=1.0, default=0.8, description="AI confidence in response"
+    )
+    persona_used: Persona = Field(
+        default=Persona.PRODUCT, description="Persona used for response"
+    )
 
 
 class ChatResponse(BaseModel):
@@ -23,6 +55,12 @@ class ChatResponse(BaseModel):
     filters: dict[str, str | int | None] = Field(
         default_factory=dict, description="Applied filters"
     )
+    metadata: ChatMetadata | None = Field(None, description="Structured response metadata")
+    conversation_id: UUID | None = Field(
+        None, description="Conversation ID associated with this interaction"
+    )
+
+
 
 
 class StreamingChatResponse(BaseModel):

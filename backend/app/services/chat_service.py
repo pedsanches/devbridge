@@ -13,6 +13,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import Activity, Repository
+from app.schemas.chat import ChatMetadata, Persona
 from app.services.ai_service import ai_service
 
 
@@ -24,7 +25,7 @@ class ChatService:
         db: AsyncSession,
         *,
         org_id: str | None = None,
-        repository_name: str | None = None,
+        repository_name: str | list[str] | None = None,
         author: str | None = None,
         days: int = 7,
         limit: int = 20,
@@ -45,7 +46,14 @@ class ChatService:
             query = query.where(Repository.organization_id == org_id)
 
         if repository_name:
-            query = query.where(Repository.name.ilike(f"%{repository_name}%"))
+            if isinstance(repository_name, list):
+                # Filter by any of the repo names
+                from sqlalchemy import or_
+
+                conditions = [Repository.name.ilike(f"%{name}%") for name in repository_name]
+                query = query.where(or_(*conditions))
+            else:
+                query = query.where(Repository.name.ilike(f"%{repository_name}%"))
 
         if author:
             query = query.where(Activity.author.ilike(f"%{author}%"))
@@ -141,20 +149,26 @@ class ChatService:
         self,
         db: AsyncSession,
         query: str,
+        user_id: UUID,
         org_id: str | None = None,
-        repository: str | None = None,
+        conversation_id: UUID | None = None,
+        repository: str | list[str] | None = None,
         author: str | None = None,
+        persona: Persona = Persona.PRODUCT,
         use_semantic_search: bool = True,
     ) -> dict[str, Any]:
         """
         Process a chat query and generate a response.
 
         Uses semantic search (RAG) when available, falls back to SQL.
+        Persists the interaction in a conversation.
 
         Args:
             db: Database session.
             query: User's question.
+            user_id: ID of the user sending the query.
             org_id: Organization ID for multi-tenant filtering.
+            conversation_id: Optional ID of existing conversation.
             repository: Optional repository filter.
             author: Optional author filter.
             use_semantic_search: Whether to try semantic search first.
@@ -162,6 +176,48 @@ class ChatService:
         Returns:
             Response dictionary with answer and metadata.
         """
+        from app.models.conversation import MessageRole
+        from app.services.conversation_service import ConversationService
+
+        conversation_service = ConversationService(db)
+
+        # 1. Handle Conversation Persistence
+        chat_history = []
+
+        if conversation_id:
+            # Fetch existing history for context (limit to last 6 messages)
+            # Fetch BEFORE adding current message to avoid duplication in context
+            existing_msgs = await conversation_service.get_conversation_messages(
+                conversation_id, limit=6
+            )
+            chat_history = [{"role": m.role.value, "content": m.content} for m in existing_msgs]
+        else:
+            # Create new conversation if not provided
+            conversation = await conversation_service.create_conversation(
+                user_id=user_id,
+                organization_id=UUID(org_id)
+                if org_id
+                else UUID(int=0),  # Should always have org_id in prod
+            )
+            conversation_id = conversation.id
+
+            # Auto-title generation (simple heuristic for now)
+            # Future: Use LLM to generate title based on first query
+            title = await conversation_service.generate_title(query)
+            # Update title
+            from app.schemas.conversation import ConversationUpdate
+
+            await conversation_service.update_conversation(
+                conversation.id, conversation.organization_id, ConversationUpdate(title=title)
+            )
+
+        # Persist User Message
+        await conversation_service.add_message(
+            conversation_id=conversation_id,
+            role=MessageRole.USER,
+            content=query,
+        )
+
         activities: list[dict[str, Any]] = []
         search_method = "sql"
 
@@ -197,17 +253,38 @@ class ChatService:
                 days=days,
             )
 
-        # Generate AI response
-        response_text = await ai_service.summarize_activities(activities, query)
+        # Generate AI response with persona
+        response_text = await ai_service.summarize_activities(
+            activities, query, persona, chat_history=chat_history
+        )
+
+        # Build structured metadata (BR-011)
+        metadata = ChatMetadata(
+            activities_count=len(activities),
+            search_method=search_method,
+            confidence_score=0.9 if search_method == "semantic" else 0.7,
+            persona_used=persona,
+        )
+
+        # Persist Assistant Message
+        if conversation_id:
+            await conversation_service.add_message(
+                conversation_id=conversation_id,
+                role=MessageRole.ASSISTANT,
+                content=response_text,
+                message_metadata=metadata.model_dump(),
+            )
 
         return {
             "answer": response_text,
             "activities_count": len(activities),
             "search_method": search_method,
+            "conversation_id": conversation_id,
             "filters": {
                 "repository": repository,
                 "author": author,
             },
+            "metadata": metadata,
         }
 
 
