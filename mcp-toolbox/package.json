@@ -1,0 +1,16 @@
+{
+  "name": "mcp-toolbox",
+  "version": "1.0.0",
+  "description": "The MCP Toolbox for Databases is an open-source MCP server that enables AI agents to interact with databases. This directory contains the toolbox binary and configuration files for connecting to AlloyDB and other databases.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "@modelcontextprotocol/server-github": "^2025.4.8"
+  }
+}

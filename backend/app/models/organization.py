@@ -48,3 +48,6 @@ class Organization(Base, UUIDMixin, TimestampMixin):
         back_populates="organization",
         cascade="all, delete-orphan",
     )
+    conversations = relationship(
+        "Conversation", back_populates="organization", cascade="all, delete-orphan"
+    )
