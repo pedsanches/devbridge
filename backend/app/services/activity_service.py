@@ -151,6 +151,9 @@ async def create_activity(db: AsyncSession, activity_in: ActivityCreate) -> Acti
         content=activity_in.content,
         author=activity_in.author,
         occurred_at=activity_in.occurred_at,
+        files_touched=activity_in.files_touched,
+        labels=activity_in.labels,
+        linked_issues=activity_in.linked_issues,
     )
 
     db.add(activity)
@@ -194,7 +197,7 @@ async def get_or_create_activity(
     activity_in: ActivityCreate,
 ) -> tuple[Activity, bool]:
     """
-    Get existing activity or create new one.
+    Get existing activity (and update it) or create new one.
 
     Args:
         db: Database session.
@@ -210,6 +213,23 @@ async def get_or_create_activity(
     )
 
     if existing:
+        # Update fields if provided (Context Enrichment)
+        changed = False
+        if activity_in.files_touched is not None:
+            existing.files_touched = activity_in.files_touched
+            changed = True
+        if activity_in.labels is not None:
+            existing.labels = activity_in.labels
+            changed = True
+        if activity_in.linked_issues is not None:
+            existing.linked_issues = activity_in.linked_issues
+            changed = True
+
+        if changed:
+            db.add(existing)
+            await db.flush()
+            await db.refresh(existing)
+
         return existing, False
 
     activity = await create_activity(db, activity_in)

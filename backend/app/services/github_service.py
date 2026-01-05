@@ -52,6 +52,28 @@ class GitHubService:
                 return response.text
             return None
 
+    async def get_commit_files(self, owner: str, repo: str, sha: str) -> list[str]:
+        """
+        Get the list of files changed in a specific commit.
+
+        Args:
+            owner: Repository owner.
+            repo: Repository name.
+            sha: Commit SHA.
+
+        Returns:
+            List of filenames changed in the commit.
+        """
+        url = f"{self.BASE_URL}/repos/{owner}/{repo}/commits/{sha}"
+
+        async with httpx.AsyncClient() as client:
+            response = await client.get(url, headers=self.headers, timeout=30)
+            if response.status_code == 200:
+                data = response.json()
+                files = data.get("files", [])
+                return [f.get("filename", "") for f in files if f.get("filename")]
+            return []
+
     async def get_pr_diff(self, owner: str, repo: str, pr_number: int) -> str | None:
         """
         Get the diff for a pull request.
@@ -104,7 +126,7 @@ class GitHubService:
         """
         url = f"{self.BASE_URL}/user/repos"
         params = {"per_page": per_page, "sort": "updated", "type": "all"}
-        
+
         async with httpx.AsyncClient() as client:
             response = await client.get(url, headers=self.headers, params=params, timeout=30)
             if response.status_code == 200:

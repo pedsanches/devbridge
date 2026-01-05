@@ -5,6 +5,7 @@ Service for synchronizing GitHub repository data to local database.
 Fetches commits and PRs from GitHub API and creates Activities.
 """
 
+import re
 from contextlib import suppress
 from datetime import datetime
 from typing import Any
@@ -147,6 +148,14 @@ class SyncService:
                 with suppress(ValueError):
                     occurred_at = datetime.fromisoformat(commit_date_str.replace("Z", "+00:00"))
 
+            # Fetch files changed in this commit (Context Enrichment)
+            files_touched: list[str] | None = None
+            if sha:
+                try:
+                    files_touched = await github_service.get_commit_files(owner, name, sha)
+                except Exception as e:
+                    print(f"Failed to fetch files for {sha}: {e}")
+
             activity_in = ActivityCreate(
                 repository_id=repo.id,
                 external_id=sha[:12],
@@ -155,6 +164,7 @@ class SyncService:
                 content=content,
                 author=author,
                 occurred_at=occurred_at,
+                files_touched=files_touched,
             )
 
             _, created = await activity_service.get_or_create_activity(db, activity_in)
@@ -190,6 +200,22 @@ class SyncService:
                 with suppress(ValueError):
                     occurred_at = datetime.fromisoformat(created_at_str.replace("Z", "+00:00"))
 
+            # Extract PR labels (Context Enrichment)
+            pr_labels = pr.get("labels", [])
+            labels: list[str] | None = (
+                [label.get("name") for label in pr_labels if label.get("name")]
+                if pr_labels
+                else None
+            )
+
+            # Extract linked issues from PR body (Context Enrichment)
+            # Matches: #123, closes #123, fixes #123, resolves #123
+            linked_issues: list[str] | None = None
+            if body:
+                issue_pattern = r"(?:closes?|fixes?|resolves?)?[\s#]*#(\d+)"
+                matches = re.findall(issue_pattern, body, re.IGNORECASE)
+                linked_issues = list(set(matches)) if matches else None
+
             activity_in = ActivityCreate(
                 repository_id=repo.id,
                 external_id=str(pr_number),
@@ -198,6 +224,8 @@ class SyncService:
                 content=content,
                 author=user,
                 occurred_at=occurred_at,
+                labels=labels,
+                linked_issues=linked_issues,
             )
 
             _, created = await activity_service.get_or_create_activity(db, activity_in)
