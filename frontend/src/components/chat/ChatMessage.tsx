@@ -36,14 +36,14 @@ export function ChatMessage({ role, content, timestamp }: ChatMessageProps) {
                             remarkPlugins={[remarkGfm]}
                             components={{
                                 // Customize components if needed, e.g., to handle links or code blocks specifically
-                                a: ({ node, ...props }) => (
+                                a: ({ ...props }) => (
                                     <a target="_blank" rel="noopener noreferrer" className="text-primary hover:underline" {...props} />
                                 ),
                                 // Ensure code blocks don't overflow
-                                pre: ({ node, ...props }) => (
+                                pre: ({ ...props }) => (
                                     <pre className="overflow-x-auto rounded bg-neutral-200 p-2 dark:bg-neutral-900" {...props} />
                                 ),
-                                code: ({ node, ...props }) => (
+                                code: ({ ...props }) => (
                                     <code className="rounded bg-neutral-200 px-1 py-0.5 dark:bg-neutral-900" {...props} />
                                 )
                             }}

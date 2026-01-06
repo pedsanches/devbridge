@@ -258,7 +258,7 @@ export interface ChatMessage {
     role: "user" | "assistant";
     content: string;
     created_at: string;
-    message_metadata?: any;
+    message_metadata?: Record<string, unknown>;
 }
 
 export interface ConversationDetail extends ConversationSummary {

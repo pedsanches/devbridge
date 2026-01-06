@@ -1,6 +1,6 @@
 "use client";
 
-import { Check, ChevronDown, Database, X } from "lucide-react";
+import { Check, ChevronDown, Database } from "lucide-react";
 import { useEffect, useState, useRef } from "react";
 import { getDataSources, DataSource } from "@/services/api";
 

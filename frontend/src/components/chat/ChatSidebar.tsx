@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams, usePathname, useRouter } from "next/navigation";
-import { Plus, MessageSquare, ChevronLeft, ChevronRight, MoreVertical, Trash, Calendar } from "lucide-react";
+import { Plus, MessageSquare, ChevronLeft, ChevronRight, Trash, Calendar } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getConversations, deleteConversation, ConversationSummary } from "@/services/api";
 

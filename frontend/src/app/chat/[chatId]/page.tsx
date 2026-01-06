@@ -9,7 +9,13 @@ import { Loader2 } from "lucide-react";
 export default function ChatIdPage() {
     const params = useParams();
     const chatId = params.chatId as string;
-    const [messages, setMessages] = useState<any[]>([]);
+    const [messages, setMessages] = useState<{
+        id: string;
+        role: "user" | "assistant";
+        content: string;
+        timestamp: string;
+        metadata?: Record<string, unknown>;
+    }[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
