@@ -20,6 +20,7 @@ interface ActivityItem {
     author: string;
     created_at: string;
     occurred_at: string | null;
+    value_tags?: string[] | null;
     business_update: {
         id: string;
         summary: string;
@@ -85,15 +86,15 @@ export default function DashboardPage() {
     }
 
     return (
-        <div className="flex min-h-screen flex-col bg-neutral-50 dark:bg-neutral-900">
+        <div className="flex min-h-screen flex-col bg-[var(--background)]">
             <main className="flex-1 py-8">
                 <div className="container mx-auto max-w-6xl px-4">
                     <div className="mb-8 flex flex-col justify-between gap-4 md:flex-row md:items-end">
                         <div>
-                            <h1 className="text-3xl font-bold tracking-tight text-neutral-900 dark:text-white">
+                            <h1 className="text-2xl font-semibold tracking-tight text-[var(--foreground)]">
                                 Dashboard
                             </h1>
-                            <p className="mt-2 text-lg text-secondary">
+                            <p className="mt-1 text-sm text-[var(--muted-foreground)]">
                                 Visão geral das atividades e integridade do projeto
                             </p>
                         </div>
@@ -102,7 +103,7 @@ export default function DashboardPage() {
                     <div className="grid gap-8 lg:grid-cols-3">
                         {/* Main Stream */}
                         <div className="space-y-6 lg:col-span-2">
-                            <h2 className="text-lg font-semibold text-neutral-900 dark:text-white">Atividades Recentes</h2>
+                            <h2 className="text-base font-medium text-[var(--foreground)]">Atividades Recentes</h2>
                             {error ? (
                                 <div className="rounded-xl bg-red-50 p-6 text-red-600 ring-1 ring-red-100 dark:bg-red-900/10 dark:text-red-400 dark:ring-red-900/20">
                                     {error}

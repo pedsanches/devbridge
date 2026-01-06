@@ -18,7 +18,10 @@ export function useRepos() {
     const [error, setError] = useState<string | null>(null);
 
     useEffect(() => {
-        if (!isAuthenticated) return;
+        if (!isAuthenticated) {
+            setIsLoading(false);
+            return;
+        }
 
         const fetchRepos = async () => {
             try {
@@ -27,7 +30,8 @@ export function useRepos() {
                 });
                 if (!response.ok) throw new Error("Failed to fetch repositories");
                 const data = await response.json();
-                setRepos(data);
+                // API returns PaginatedResponse with { data: [...], total, page, page_size, total_pages }
+                setRepos(data.data || []);
             } catch (err) {
                 setError(err instanceof Error ? err.message : "Error loading repos");
             } finally {
