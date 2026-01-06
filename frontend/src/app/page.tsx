@@ -28,7 +28,7 @@ export default function Home() {
                             Start Chatting <ArrowRight className="h-4 w-4" />
                         </Link>
                         <Link
-                            href="https://github.com/seu-usuario/devbridge"
+                            href="https://github.com/pedsanches/devbridge"
                             target="_blank"
                             className="flex items-center gap-2 rounded-lg border border-neutral-200 bg-white px-6 py-3 font-medium text-neutral-900 transition-colors hover:bg-neutral-50 dark:border-neutral-800 dark:bg-neutral-900 dark:text-white dark:hover:bg-neutral-800"
                         >

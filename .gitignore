@@ -76,3 +76,4 @@ htmlcov/
 
 # MCP Tool binary
 mcp-toolbox/toolbox
+frontend/tsconfig.tsbuildinfo

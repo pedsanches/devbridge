@@ -1,9 +1,11 @@
-import { GitCommit, GitPullRequest, TrendingUp, TrendingDown, Minus } from "lucide-react";
+import { GitCommit, GitPullRequest, TrendingUp, TrendingDown, Minus, Loader2 } from "lucide-react";
 import { format } from "date-fns";
-import { ptBR } from "date-fns/locale";
+import { enUS } from "date-fns/locale";
+import Link from "next/link";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 interface ActivityItem {
@@ -41,8 +43,16 @@ export function ActivityFeed({ activities, isLoading }: ActivityFeedProps) {
 
     if (activities.length === 0) {
         return (
-            <div className="flex flex-col items-center justify-center py-12 text-center text-secondary">
-                <p>Nenhuma atividade encontrada.</p>
+            <div className="flex flex-col items-center justify-center gap-4 py-12 text-center">
+                <div className="space-y-1">
+                    <p className="font-medium text-[var(--foreground)]">No activities found</p>
+                    <p className="text-sm text-secondary">Connect a repository to start tracking activities.</p>
+                </div>
+                <Button asChild variant="outline" size="sm">
+                    <Link href="/settings">
+                        Connect Repository
+                    </Link>
+                </Button>
             </div>
         );
     }
@@ -72,9 +82,9 @@ export function ActivityFeed({ activities, isLoading }: ActivityFeedProps) {
     };
 
     const VALUE_TAG_LABELS: Record<string, string> = {
-        RISK_MITIGATION: "Risco",
-        VELOCITY_ENABLER: "Velocidade",
-        COST_SAVING: "Custo",
+        RISK_MITIGATION: "Risk Mitigation",
+        VELOCITY_ENABLER: "Velocity",
+        COST_SAVING: "Cost Saving",
         FEATURE_DELIVERY: "Feature",
         TECH_DEBT: "Tech Debt",
     };
@@ -106,10 +116,12 @@ export function ActivityFeed({ activities, isLoading }: ActivityFeedProps) {
                                             {activity.title}
                                         </CardTitle>
                                         <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-secondary">
-                                            <span className="font-medium text-[var(--foreground)]">{activity.author}</span>
+                                            <span className="font-medium text-[var(--foreground)]" title={activity.author}>
+                                                {activity.author.length > 20 ? `${activity.author.substring(0, 20)}...` : activity.author}
+                                            </span>
                                             <span>•</span>
-                                            <span title={isOccurredAtAvailable ? "Data de ocorrência (Original)" : "Data de criação (Sistema)"}>
-                                                {format(new Date(dateToUse), "d 'de' MMM, HH:mm", { locale: ptBR })}
+                                            <span title={isOccurredAtAvailable ? "Occurrence date (Original)" : "Creation date (System)"}>
+                                                {format(new Date(dateToUse), "MMM d, HH:mm", { locale: enUS })}
                                             </span>
                                             <span className="font-mono text-[10px] opacity-60">#{activity.external_id.substring(0, 7)}</span>
                                         </div>
@@ -128,7 +140,10 @@ export function ActivityFeed({ activities, isLoading }: ActivityFeedProps) {
                                         {activity.business_update.summary}
                                     </div>
                                 ) : (
-                                    <p className="text-sm italic text-secondary">Aguardando análise de negócio...</p>
+                                    <div className="flex items-center gap-2 rounded-lg border border-neutral-100 bg-neutral-50/50 p-3 px-4 text-sm text-secondary dark:border-neutral-800 dark:bg-neutral-900/50">
+                                        <Loader2 className="h-3.5 w-3.5 animate-spin opacity-70" />
+                                        <p className="italic">AI is analyzing business impact...</p>
+                                    </div>
                                 )}
 
                                 {/* Tags Section - Always render container if any tags exist to maintain layout stability */}

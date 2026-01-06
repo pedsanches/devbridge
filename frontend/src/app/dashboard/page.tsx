@@ -64,7 +64,7 @@ export default function DashboardPage() {
                 const data: PaginatedResponse = await response.json();
                 setActivities(data.data);
             } catch (err) {
-                setError(err instanceof Error ? err.message : "Erro ao carregar atividades");
+                setError(err instanceof Error ? err.message : "Error loading activities");
             } finally {
                 setIsLoading(false);
             }
@@ -95,7 +95,7 @@ export default function DashboardPage() {
                                 Dashboard
                             </h1>
                             <p className="mt-1 text-sm text-[var(--muted-foreground)]">
-                                Visão geral das atividades e integridade do projeto
+                                Overview of activities and project health
                             </p>
                         </div>
                     </div>
@@ -103,7 +103,7 @@ export default function DashboardPage() {
                     <div className="grid gap-8 lg:grid-cols-3">
                         {/* Main Stream */}
                         <div className="space-y-6 lg:col-span-2">
-                            <h2 className="text-base font-medium text-[var(--foreground)]">Atividades Recentes</h2>
+                            <h2 className="text-base font-medium text-[var(--foreground)]">Recent Activities</h2>
                             {error ? (
                                 <div className="rounded-xl bg-red-50 p-6 text-red-600 ring-1 ring-red-100 dark:bg-red-900/10 dark:text-red-400 dark:ring-red-900/20">
                                     {error}
