@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { MessageSquare, LayoutDashboard, LogOut, ChevronDown, User, ArrowLeft, Settings } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
 import { useAuth } from "@/hooks/use-auth";
+import { ThemeToggle } from "@/components/ui/ThemeToggle";
 
 interface HeaderProps {
     variant?: "default" | "minimal" | "auth";
@@ -56,7 +57,8 @@ export function Header({ variant = "default", backHref = "/", backLabel = "Volta
                     {/* Optional Back Button */}
                     {(variant === "minimal" || backHref !== "/") && (
                         <Link
-                            href={backHref || "/"}
+                            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                            href={(backHref || "/") as any}
                             className="flex items-center gap-2 text-secondary hover:text-primary"
                         >
                             <ArrowLeft className="h-4 w-4" />
@@ -71,7 +73,7 @@ export function Header({ variant = "default", backHref = "/", backLabel = "Volta
                 </div>
 
                 {/* Navigation & User Menu */}
-                <nav className="flex items-center gap-6">
+                <nav className="flex items-center gap-4">
                     {isAuthenticated && (
                         <>
                             <Link
@@ -90,6 +92,8 @@ export function Header({ variant = "default", backHref = "/", backLabel = "Volta
                             </Link>
                         </>
                     )}
+
+                    <ThemeToggle />
 
                     {/* Auth Section */}
                     {isLoading ? (

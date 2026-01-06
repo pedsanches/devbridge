@@ -11,7 +11,7 @@
   --color-warning: #FF9500;
   --color-error: #FF3B30;
 
-  /* Neutrals */
+  /* Neutrals - Light Mode */
   --color-neutral-50: #FAFAFA;
   --color-neutral-100: #F5F5F7;
   --color-neutral-200: #E8E8ED;
@@ -23,9 +23,14 @@
   --color-neutral-800: #2C2C2E;
   --color-neutral-900: #1D1D1F;
 
-  /* Semantic Map */
-  --background: var(--color-neutral-50);
-  --foreground: var(--color-neutral-900);
+  /* Semantic Map - Light Mode */
+  --background: #FAFAFA;
+  --foreground: #1D1D1F;
+  --card: #FFFFFF;
+  --card-foreground: #1D1D1F;
+  --border: #E8E8ED;
+  --muted: #F5F5F7;
+  --muted-foreground: #6E6E73;
 
   /* Typography */
   --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif;
@@ -48,7 +53,7 @@
   --radius-xl: 20px;
   --radius-full: 9999px;
 
-  /* Shadows */
+  /* Shadows - Light Mode */
   --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.04);
   --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.08);
   --shadow-lg: 0 12px 40px rgba(0, 0, 0, 0.12);
@@ -60,6 +65,24 @@
   --duration-slow: 300ms;
   --easing-default: cubic-bezier(0.25, 0.1, 0.25, 1);
   --easing-spring: cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+/* Dark Mode via class */
+.dark {
+  --background: #0A0A0A;
+  --foreground: #FAFAFA;
+  --card: #171717;
+  --card-foreground: #FAFAFA;
+  --border: #262626;
+  --muted: #262626;
+  --muted-foreground: #A1A1AA;
+  --color-secondary: #A1A1AA;
+
+  /* Shadows - Dark Mode */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.2);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.3);
+  --shadow-lg: 0 12px 40px rgba(0, 0, 0, 0.4);
+  --shadow-xl: 0 24px 80px rgba(0, 0, 0, 0.5);
 }
 
 .glass {
@@ -80,9 +103,7 @@
 
 :is(.dark .glass) {
   background-color: rgba(23, 23, 23, 0.7);
-  /* neutral-900/70 */
   border-color: rgba(38, 38, 38, 0.5);
-  /* neutral-800/50 */
 }
 
 :is(.dark .glass-panel) {
@@ -92,25 +113,6 @@
 
 .hover-lift {
   @apply transition-all duration-300 ease-out hover:-translate-y-1 hover:shadow-lg;
-}
-
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: var(--color-neutral-900);
-    --foreground: var(--color-neutral-50);
-
-    --color-neutral-50: #1D1D1F;
-    --color-neutral-100: #2C2C2E;
-    --color-neutral-200: #3A3A3C;
-    --color-neutral-300: #515154;
-    --color-neutral-400: #6E6E73;
-    --color-neutral-500: #86868B;
-    --color-neutral-600: #D2D2D7;
-    --color-neutral-700: #E8E8ED;
-    --color-neutral-800: #F5F5F7;
-    --color-neutral-900: #FAFAFA;
-  }
 }
 
 body {
