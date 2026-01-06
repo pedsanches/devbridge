@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { Mail, ArrowRight, Loader2, CheckCircle } from "lucide-react";
 import { requestMagicLink } from "@/services/api";
 
