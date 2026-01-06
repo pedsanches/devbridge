@@ -37,6 +37,16 @@ class ChatRequest(BaseModel):
     model_config = {"populate_by_name": True}
 
 
+class SourceItem(BaseModel):
+    """A source activity used to generate the response."""
+
+    title: str = Field(..., description="Activity title")
+    repository: str = Field(..., description="Repository name")
+    type: str = Field(..., description="Activity type (commit, pr, issue)")
+    author: str | None = Field(None, description="Activity author")
+    url: str | None = Field(None, description="Link to the activity")
+
+
 class ChatMetadata(BaseModel):
     """Structured metadata about the chat response (BR-011)."""
 
@@ -46,6 +56,9 @@ class ChatMetadata(BaseModel):
         ge=0.0, le=1.0, default=0.8, description="AI confidence in response"
     )
     persona_used: Persona = Field(default=Persona.PRODUCT, description="Persona used for response")
+    sources: list[SourceItem] = Field(
+        default_factory=list, description="Top sources used to generate response"
+    )
 
 
 class ChatResponse(BaseModel):

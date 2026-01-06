@@ -35,6 +35,8 @@ export default function ChatIdPage() {
                         minute: "2-digit",
                     }),
                     metadata: msg.message_metadata,
+                    sources: (msg.message_metadata as any)?.sources,
+                    activitiesCount: (msg.message_metadata as any)?.activities_count,
                 }));
 
                 setMessages(mappedMessages);

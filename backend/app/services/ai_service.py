@@ -6,12 +6,48 @@ Implements BR-030 (persona-based responses) and streaming support.
 """
 
 from collections.abc import AsyncGenerator
+from datetime import datetime
 from typing import Any
+from zoneinfo import ZoneInfo
 
 from openai import OpenAI
 
 from app.core.config import settings
 from app.schemas.chat import Persona
+
+# Day of week names in Portuguese
+WEEKDAY_NAMES = {
+    0: "Segunda-feira",
+    1: "Terça-feira",
+    2: "Quarta-feira",
+    3: "Quinta-feira",
+    4: "Sexta-feira",
+    5: "Sábado",
+    6: "Domingo",
+}
+
+
+def get_temporal_context(timezone: str = "America/Sao_Paulo") -> str:
+    """Generate temporal context string for LLM grounding.
+
+    Provides the current date, time, and day of week to help
+    the LLM interpret time-relative queries correctly.
+    """
+    try:
+        tz = ZoneInfo(timezone)
+        now = datetime.now(tz)
+    except Exception:
+        now = datetime.now()
+
+    weekday = WEEKDAY_NAMES.get(now.weekday(), "")
+
+    return f"""INFORMAÇÃO TEMPORAL (sua referência de tempo atual):
+- Data de hoje: {now.strftime('%d de %B de %Y').replace('January', 'janeiro').replace('February', 'fevereiro').replace('March', 'março').replace('April', 'abril').replace('May', 'maio').replace('June', 'junho').replace('July', 'julho').replace('August', 'agosto').replace('September', 'setembro').replace('October', 'outubro').replace('November', 'novembro').replace('December', 'dezembro')}
+- Dia da semana: {weekday}
+- Horário: {now.strftime('%H:%M')} (Fuso: {timezone})
+
+Use esta informação para interpretar corretamente termos como "hoje", "essa semana", "ontem", "este mês", etc."""
+
 
 # Persona-specific prompts (BR-030: Adaptation by Audience)
 PERSONA_PROMPTS: dict[Persona, str] = {
@@ -96,7 +132,9 @@ class AIService:
         chat_history: list[dict[str, str]] | None = None,
     ) -> list[dict[str, str]]:
         """Build the messages array for OpenAI chat completion."""
-        system_prompt = PERSONA_PROMPTS.get(persona, PERSONA_PROMPTS[Persona.PRODUCT])
+        base_prompt = PERSONA_PROMPTS.get(persona, PERSONA_PROMPTS[Persona.PRODUCT])
+        temporal_context = get_temporal_context()
+        system_prompt = f"{base_prompt}\n\n{temporal_context}"
         messages: list[dict[str, str]] = [{"role": "system", "content": system_prompt}]
 
         if context:
@@ -193,12 +231,42 @@ class AIService:
 
     def _format_activities_context(self, activities: list[dict[str, Any]]) -> str:
         """Format activities list into a context string for the LLM."""
-        context_lines = []
+        if not activities:
+            return ""
+
+        # Build summary header
+        repos = set()
+        dates = []
+        for act in activities:
+            if act.get("repository"):
+                repos.add(act["repository"])
+            date_str = act.get("date") or act.get("created_at")
+            if date_str:
+                dates.append(date_str)
+
+        # Calculate date range
+        min_date = max_date = ""
+        if dates:
+            sorted_dates = sorted(dates)
+            min_date = sorted_dates[0][:10] if sorted_dates[0] else ""
+            max_date = sorted_dates[-1][:10] if sorted_dates[-1] else ""
+
+        summary_header = f"""RESUMO DOS DADOS RECUPERADOS:
+- Total de atividades: {len(activities)}
+- Período: {min_date} a {max_date}
+- Repositórios: {', '.join(sorted(repos)) if repos else 'N/A'}
+
+ATIVIDADES:"""
+
+        context_lines = [summary_header]
         for activity in activities:
+            # Use 'date' field which contains occurred_at (actual event date)
+            # instead of 'created_at' which is the sync date
+            event_date = activity.get("date") or activity.get("created_at", "data desconhecida")
             line = (
                 f"- [{activity.get('type', 'UNKNOWN')}] {activity.get('title', 'Sem título')} "
                 f"(por {activity.get('author', 'desconhecido')}, "
-                f"em {activity.get('created_at', 'data desconhecida')})"
+                f"em {event_date})"
             )
 
             # Context Enrichment

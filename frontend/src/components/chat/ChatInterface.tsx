@@ -9,12 +9,23 @@ import { PersonaSelector } from "@/components/chat/PersonaSelector";
 import { RepositorySelector } from "@/components/chat/RepositorySelector";
 import { sendChatMessageStream, Persona } from "@/services/api";
 
+interface Source {
+    title: string;
+    repository: string;
+    type: string;
+    author?: string | null;
+    url?: string | null;
+}
+
 interface Message {
     id: string;
     role: "user" | "assistant";
     content: string;
     timestamp: string;
     isStreaming?: boolean;
+    sources?: Source[];
+    activitiesCount?: number;
+    confidenceScore?: number;
     metadata?: {
         search_method?: "semantic" | "sql";
         confidence_score?: number;
@@ -114,9 +125,26 @@ export function ChatInterface({ conversationId, initialMessages }: ChatInterface
                 // Check if this is a metadata event
                 try {
                     const parsed = JSON.parse(chunk);
-                    if (parsed.type === "metadata" && parsed.conversation_id) {
-                        streamConversationId = parsed.conversation_id;
-                        setCurrentConversationId(parsed.conversation_id);
+                    if (parsed.type === "metadata") {
+                        if (parsed.conversation_id) {
+                            streamConversationId = parsed.conversation_id;
+                            setCurrentConversationId(parsed.conversation_id);
+                        }
+                        // Update message with sources from metadata
+                        if (parsed.sources) {
+                            setMessages((prev) =>
+                                prev.map((msg) =>
+                                    msg.id === assistantId
+                                        ? {
+                                            ...msg,
+                                            sources: parsed.sources,
+                                            activitiesCount: parsed.activities_count,
+                                            confidenceScore: parsed.confidence_score
+                                        }
+                                        : msg
+                                )
+                            );
+                        }
                         return; // Don't add metadata to message content
                     }
                 } catch {
@@ -214,6 +242,9 @@ export function ChatInterface({ conversationId, initialMessages }: ChatInterface
                                         role={message.role}
                                         content={message.content}
                                         timestamp={message.timestamp}
+                                        sources={message.sources}
+                                        activitiesCount={message.activitiesCount}
+                                        confidenceScore={message.confidenceScore}
                                     />
                                     {/* Streaming indicator */}
                                     {message.isStreaming && (

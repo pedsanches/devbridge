@@ -169,8 +169,8 @@ class TestChatService:
                 org_id=str(uuid4()),
             )
 
-            # SQL should have lower confidence
-            assert result["metadata"].confidence_score == 0.7
+            # SQL with 0 activities should have base confidence (0.3)
+            assert result["metadata"].confidence_score == 0.3
             assert result["metadata"].search_method == "sql"
 
     @pytest.mark.asyncio
@@ -216,6 +216,6 @@ class TestChatService:
                 org_id=str(uuid4()),
             )
 
-            # Semantic should have higher confidence
-            assert result["metadata"].confidence_score == 0.9
+            # Semantic score 0.9 + coverage bonus (1 activity / 5 * 0.15 = 0.03) = 0.93
+            assert result["metadata"].confidence_score == 0.93
             assert result["metadata"].search_method == "semantic"

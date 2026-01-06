@@ -135,10 +135,51 @@ class ChatService:
 
         return activities
 
+    def _calculate_confidence(
+        self,
+        search_results: list[dict[str, Any]],
+        activities_count: int,
+    ) -> float:
+        """
+        Calculate dynamic confidence score based on retrieval quality.
+
+        Layered confidence calculation:
+        - Base: 0.3 (no activities found)
+        - Retrieval: Average of top-3 vector search scores
+        - Coverage bonus: min(activities_count / 5, 1.0) * 0.2
+
+        Args:
+            search_results: Results from vector search with scores.
+            activities_count: Number of activities found.
+
+        Returns:
+            Confidence score between 0.0 and 1.0.
+        """
+        if activities_count == 0:
+            return 0.3
+
+        if not search_results:
+            # SQL fallback - moderate confidence
+            return 0.5 + min(activities_count / 10, 0.2)
+
+        # Get top-3 scores from semantic search
+        top_scores = [r.get("score", 0) for r in search_results[:3] if r.get("score") is not None]
+
+        if not top_scores:
+            return 0.5
+
+        avg_score = sum(top_scores) / len(top_scores)
+
+        # Coverage bonus based on number of activities
+        coverage_bonus = min(activities_count / 5, 1.0) * 0.15
+
+        return min(avg_score + coverage_bonus, 1.0)
+
     async def search_activities_semantic(
         self,
         query: str,
         org_id: str | None = None,
+        repository: str | list[str] | None = None,
         limit: int = 10,
     ) -> list[dict[str, Any]]:
         """
@@ -147,6 +188,7 @@ class ChatService:
         Args:
             query: Search query text.
             org_id: Organization ID for multi-tenant filtering.
+            repository: Repository name(s) to filter by.
             limit: Maximum results.
 
         Returns:
@@ -155,7 +197,12 @@ class ChatService:
         try:
             from app.services.vector_service import vector_service
 
-            return vector_service.search(query, limit=limit, org_id=org_id)
+            return vector_service.search(
+                query,
+                limit=limit,
+                org_id=org_id,
+                repository_name=repository,
+            )
         except Exception:
             return []
 
@@ -235,10 +282,13 @@ class ChatService:
 
         activities: list[dict[str, Any]] = []
         search_method = "sql"
+        search_results: list[dict[str, Any]] = []
 
         # Try semantic search first
         if use_semantic_search:
-            search_results = await self.search_activities_semantic(query, org_id=org_id, limit=15)
+            search_results = await self.search_activities_semantic(
+                query, org_id=org_id, repository=repository, limit=15
+            )
             if search_results:
                 # Get full activity data for the top results
                 activity_ids = [
@@ -267,18 +317,38 @@ class ChatService:
                 author=author,
                 days=days,
             )
+            # Clear search_results since we're using SQL fallback
+            search_results = []
 
         # Generate AI response with persona
         response_text = await ai_service.summarize_activities(
             activities, query, persona, chat_history=chat_history
         )
 
+        # Build sources list from top 5 activities (BR-011: Sources Transparency)
+        from app.schemas.chat import SourceItem
+
+        sources = [
+            SourceItem(
+                title=act.get("title", "Untitled"),
+                repository=act.get("repository", "unknown"),
+                type=act.get("type", "unknown"),
+                author=act.get("author"),
+                url=act.get("url"),
+            )
+            for act in activities[:5]
+        ]
+
+        # Calculate dynamic confidence score based on retrieval quality
+        confidence_score = self._calculate_confidence(search_results, len(activities))
+
         # Build structured metadata (BR-011)
         metadata = ChatMetadata(
             activities_count=len(activities),
             search_method=search_method,
-            confidence_score=0.9 if search_method == "semantic" else 0.7,
+            confidence_score=confidence_score,
             persona_used=persona,
+            sources=sources,
         )
 
         # Persist Assistant Message

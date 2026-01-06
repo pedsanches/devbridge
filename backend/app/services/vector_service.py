@@ -51,7 +51,7 @@ class VectorService:
         Args:
             activity_id: UUID of the activity.
             content: Text content to embed and index.
-            metadata: Additional metadata to store.
+            metadata: Additional metadata to store (should include org_id, repository_name).
 
         Returns:
             True if indexed successfully.
@@ -81,6 +81,8 @@ class VectorService:
         query: str,
         limit: int = 10,
         org_id: str | None = None,
+        repository_name: str | list[str] | None = None,
+        score_threshold: float | None = 0.65,
         filter_conditions: dict[str, Any] | None = None,
     ) -> list[dict[str, Any]]:
         """
@@ -90,6 +92,8 @@ class VectorService:
             query: Search query text.
             limit: Maximum results to return.
             org_id: Organization ID for multi-tenant filtering.
+            repository_name: Filter by repository name(s).
+            score_threshold: Minimum relevance score (0-1). Default 0.65.
             filter_conditions: Optional additional Qdrant filter conditions.
 
         Returns:
@@ -110,6 +114,24 @@ class VectorService:
                 )
             )
 
+        # Filter by repository name(s)
+        if repository_name:
+            if isinstance(repository_name, list):
+                # Match any of the repository names
+                conditions.append(
+                    models.FieldCondition(
+                        key="repository_name",
+                        match=models.MatchAny(any=repository_name),
+                    )
+                )
+            else:
+                conditions.append(
+                    models.FieldCondition(
+                        key="repository_name",
+                        match=models.MatchValue(value=repository_name),
+                    )
+                )
+
         # Add additional filter conditions
         if filter_conditions:
             for key, value in filter_conditions.items():
@@ -127,6 +149,7 @@ class VectorService:
             query_vector=embedding,
             limit=limit,
             query_filter=query_filter,
+            score_threshold=score_threshold,
         )
 
         return [

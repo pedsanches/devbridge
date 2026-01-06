@@ -4,14 +4,26 @@ import { Bot, User } from "lucide-react";
 
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import { SourcesIndicator } from "./SourcesIndicator";
+
+interface Source {
+    title: string;
+    repository: string;
+    type: string;
+    author?: string | null;
+    url?: string | null;
+}
 
 interface ChatMessageProps {
     role: "user" | "assistant";
     content: string;
     timestamp?: string;
+    sources?: Source[];
+    activitiesCount?: number;
+    confidenceScore?: number;
 }
 
-export function ChatMessage({ role, content, timestamp }: ChatMessageProps) {
+export function ChatMessage({ role, content, timestamp, sources, activitiesCount, confidenceScore }: ChatMessageProps) {
     const isUser = role === "user";
 
     return (
@@ -59,6 +71,10 @@ export function ChatMessage({ role, content, timestamp }: ChatMessageProps) {
                     >
                         {timestamp}
                     </span>
+                )}
+                {/* Sources indicator for assistant messages */}
+                {!isUser && sources && sources.length > 0 && (
+                    <SourcesIndicator sources={sources} activitiesCount={activitiesCount || sources.length} confidenceScore={confidenceScore} />
                 )}
             </div>
 
