@@ -132,3 +132,86 @@ async def regenerate_business_update(
     # Refresh and return
     activity = await activity_service.get_activity_by_id(db, UUID(activity_id), include_update=True)
     return ActivityWithUpdate.model_validate(activity)
+
+
+@router.post("/batch-generate-updates")
+async def batch_regenerate_business_updates(
+    db: DbSession,
+    org_id: CurrentOrgId,
+) -> dict:
+    """
+    Batch regenerate business updates for all activities without one.
+
+    Use this to backfill existing activities that were synced before
+    the automatic business update generation was implemented.
+
+    Returns:
+        Count of processed and failed activities.
+    """
+    import logging
+
+    from sqlalchemy import select
+
+    from app.models import BusinessUpdate
+
+    logger = logging.getLogger(__name__)
+
+    # Get all activities for this org
+    activities, _ = await activity_service.get_activities(
+        db,
+        organization_id=org_id,
+        skip=0,
+        limit=500,  # Process up to 500 at a time
+        include_updates=False,  # Don't rely on eager loading
+    )
+
+    processed = 0
+    failed = 0
+    skipped = 0
+
+    for activity in activities:
+        # Check if business_update exists in DB directly
+        existing_check = await db.execute(
+            select(BusinessUpdate.id).where(BusinessUpdate.activity_id == activity.id)
+        )
+        if existing_check.scalar_one_or_none():
+            skipped += 1
+            continue
+
+        try:
+            # Generate business update
+            update_data = await ai_service.generate_business_update(
+                {
+                    "type": (
+                        activity.type.value
+                        if hasattr(activity.type, "value")
+                        else str(activity.type)
+                    ),
+                    "title": activity.title,
+                    "content": activity.content or "",
+                    "labels": activity.labels or [],
+                    "files_touched": activity.files_touched or [],
+                }
+            )
+
+            # Create new update
+            update_create = BusinessUpdateCreate(
+                activity_id=activity.id,
+                summary=update_data["summary"],
+                impact_level=ImpactLevel(update_data["impact_level"]),
+                category=update_data.get("category"),
+            )
+            await activity_service.create_business_update(db, update_create)
+            await db.commit()  # Commit each successful one
+            processed += 1
+        except Exception as e:
+            await db.rollback()  # Rollback on error to continue
+            logger.warning(f"Failed to generate update for {activity.id}: {e}")
+            failed += 1
+
+    return {
+        "processed": processed,
+        "failed": failed,
+        "skipped": skipped,
+        "total": len(activities),
+    }

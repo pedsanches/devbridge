@@ -79,6 +79,18 @@ async def get_activities(
     result = await db.execute(query)
     activities = list(result.scalars().all())
 
+    # Manually load business_updates due to UUID/str type mismatch in relationships
+    if include_updates and activities:
+        from uuid import UUID as PyUUID
+
+        activity_ids = [PyUUID(a.id) for a in activities]
+        bu_query = select(BusinessUpdate).where(BusinessUpdate.activity_id.in_(activity_ids))
+        bu_result = await db.execute(bu_query)
+        bu_map = {str(bu.activity_id): bu for bu in bu_result.scalars().all()}
+
+        for activity in activities:
+            activity.business_update = bu_map.get(activity.id)
+
     return activities, total
 
 
@@ -98,12 +110,18 @@ async def get_activity_by_id(
     Returns:
         Activity if found, None otherwise.
     """
-    query = select(Activity).where(Activity.id == activity_id)
-    if include_update:
-        query = query.options(selectinload(Activity.business_update))
+    query = select(Activity).where(Activity.id == str(activity_id))
 
     result = await db.execute(query)
-    return result.scalar_one_or_none()
+    activity = result.scalar_one_or_none()
+
+    # Manually load business_update due to UUID/str type mismatch
+    if activity and include_update:
+        bu_query = select(BusinessUpdate).where(BusinessUpdate.activity_id == activity_id)
+        bu_result = await db.execute(bu_query)
+        activity.business_update = bu_result.scalar_one_or_none()
+
+    return activity
 
 
 async def get_activity_by_external_id(
