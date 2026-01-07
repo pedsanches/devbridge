@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { MessageSquare, LayoutDashboard, LogOut, ChevronDown, User, ArrowLeft, Settings } from "lucide-react";
+import { MessageSquare, LayoutDashboard, LogOut, ChevronDown, User, ArrowLeft, Settings, FileText } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
@@ -89,6 +89,13 @@ export function Header({ variant = "default", backHref = "/", backLabel = "Volta
                             >
                                 <MessageSquare className="h-4 w-4" />
                                 Chat
+                            </Link>
+                            <Link
+                                href="/reports"
+                                className="flex items-center gap-1.5 rounded-md px-3 py-2 text-sm font-medium text-secondary transition-colors hover:bg-neutral-100 hover:text-primary dark:hover:bg-neutral-800"
+                            >
+                                <FileText className="h-4 w-4" />
+                                Reports
                             </Link>
                         </>
                     )}
