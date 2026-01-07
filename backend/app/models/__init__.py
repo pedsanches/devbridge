@@ -13,6 +13,8 @@ from app.models.membership import MemberRole, Membership
 from app.models.organization import Organization, PlanType
 from app.models.organization_settings import OrganizationSettings
 from app.models.repo import Repository
+from app.models.report import Report, ReportType
+from app.models.report_template import ReportTemplate
 from app.models.team import Team
 from app.models.user import User
 
@@ -42,4 +44,8 @@ __all__ = [
     "ChatMessage",
     "ConversationStatus",
     "MessageRole",
+    # Reports
+    "Report",
+    "ReportType",
+    "ReportTemplate",
 ]

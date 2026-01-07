@@ -32,3 +32,5 @@ class User(Base, UUIDMixin, TimestampMixin):
     conversations = relationship(
         "Conversation", back_populates="user", cascade="all, delete-orphan"
     )
+    reports = relationship("Report", back_populates="user", cascade="all, delete-orphan")
+    report_templates = relationship("ReportTemplate", back_populates="user")

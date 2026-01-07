@@ -23,6 +23,16 @@ from app.schemas.common import (
     PaginationParams,
     TimestampSchema,
 )
+from app.schemas.report import (
+    ReportExportRequest,
+    ReportMetric,
+    ReportPeriod,
+    ReportRequest,
+    ReportResponse,
+    ReportSection,
+    ReportSource,
+    ReportType,
+)
 from app.schemas.repository import (
     RepositoryCreate,
     RepositoryResponse,
@@ -56,4 +66,13 @@ __all__ = [
     "ChatRequest",
     "ChatResponse",
     "Persona",
+    # Report
+    "ReportType",
+    "ReportPeriod",
+    "ReportRequest",
+    "ReportMetric",
+    "ReportSection",
+    "ReportSource",
+    "ReportResponse",
+    "ReportExportRequest",
 ]

@@ -51,3 +51,7 @@ class Organization(Base, UUIDMixin, TimestampMixin):
     conversations = relationship(
         "Conversation", back_populates="organization", cascade="all, delete-orphan"
     )
+    reports = relationship("Report", back_populates="organization", cascade="all, delete-orphan")
+    report_templates = relationship(
+        "ReportTemplate", back_populates="organization", cascade="all, delete-orphan"
+    )
