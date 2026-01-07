@@ -109,12 +109,12 @@ if __name__ == "__main__":
     # 2. Postgres MCP
     run_mcp_test(
         "Postgres MCP",
-        ["./toolbox", "--tools_file", "tools.yaml", "--stdio"],
+        ["./toolbox", "--tools-file", "tools-secure.yaml", "--stdio"],
         os.path.join(base_dir, "mcp-toolbox"),
         {
             "jsonrpc": "2.0",
             "method": "tools/call",
-            "params": {"name": "list-repositories", "arguments": {}},
+            "params": {"name": "list-tables", "arguments": {}},
         },
     )
 

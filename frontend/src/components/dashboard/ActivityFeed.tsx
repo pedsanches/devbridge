@@ -2,6 +2,7 @@ import { GitCommit, GitPullRequest, TrendingUp, TrendingDown, Minus, Loader2 } f
 import { format } from "date-fns";
 import { enUS } from "date-fns/locale";
 import Link from "next/link";
+import { Route } from "next";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -49,7 +50,7 @@ export function ActivityFeed({ activities, isLoading }: ActivityFeedProps) {
                     <p className="text-sm text-secondary">Connect a repository to start tracking activities.</p>
                 </div>
                 <Button asChild variant="outline" size="sm">
-                    <Link href="/settings">
+                    <Link href={"/settings" as Route}>
                         Connect Repository
                     </Link>
                 </Button>

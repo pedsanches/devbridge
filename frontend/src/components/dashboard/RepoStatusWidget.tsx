@@ -2,9 +2,9 @@ import { GitBranch, RefreshCw, Plus } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { enUS } from "date-fns/locale";
 import Link from "next/link";
+import { Route } from "next";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useRepos } from "@/hooks/use-repos";
 
@@ -23,7 +23,7 @@ export function RepoStatusWidget() {
                 <CardContent className="space-y-4">
                     <p className="text-sm text-secondary">No repositories connected.</p>
                     <Button asChild variant="outline" size="sm" className="w-full">
-                        <Link href="/settings">
+                        <Link href={"/settings" as Route}>
                             <Plus className="mr-2 h-4 w-4" />
                             Connect Repository
                         </Link>

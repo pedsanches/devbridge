@@ -18,15 +18,15 @@ sources:
     kind: postgres
     host: "127.0.0.1"
     port: 5432
-    database: "postgres"
+    database: "devbridge"
     user: "mcp_readonly"
-    password: "mcp_secure_2026"
+    password: "mcp_readonly_secure"
 
 tools:
   # ============================================
   # DATABASE EXPLORATION (Read-Only)
   # ============================================
-  
+
   # List all user databases (excludes system databases)
   list-databases:
     kind: postgres-sql
@@ -36,7 +36,7 @@ tools:
       Returns database name, size, and encoding.
       System databases are excluded.
     statement: |
-      SELECT 
+      SELECT
         datname AS database_name,
         pg_size_pretty(pg_database_size(datname)) AS size,
         pg_encoding_to_char(encoding) AS encoding
@@ -54,7 +54,7 @@ tools:
       Excludes system schemas (pg_catalog, information_schema).
       Shows schema, table name, and approximate size.
     statement: |
-      SELECT 
+      SELECT
         schemaname AS schema,
         tablename AS table_name,
         pg_size_pretty(pg_total_relation_size(schemaname||'.'||tablename)) AS total_size
@@ -79,7 +79,7 @@ tools:
         type: string
         description: The exact name of the table to describe
     statement: |
-      SELECT 
+      SELECT
         column_name,
         data_type,
         is_nullable,
@@ -102,7 +102,7 @@ tools:
         type: string
         description: The table name to list indexes for
     statement: |
-      SELECT 
+      SELECT
         indexname AS index_name,
         indexdef AS definition
       FROM pg_indexes
@@ -152,7 +152,7 @@ tools:
         type: string
         description: The table name to count rows for
     statement: |
-      SELECT 
+      SELECT
         relname AS table_name,
         n_live_tup AS approximate_row_count
       FROM pg_stat_user_tables
@@ -171,7 +171,7 @@ tools:
         type: string
         description: The table name to analyze
     statement: |
-      SELECT 
+      SELECT
         relname AS table_name,
         pg_size_pretty(pg_total_relation_size(relid)) AS total_size,
         pg_size_pretty(pg_table_size(relid)) AS table_size,
@@ -214,7 +214,7 @@ tools:
       Sensitive data (queries, users) are not exposed.
       Only shows state and wait events.
     statement: |
-      SELECT 
+      SELECT
         pid,
         state,
         wait_event_type,

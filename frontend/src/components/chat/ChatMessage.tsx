@@ -1,5 +1,4 @@
-"use client";
-
+import React, { memo } from "react";
 import { Bot, User } from "lucide-react";
 
 import ReactMarkdown from "react-markdown";
@@ -23,7 +22,9 @@ interface ChatMessageProps {
     confidenceScore?: number;
 }
 
-export function ChatMessage({ role, content, timestamp, sources, activitiesCount, confidenceScore }: ChatMessageProps) {
+const REMARK_PLUGINS = [remarkGfm];
+
+export const ChatMessage = memo(function ChatMessage({ role, content, timestamp, sources, activitiesCount, confidenceScore }: ChatMessageProps) {
     const isUser = role === "user";
 
     return (
@@ -45,13 +46,11 @@ export function ChatMessage({ role, content, timestamp, sources, activitiesCount
                 ) : (
                     <div className="prose prose-sm dark:prose-invert max-w-none break-words leading-relaxed">
                         <ReactMarkdown
-                            remarkPlugins={[remarkGfm]}
+                            remarkPlugins={REMARK_PLUGINS}
                             components={{
-                                // Customize components if needed, e.g., to handle links or code blocks specifically
                                 a: ({ ...props }) => (
                                     <a target="_blank" rel="noopener noreferrer" className="text-primary hover:underline" {...props} />
                                 ),
-                                // Ensure code blocks don't overflow
                                 pre: ({ ...props }) => (
                                     <pre className="overflow-x-auto rounded bg-neutral-200 p-2 dark:bg-neutral-900" {...props} />
                                 ),
@@ -85,4 +84,4 @@ export function ChatMessage({ role, content, timestamp, sources, activitiesCount
             )}
         </div>
     );
-}
+});

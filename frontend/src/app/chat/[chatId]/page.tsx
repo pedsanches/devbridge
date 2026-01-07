@@ -26,18 +26,22 @@ export default function ChatIdPage() {
                 const data = await getConversation(chatId);
 
                 // Map API messages to ChatInterface format
-                const mappedMessages = data.messages.map((msg: ChatMessage) => ({
-                    id: msg.id,
-                    role: msg.role,
-                    content: msg.content,
-                    timestamp: new Date(msg.created_at).toLocaleTimeString("pt-BR", {
-                        hour: "2-digit",
-                        minute: "2-digit",
-                    }),
-                    metadata: msg.message_metadata,
-                    sources: (msg.message_metadata as any)?.sources,
-                    activitiesCount: (msg.message_metadata as any)?.activities_count,
-                }));
+                const mappedMessages = data.messages.map((msg: ChatMessage) => {
+                    const meta = msg.message_metadata as Record<string, unknown> | null;
+                    return {
+                        id: msg.id,
+                        role: msg.role,
+                        content: msg.content,
+                        timestamp: new Date(msg.created_at).toLocaleTimeString("pt-BR", {
+                            hour: "2-digit",
+                            minute: "2-digit",
+                        }),
+                        metadata: msg.message_metadata,
+                        sources: meta?.sources as string[] | undefined,
+                        activitiesCount: meta?.activities_count as number | undefined,
+                        confidenceScore: meta?.confidence_score as number | undefined,
+                    };
+                });
 
                 setMessages(mappedMessages);
             } catch (err) {
