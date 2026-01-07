@@ -166,3 +166,93 @@ class TestAIService:
         with patch.object(service.client.chat.completions, "create", return_value=mock_response):
             title = await service.generate_title("Long message content...")
             assert title == "Mocked Title"  # Should strip quotes
+
+    @pytest.mark.asyncio
+    async def test_generate_business_update_returns_structured_data(self):
+        """generate_business_update should return dict with summary, impact_level, category."""
+        service = AIService(api_key="test-key")
+
+        mock_response = MagicMock()
+        mock_response.choices = [MagicMock()]
+        mock_response.choices[0].message.content = """{
+            "summary": "Corrige bug de login.",
+            "impact_level": "MEDIUM",
+            "category": "Bugfix"
+        }"""
+
+        with patch.object(service.client.chat.completions, "create", return_value=mock_response):
+            result = await service.generate_business_update(
+                {
+                    "type": "COMMIT",
+                    "title": "Fix login bug",
+                    "content": "Fixed authentication flow",
+                    "labels": [],
+                    "files_touched": ["auth.py"],
+                }
+            )
+
+            assert "summary" in result
+            assert result["summary"] == "Corrige bug de login."
+            assert result["impact_level"] == "MEDIUM"
+            assert result["category"] == "Bugfix"
+
+    @pytest.mark.asyncio
+    async def test_generate_business_update_without_client(self):
+        """generate_business_update without API key should return default update."""
+        service = AIService(api_key="")
+        service.client = None
+
+        result = await service.generate_business_update(
+            {
+                "type": "COMMIT",
+                "title": "Test",
+            }
+        )
+
+        assert result["impact_level"] == "LOW"
+        assert "indisponível" in result["summary"]
+
+    @pytest.mark.asyncio
+    async def test_generate_business_update_handles_invalid_json(self):
+        """generate_business_update should handle parsing errors gracefully."""
+        service = AIService(api_key="test-key")
+
+        mock_response = MagicMock()
+        mock_response.choices = [MagicMock()]
+        mock_response.choices[0].message.content = "not valid json"
+
+        with patch.object(service.client.chat.completions, "create", return_value=mock_response):
+            result = await service.generate_business_update(
+                {
+                    "type": "COMMIT",
+                    "title": "Test commit",
+                }
+            )
+
+            # Should return default values on error
+            assert result["impact_level"] == "LOW"
+            assert "summary" in result
+
+    @pytest.mark.asyncio
+    async def test_generate_business_update_validates_impact_level(self):
+        """generate_business_update should validate impact_level values."""
+        service = AIService(api_key="test-key")
+
+        mock_response = MagicMock()
+        mock_response.choices = [MagicMock()]
+        mock_response.choices[0].message.content = """{
+            "summary": "Test summary",
+            "impact_level": "INVALID",
+            "category": "Feature"
+        }"""
+
+        with patch.object(service.client.chat.completions, "create", return_value=mock_response):
+            result = await service.generate_business_update(
+                {
+                    "type": "COMMIT",
+                    "title": "Test",
+                }
+            )
+
+            # Invalid impact_level should be normalized to LOW
+            assert result["impact_level"] == "LOW"

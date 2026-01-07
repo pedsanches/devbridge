@@ -5,6 +5,7 @@ Service for synchronizing GitHub repository data to local database.
 Fetches commits and PRs from GitHub API and creates Activities.
 """
 
+import logging
 import re
 from contextlib import suppress
 from datetime import datetime
@@ -14,10 +15,12 @@ import httpx
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
-from app.schemas import ActivityCreate, ActivityType
+from app.schemas import ActivityCreate, ActivityType, BusinessUpdateCreate, ImpactLevel
 from app.services import activity_service, repository_service
 from app.services.ai_service import ai_service
 from app.services.github_service import github_service
+
+logger = logging.getLogger(__name__)
 
 
 class SyncService:
@@ -179,9 +182,29 @@ class SyncService:
                 value_tags=value_tags,
             )
 
-            _, created = await activity_service.get_or_create_activity(db, activity_in)
+            activity, created = await activity_service.get_or_create_activity(db, activity_in)
             if created:
                 commits_synced += 1
+                # Generate business update for new activity
+                try:
+                    update_data = await ai_service.generate_business_update(
+                        {
+                            "type": "COMMIT",
+                            "title": activity_in.title,
+                            "content": content,
+                            "labels": [],
+                            "files_touched": files_touched or [],
+                        }
+                    )
+                    update_create = BusinessUpdateCreate(
+                        activity_id=activity.id,
+                        summary=update_data["summary"],
+                        impact_level=ImpactLevel(update_data["impact_level"]),
+                        category=update_data.get("category"),
+                    )
+                    await activity_service.create_business_update(db, update_create)
+                except Exception as e:
+                    logger.warning(f"Failed to generate business update for commit {sha[:7]}: {e}")
 
         # Sync PRs
         prs = await self.fetch_pull_requests(owner, name, per_page=max_prs)
@@ -250,9 +273,29 @@ class SyncService:
                 value_tags=value_tags,
             )
 
-            _, created = await activity_service.get_or_create_activity(db, activity_in)
+            activity, created = await activity_service.get_or_create_activity(db, activity_in)
             if created:
                 prs_synced += 1
+                # Generate business update for new activity
+                try:
+                    update_data = await ai_service.generate_business_update(
+                        {
+                            "type": "PULL_REQUEST",
+                            "title": title,
+                            "content": content,
+                            "labels": labels or [],
+                            "files_touched": [],
+                        }
+                    )
+                    update_create = BusinessUpdateCreate(
+                        activity_id=activity.id,
+                        summary=update_data["summary"],
+                        impact_level=ImpactLevel(update_data["impact_level"]),
+                        category=update_data.get("category"),
+                    )
+                    await activity_service.create_business_update(db, update_create)
+                except Exception as e:
+                    logger.warning(f"Failed to generate business update for PR #{pr_number}: {e}")
 
         return {"commits_synced": commits_synced, "prs_synced": prs_synced}
 

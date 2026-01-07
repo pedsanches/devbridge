@@ -438,6 +438,116 @@ If unsure, return an empty array: []"""
         except Exception:
             return []
 
+    async def generate_business_update(self, activity: dict[str, Any]) -> dict[str, Any]:
+        """
+        Generate a business impact summary for an activity using LLM.
+
+        Analyzes the activity's title, content, labels, and files to produce
+        a human-readable summary and impact classification.
+
+        Args:
+            activity: Activity dictionary with title, content, labels, files_touched, etc.
+
+        Returns:
+            Dictionary with:
+            - summary: str (1-2 sentence business impact description)
+            - impact_level: str ("LOW", "MEDIUM", or "HIGH")
+            - category: str | None (e.g., "Security", "Feature", "Maintenance")
+
+        If generation fails, returns a default LOW impact update.
+        """
+        if not self.client:
+            return {
+                "summary": "Análise de impacto indisponível.",
+                "impact_level": "LOW",
+                "category": None,
+            }
+
+        # Build activity context
+        title = activity.get("title", "")
+        content = activity.get("content", "")[:800] if activity.get("content") else ""
+        labels = ", ".join(activity.get("labels", [])) if activity.get("labels") else ""
+        files = (
+            ", ".join(activity.get("files_touched", [])[:10])
+            if activity.get("files_touched")
+            else ""
+        )
+        activity_type = activity.get("type", "COMMIT")
+
+        prompt = f"""Analyze this software development activity and generate a business impact summary.
+
+ACTIVITY:
+- Type: {activity_type}
+- Title: {title}
+- Labels: {labels}
+- Files Changed: {files}
+- Description: {content}
+
+Generate a JSON response with:
+1. "summary": A concise 1-2 sentence description of the business impact in Portuguese (BR). Focus on WHAT value this brings, not technical details.
+2. "impact_level": One of "LOW", "MEDIUM", or "HIGH" based on:
+   - HIGH: Security fixes, critical bugs, major features, breaking changes
+   - MEDIUM: New features, significant improvements, moderate refactoring
+   - LOW: Minor fixes, documentation, small refactors, dependency updates
+3. "category": One of "Security", "Feature", "Bugfix", "Performance", "Refactoring", "Documentation", "Infrastructure", "Maintenance"
+
+Respond with ONLY valid JSON. Example:
+{{"summary": "Corrige vulnerabilidade de autenticação que permitia acesso não autorizado.", "impact_level": "HIGH", "category": "Security"}}"""
+
+        try:
+            response = self.client.chat.completions.create(
+                model=self.model,
+                messages=[{"role": "user", "content": prompt}],
+                max_tokens=150,
+                temperature=0.3,
+            )
+            result = response.choices[0].message.content or "{}"
+
+            import json
+
+            # Clean up response (remove markdown code blocks if present)
+            cleaned = result.strip()
+            if cleaned.startswith("```"):
+                cleaned = cleaned.split("\n", 1)[1] if "\n" in cleaned else cleaned
+            if cleaned.endswith("```"):
+                cleaned = cleaned.rsplit("```", 1)[0]
+            cleaned = cleaned.strip()
+
+            data = json.loads(cleaned)
+
+            # Validate and sanitize response
+            valid_levels = {"LOW", "MEDIUM", "HIGH"}
+            valid_categories = {
+                "Security",
+                "Feature",
+                "Bugfix",
+                "Performance",
+                "Refactoring",
+                "Documentation",
+                "Infrastructure",
+                "Maintenance",
+            }
+
+            return {
+                "summary": str(data.get("summary", "Atividade processada."))[:500],
+                "impact_level": data.get("impact_level", "LOW")
+                if data.get("impact_level") in valid_levels
+                else "LOW",
+                "category": data.get("category")
+                if data.get("category") in valid_categories
+                else None,
+            }
+        except Exception as e:
+            # Log error for debugging but return default
+            import logging
+
+            logging.warning(f"Failed to generate business update: {e}")
+            return {
+                "summary": "Atividade de desenvolvimento registrada.",
+                "impact_level": "LOW",
+                "category": None,
+            }
+
 
 # Singleton instance
 ai_service = AIService()

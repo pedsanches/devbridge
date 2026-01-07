@@ -146,19 +146,27 @@ class ReportService:
         repos = {a.get("repository") for a in activities if a.get("repository")}
 
         metrics = [
-            ReportMetric(name="Total de Atividades", value=len(activities)),
+            ReportMetric(
+                name="Total de Atividades", value=len(activities), change=None, trend=None
+            ),
         ]
 
         if commits:
-            metrics.append(ReportMetric(name="Commits", value=commits))
+            metrics.append(ReportMetric(name="Commits", value=commits, change=None, trend=None))
         if prs:
-            metrics.append(ReportMetric(name="Pull Requests", value=prs))
+            metrics.append(ReportMetric(name="Pull Requests", value=prs, change=None, trend=None))
         if issues:
-            metrics.append(ReportMetric(name="Issues", value=issues))
+            metrics.append(ReportMetric(name="Issues", value=issues, change=None, trend=None))
         if authors:
-            metrics.append(ReportMetric(name="Desenvolvedores Ativos", value=len(authors)))
+            metrics.append(
+                ReportMetric(
+                    name="Desenvolvedores Ativos", value=len(authors), change=None, trend=None
+                )
+            )
         if repos:
-            metrics.append(ReportMetric(name="Repositórios", value=len(repos)))
+            metrics.append(
+                ReportMetric(name="Repositórios", value=len(repos), change=None, trend=None)
+            )
 
         return metrics
 
@@ -215,7 +223,7 @@ class ReportService:
         report_content = await self._generate_report_content(
             activities_context=activities_context,
             prompt=prompt,
-            report_type=request.report_type,
+            _report_type=request.report_type,
         )
 
         # 5. Build response
@@ -242,7 +250,7 @@ class ReportService:
             return "Nenhuma atividade encontrada no período especificado."
 
         # Group by type
-        by_type: dict[str, list[dict]] = {}
+        by_type: dict[str, list[dict[str, Any]]] = {}
         for act in activities:
             act_type = act.get("type", "other")
             if act_type not in by_type:
@@ -601,7 +609,7 @@ Responda APENAS com o JSON no formato especificado, sem texto adicional."""
         report_content = await self._generate_report_content(
             activities_context=activities_context,
             prompt=prompt,
-            report_type=ReportType.CUSTOM,
+            _report_type=ReportType.CUSTOM,
         )
 
         # 5. Save Report
@@ -649,7 +657,7 @@ Responda APENAS com o JSON no formato especificado, sem texto adicional."""
             "",
         ]
 
-        by_type = {}
+        by_type: dict[str, list[dict[str, Any]]] = {}
         for act in activities:
             t = act.get("type", "other")
             if t not in by_type:
