@@ -4,6 +4,15 @@ Documentação dos endpoints da API REST do DevBridge.
 
 ---
 
+> [!WARNING]
+> **Atenção:** Este documento é mantido manualmente e pode estar desatualizado em relação à implementação atual.
+>
+> Para a referência mais precisa e testável em tempo real, utilize sempre o **Swagger UI** ou **Redoc**:
+> - [Swagger UI (http://localhost:8000/docs)](http://localhost:8000/docs)
+> - [Redoc (http://localhost:8000/redoc)](http://localhost:8000/redoc)
+
+---
+
 ## 📚 Documentação Interativa
 
 | Recurso | URL | Descrição |

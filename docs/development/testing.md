@@ -73,11 +73,11 @@ def test_business_translation_validates_confidence_score():
         "metrics": [],
         "confidence_score": 150  # Inválido: > 100
     }
-    
+
     # Act & Assert
     with pytest.raises(ValidationError) as exc:
         BusinessTranslation(**invalid_data)
-    
+
     assert "confidence_score" in str(exc.value)
 ```
 
@@ -179,19 +179,19 @@ def test_db(postgres):
 ```python
 @pytest.mark.integration
 async def test_webhook_processes_commit_and_stores_translation(
-    test_db, 
+    test_db,
     mock_llm,
     sample_webhook_payload
 ):
     # Arrange
     webhook_service = WebhookService(db=test_db)
-    
+
     # Act
     result = await webhook_service.process(sample_webhook_payload)
-    
+
     # Assert
     assert result.status == "processed"
-    
+
     # Verifica persistência
     translations = test_db.query(Translation).all()
     assert len(translations) == 1
@@ -223,26 +223,26 @@ test.describe('Chat Interface', () => {
   test('should send message and receive response', async ({ page }) => {
     // Arrange
     await page.goto('/chat');
-    
+
     // Act
     await page.fill('[data-testid="chat-input"]', 'O que o time fez?');
     await page.click('[data-testid="send-button"]');
-    
+
     // Assert
     await expect(page.locator('[data-testid="message-assistant"]')).toBeVisible({
       timeout: 10000
     });
-    
+
     const response = await page.textContent('[data-testid="message-assistant"]');
     expect(response).toContain('time');
   });
 
   test('should show loading state while processing', async ({ page }) => {
     await page.goto('/chat');
-    
+
     await page.fill('[data-testid="chat-input"]', 'Teste');
     await page.click('[data-testid="send-button"]');
-    
+
     await expect(page.locator('[data-testid="loading-indicator"]')).toBeVisible();
   });
 });
@@ -287,6 +287,51 @@ def mock_github(mocker):
     return mock
 ```
 
+### Qdrant & Vector Search
+
+Para testar busca semântica sem levantar um Qdrant real:
+
+```python
+@pytest.fixture
+def mock_vector_service(mocker):
+    """Mock do serviço de vetores."""
+    mock = mocker.patch("app.services.vector_service.VectorService")
+
+    # Mock search results format
+    mock.return_value.search.return_value = [
+        {
+            "activity_id": "uuid-123",
+            "score": 0.95,
+            "payload": {"title": "Test Activity"}
+        }
+    ]
+    return mock
+```
+
+### Celery & Async Workers
+
+Para testar Workers, usamos o modo `task_always_eager` do Celery para rodar tarefas síncronas em testes:
+
+```python
+# conftest.py
+@pytest.fixture(autouse=True)
+def setup_celery_test_mode(settings):
+    """Força execução síncrona de tarefas Celery."""
+    settings.CELERY_TASK_ALWAYS_EAGER = True
+    settings.CELERY_TASK_EAGER_PROPAGATES = True
+```
+
+Ou para mockar o despacho da tarefa:
+
+```python
+def test_webhook_triggers_processing(mocker, client):
+    mock_task = mocker.patch("app.worker.tasks.process_webhook.delay")
+
+    client.post("/webhooks/github", ...)
+
+    mock_task.assert_called_once()
+```
+
 ---
 
 ## Executando Testes
@@ -327,7 +372,7 @@ on: [push, pull_request]
 jobs:
   test:
     runs-on: ubuntu-latest
-    
+
     services:
       postgres:
         image: postgres:15
@@ -335,23 +380,23 @@ jobs:
           POSTGRES_PASSWORD: postgres
         ports:
           - 5432:5432
-    
+
     steps:
       - uses: actions/checkout@v4
-      
+
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-      
+
       - name: Install dependencies
         run: |
           pip install poetry
           poetry install
-      
+
       - name: Run tests
         run: poetry run pytest --cov=app
-      
+
       - name: Upload coverage
         uses: codecov/codecov-action@v3
 ```
