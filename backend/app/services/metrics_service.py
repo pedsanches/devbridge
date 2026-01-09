@@ -264,10 +264,16 @@ async def calculate_dora_metrics(
     Returns:
         TeamMetrics with calculated DORA metrics.
     """
-    # Check for existing metrics
-    query = select(TeamMetrics).where(
-        TeamMetrics.organization_id == organization_id,
-        TeamMetrics.period_start == period_start,
+    # Check for existing metrics (order by created_at DESC to get most recent if duplicates exist)
+    query = (
+        select(TeamMetrics)
+        .where(
+            TeamMetrics.organization_id == organization_id,
+            TeamMetrics.period_start == period_start,
+            TeamMetrics.period_end == period_end,
+        )
+        .order_by(TeamMetrics.created_at.desc())
+        .limit(1)
     )
     if team_id:
         query = query.where(TeamMetrics.team_id == team_id)
