@@ -2,6 +2,7 @@
 
 from app.models.activity import Activity, ActivityType, BusinessUpdate, ImpactLevel
 from app.models.base import Base, TimestampMixin, UUIDMixin
+from app.models.code_review import CodeReview, ReviewState
 from app.models.conversation import (
     ChatMessage,
     Conversation,
@@ -42,6 +43,8 @@ __all__ = [
     "ImpactLevel",
     "Issue",
     "IssueState",
+    "CodeReview",
+    "ReviewState",
     # Chat
     "Conversation",
     "ChatMessage",

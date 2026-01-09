@@ -4,6 +4,7 @@ from app.services import (
     activity_service,
     ai_service,
     chat_service,
+    code_review_service,
     github_service,
     issue_service,
     repository_service,
@@ -18,4 +19,5 @@ __all__ = [
     "ai_service",
     "chat_service",
     "issue_service",
+    "code_review_service",
 ]

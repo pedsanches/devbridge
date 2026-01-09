@@ -76,6 +76,7 @@ class Activity(Base, UUIDMixin, TimestampMixin):
     business_update = relationship(
         "BusinessUpdate", uselist=False, back_populates="activity", cascade="all, delete-orphan"
     )
+    reviews = relationship("CodeReview", back_populates="activity", cascade="all, delete-orphan")
 
 
 class BusinessUpdate(Base, UUIDMixin, TimestampMixin):
