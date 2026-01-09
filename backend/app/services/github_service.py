@@ -159,6 +159,127 @@ class GitHubService:
 
         return all_repos
 
+    async def get_pr_details(self, owner: str, repo: str, pr_number: int) -> dict[str, Any] | None:
+        """
+        Get detailed PR information including file stats and merge info.
+
+        Args:
+            owner: Repository owner.
+            repo: Repository name.
+            pr_number: Pull request number.
+
+        Returns:
+            Dict with PR details including additions, deletions, changed_files, merged_at.
+        """
+        url = f"{self.BASE_URL}/repos/{owner}/{repo}/pulls/{pr_number}"
+
+        async with httpx.AsyncClient() as client:
+            response = await client.get(url, headers=self.headers, timeout=30)
+            if response.status_code == 200:
+                data = response.json()
+                return {
+                    "additions": data.get("additions", 0),
+                    "deletions": data.get("deletions", 0),
+                    "changed_files": data.get("changed_files", 0),
+                    "merged_at": data.get("merged_at"),
+                    "merged": data.get("merged", False),
+                    "state": data.get("state"),
+                    "created_at": data.get("created_at"),
+                    "updated_at": data.get("updated_at"),
+                }
+            return None
+
+    async def get_pr_reviews(self, owner: str, repo: str, pr_number: int) -> list[dict[str, Any]]:
+        """
+        Get all reviews for a pull request.
+
+        Args:
+            owner: Repository owner.
+            repo: Repository name.
+            pr_number: Pull request number.
+
+        Returns:
+            List of review dicts with state, user, submitted_at.
+        """
+        url = f"{self.BASE_URL}/repos/{owner}/{repo}/pulls/{pr_number}/reviews"
+
+        async with httpx.AsyncClient() as client:
+            response = await client.get(url, headers=self.headers, timeout=30)
+            if response.status_code == 200:
+                reviews = response.json()
+                return [
+                    {
+                        "id": r.get("id"),
+                        "user": r.get("user", {}).get("login"),
+                        "state": r.get(
+                            "state"
+                        ),  # APPROVED, CHANGES_REQUESTED, COMMENTED, PENDING, DISMISSED
+                        "body": r.get("body"),
+                        "submitted_at": r.get("submitted_at"),
+                    }
+                    for r in reviews
+                ]
+            return []
+
+    async def get_pr_review_comments(
+        self, owner: str, repo: str, pr_number: int
+    ) -> list[dict[str, Any]]:
+        """
+        Get inline review comments for a PR.
+
+        Args:
+            owner: Repository owner.
+            repo: Repository name.
+            pr_number: Pull request number.
+
+        Returns:
+            List of review comment dicts.
+        """
+        url = f"{self.BASE_URL}/repos/{owner}/{repo}/pulls/{pr_number}/comments"
+
+        async with httpx.AsyncClient() as client:
+            response = await client.get(url, headers=self.headers, timeout=30)
+            if response.status_code == 200:
+                comments = response.json()
+                return [
+                    {
+                        "id": c.get("id"),
+                        "user": c.get("user", {}).get("login"),
+                        "body": c.get("body"),
+                        "path": c.get("path"),
+                        "created_at": c.get("created_at"),
+                    }
+                    for c in comments
+                ]
+            return []
+
+    async def get_commit_stats(self, owner: str, repo: str, sha: str) -> dict[str, Any] | None:
+        """
+        Get commit statistics including additions and deletions.
+
+        Args:
+            owner: Repository owner.
+            repo: Repository name.
+            sha: Commit SHA.
+
+        Returns:
+            Dict with additions, deletions, and files_changed.
+        """
+        url = f"{self.BASE_URL}/repos/{owner}/{repo}/commits/{sha}"
+
+        async with httpx.AsyncClient() as client:
+            response = await client.get(url, headers=self.headers, timeout=30)
+            if response.status_code == 200:
+                data = response.json()
+                stats = data.get("stats", {})
+                files = data.get("files", [])
+                return {
+                    "additions": stats.get("additions", 0),
+                    "deletions": stats.get("deletions", 0),
+                    "files_changed": len(files),
+                }
+            return None
+
 
 # Singleton instance
 github_service = GitHubService()

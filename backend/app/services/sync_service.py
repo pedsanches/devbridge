@@ -154,11 +154,14 @@ class SyncService:
 
             # Fetch files changed in this commit (Context Enrichment)
             files_touched: list[str] | None = None
+            commit_stats: dict | None = None
             if sha:
                 try:
                     files_touched = await github_service.get_commit_files(owner, name, sha)
+                    # Fetch commit stats for code metrics (ADR-009)
+                    commit_stats = await github_service.get_commit_stats(owner, name, sha)
                 except Exception as e:
-                    print(f"Failed to fetch files for {sha}: {e}")
+                    print(f"Failed to fetch files/stats for {sha}: {e}")
 
             # Auto-tagging mechanism (Phase 2)
             # We construct a temporary dict to pass to the AI service
@@ -180,6 +183,10 @@ class SyncService:
                 occurred_at=occurred_at,
                 files_touched=files_touched,
                 value_tags=value_tags,
+                # Code Metrics (ADR-009)
+                lines_added=commit_stats.get("additions") if commit_stats else None,
+                lines_deleted=commit_stats.get("deletions") if commit_stats else None,
+                files_changed_count=commit_stats.get("files_changed") if commit_stats else None,
             )
 
             activity, created = await activity_service.get_or_create_activity(db, activity_in)
@@ -251,12 +258,24 @@ class SyncService:
                 matches = re.findall(issue_pattern, body, re.IGNORECASE)
                 linked_issues = list(set(matches)) if matches else None
 
+            # Fetch PR details for code metrics (ADR-009)
+            pr_details: dict | None = None
+            merged_at_dt = None
+            try:
+                pr_details = await github_service.get_pr_details(owner, name, pr_number)
+                if pr_details and pr_details.get("merged_at"):
+                    merged_at_str = pr_details["merged_at"]
+                    with suppress(ValueError):
+                        merged_at_dt = datetime.fromisoformat(merged_at_str.replace("Z", "+00:00"))
+            except Exception as e:
+                print(f"Failed to fetch PR details for #{pr_number}: {e}")
+
             # Auto-tagging mechanism (Phase 2)
             temp_activity_dict = {
                 "title": title,
                 "content": content,
                 "labels": labels or [],
-                "files_touched": [],  # We don't fetch PR files yet (future improvement)
+                "files_touched": [],
             }
             value_tags = await ai_service.classify_activity_tags(temp_activity_dict)
 
@@ -271,6 +290,12 @@ class SyncService:
                 labels=labels,
                 linked_issues=linked_issues,
                 value_tags=value_tags,
+                # Code Metrics (ADR-009)
+                lines_added=pr_details.get("additions") if pr_details else None,
+                lines_deleted=pr_details.get("deletions") if pr_details else None,
+                files_changed_count=pr_details.get("changed_files") if pr_details else None,
+                # PR Lifecycle
+                merged_at=merged_at_dt,
             )
 
             activity, created = await activity_service.get_or_create_activity(db, activity_in)

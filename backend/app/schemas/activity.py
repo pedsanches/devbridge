@@ -45,6 +45,14 @@ class ActivityCreate(BaseSchema):
     linked_issues: list[str] | None = None
     # Value Tagging (Phase 2)
     value_tags: list[str] | None = None
+    # Code Metrics (ADR-009)
+    lines_added: int | None = None
+    lines_deleted: int | None = None
+    files_changed_count: int | None = None
+    # PR Lifecycle Timestamps
+    first_review_at: datetime | None = None
+    approved_at: datetime | None = None
+    merged_at: datetime | None = None
 
 
 class ActivityResponse(TimestampSchema):
@@ -64,6 +72,23 @@ class ActivityResponse(TimestampSchema):
     linked_issues: list[str] | None = None
     # Value Tagging (Phase 2)
     value_tags: list[str] | None = None
+    # Code Metrics (ADR-009)
+    lines_added: int | None = None
+    lines_deleted: int | None = None
+    files_changed_count: int | None = None
+    # PR Lifecycle Metrics
+    first_review_at: datetime | None = None
+    approved_at: datetime | None = None
+    merged_at: datetime | None = None
+    pickup_time_hours: float | None = None
+    review_time_hours: float | None = None
+    merge_time_hours: float | None = None
+    cycle_time_hours: float | None = None
+    # Review Quality Metrics
+    review_count: int = 0
+    rework_iterations: int = 0
+    comments_received: int = 0
+    is_reverted: bool = False
 
 
 class ActivityWithUpdate(ActivityResponse):
