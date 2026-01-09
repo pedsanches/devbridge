@@ -58,3 +58,6 @@ class Organization(Base, UUIDMixin, TimestampMixin):
     developer_profiles = relationship(
         "DeveloperProfile", back_populates="organization", cascade="all, delete-orphan"
     )
+    team_metrics = relationship(
+        "TeamMetrics", back_populates="organization", cascade="all, delete-orphan"
+    )

@@ -15,6 +15,7 @@ from app.models.code_review import CodeReview
 from app.models.contributor_stats import ContributorStats
 from app.models.developer_profile import DeveloperProfile
 from app.models.issue import Issue, IssueState
+from app.models.team_metrics import TeamMetrics
 
 logger = logging.getLogger(__name__)
 
@@ -216,3 +217,147 @@ async def get_developer_leaderboard(
     )
     result = await db.execute(query)
     return list(result.scalars().all())
+
+
+def classify_dora_level(
+    deployment_frequency: float,
+    lead_time_hours: float,
+    change_failure_rate: float,
+) -> str:
+    """
+    Classify DORA performance level based on metrics.
+
+    Returns: 'elite', 'high', 'medium', or 'low'
+    """
+    # Elite: Multiple deploys/day, < 1 hour lead time, < 5% failure rate
+    if deployment_frequency >= 1 and lead_time_hours < 1 and change_failure_rate < 0.05:
+        return "elite"
+
+    # High: Weekly-Daily deploys, 1 day - 1 week lead time, 5-10% failure rate
+    if deployment_frequency >= 0.14 and lead_time_hours < 168 and change_failure_rate < 0.10:
+        return "high"
+
+    # Medium: Monthly-Weekly, 1 week - 1 month, 10-15% failure rate
+    if deployment_frequency >= 0.03 and lead_time_hours < 720 and change_failure_rate < 0.15:
+        return "medium"
+
+    return "low"
+
+
+async def calculate_dora_metrics(
+    db: AsyncSession,
+    organization_id: str,
+    period_start: date,
+    period_end: date,
+    team_id: str | None = None,
+) -> "TeamMetrics":
+    """
+    Calculate DORA metrics for a team or organization.
+
+    Args:
+        db: Database session.
+        organization_id: Organization ID.
+        period_start: Start of period.
+        period_end: End of period.
+        team_id: Optional team ID (None = org-wide).
+
+    Returns:
+        TeamMetrics with calculated DORA metrics.
+    """
+    # Check for existing metrics
+    query = select(TeamMetrics).where(
+        TeamMetrics.organization_id == organization_id,
+        TeamMetrics.period_start == period_start,
+    )
+    if team_id:
+        query = query.where(TeamMetrics.team_id == team_id)
+    else:
+        query = query.where(TeamMetrics.team_id.is_(None))
+
+    result = await db.execute(query)
+    metrics = result.scalar_one_or_none()
+
+    if not metrics:
+        metrics = TeamMetrics(
+            organization_id=organization_id,
+            team_id=team_id,
+            period_start=period_start,
+            period_end=period_end,
+        )
+        db.add(metrics)
+
+    # Calculate days in period
+    period_days = (period_end - period_start).days or 1
+
+    # Deployment Frequency: PRs merged to main
+    deploy_query = (
+        select(func.count(Activity.id))
+        .join(Activity.repository)
+        .where(
+            Activity.type == ActivityType.PULL_REQUEST,
+            Activity.merged_at.isnot(None),
+            Activity.merged_at >= period_start,
+            Activity.merged_at < period_end,
+        )
+    )
+    deploy_result = await db.execute(deploy_query)
+    total_deploys = deploy_result.scalar() or 0
+    metrics.deployment_frequency = total_deploys / period_days
+    metrics.total_prs_merged = total_deploys
+
+    # Lead Time: Average cycle time
+    lead_time_query = select(func.avg(Activity.cycle_time_hours)).where(
+        Activity.type == ActivityType.PULL_REQUEST,
+        Activity.merged_at >= period_start,
+        Activity.merged_at < period_end,
+        Activity.cycle_time_hours.isnot(None),
+    )
+    lead_time_result = await db.execute(lead_time_query)
+    metrics.lead_time_hours = lead_time_result.scalar() or 0
+
+    # Change Failure Rate: Reverted PRs / Total
+    reverted_query = select(func.count(Activity.id)).where(
+        Activity.type == ActivityType.PULL_REQUEST,
+        Activity.is_reverted.is_(True),
+        Activity.merged_at >= period_start,
+        Activity.merged_at < period_end,
+    )
+    reverted_result = await db.execute(reverted_query)
+    reverted_count = reverted_result.scalar() or 0
+    metrics.change_failure_rate = reverted_count / total_deploys if total_deploys > 0 else 0
+
+    # Average cycle and pickup times
+    time_query = select(
+        func.avg(Activity.cycle_time_hours),
+        func.avg(Activity.pickup_time_hours),
+        func.avg(Activity.review_time_hours),
+    ).where(
+        Activity.type == ActivityType.PULL_REQUEST,
+        Activity.merged_at >= period_start,
+        Activity.merged_at < period_end,
+    )
+    time_result = await db.execute(time_query)
+    time_row = time_result.one()
+    metrics.avg_cycle_time_hours = time_row[0]
+    metrics.avg_pickup_time_hours = time_row[1]
+    metrics.avg_review_time_hours = time_row[2]
+
+    # Total commits
+    commits_query = select(func.count(Activity.id)).where(
+        Activity.type == ActivityType.COMMIT,
+        Activity.created_at >= period_start,
+        Activity.created_at < period_end,
+    )
+    commits_result = await db.execute(commits_query)
+    metrics.total_commits = commits_result.scalar() or 0
+
+    # Classify DORA level
+    metrics.dora_level = classify_dora_level(
+        metrics.deployment_frequency or 0,
+        metrics.lead_time_hours or 0,
+        metrics.change_failure_rate or 0,
+    )
+
+    await db.commit()
+    await db.refresh(metrics)
+    return metrics

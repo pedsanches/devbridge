@@ -35,3 +35,4 @@ class Team(Base, UUIDMixin, TimestampMixin):
     organization = relationship("Organization", back_populates="teams")
     repositories = relationship("Repository", back_populates="team")
     memberships = relationship("Membership", back_populates="team")
+    team_metrics = relationship("TeamMetrics", back_populates="team", cascade="all, delete-orphan")
