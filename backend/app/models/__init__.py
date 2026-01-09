@@ -3,12 +3,14 @@
 from app.models.activity import Activity, ActivityType, BusinessUpdate, ImpactLevel
 from app.models.base import Base, TimestampMixin, UUIDMixin
 from app.models.code_review import CodeReview, ReviewState
+from app.models.contributor_stats import ContributorStats
 from app.models.conversation import (
     ChatMessage,
     Conversation,
     ConversationStatus,
     MessageRole,
 )
+from app.models.developer_profile import DeveloperProfile
 from app.models.issue import Issue, IssueState
 from app.models.magic_link import MagicLink
 from app.models.membership import MemberRole, Membership
@@ -45,6 +47,8 @@ __all__ = [
     "IssueState",
     "CodeReview",
     "ReviewState",
+    "DeveloperProfile",
+    "ContributorStats",
     # Chat
     "Conversation",
     "ChatMessage",

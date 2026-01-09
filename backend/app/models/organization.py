@@ -55,3 +55,6 @@ class Organization(Base, UUIDMixin, TimestampMixin):
     report_templates = relationship(
         "ReportTemplate", back_populates="organization", cascade="all, delete-orphan"
     )
+    developer_profiles = relationship(
+        "DeveloperProfile", back_populates="organization", cascade="all, delete-orphan"
+    )

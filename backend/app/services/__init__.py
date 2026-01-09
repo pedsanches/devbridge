@@ -7,6 +7,7 @@ from app.services import (
     code_review_service,
     github_service,
     issue_service,
+    metrics_service,
     repository_service,
     webhook_service,
 )
@@ -20,4 +21,5 @@ __all__ = [
     "chat_service",
     "issue_service",
     "code_review_service",
+    "metrics_service",
 ]
