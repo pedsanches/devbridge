@@ -114,24 +114,50 @@ class GitHubService:
                 return dict(response.json())
             return None
 
-    async def list_user_repositories(self, per_page: int = 100) -> list[dict[str, Any]]:
+    async def list_user_repositories(
+        self, per_page: int = 100, max_pages: int = 5
+    ) -> list[dict[str, Any]]:
         """
         List all repositories accessible to the user.
 
+        Fetches multiple pages to get all repositories the user has access to,
+        including owned repos, organization repos, and collaborator repos.
+
         Args:
-           per_page: Number of items per page.
+           per_page: Number of items per page (max 100).
+           max_pages: Maximum number of pages to fetch.
 
         Returns:
             List of repository dicts.
         """
-        url = f"{self.BASE_URL}/user/repos"
-        params = {"per_page": per_page, "sort": "updated", "type": "all"}
+        all_repos: list[dict[str, Any]] = []
 
         async with httpx.AsyncClient() as client:
-            response = await client.get(url, headers=self.headers, params=params, timeout=30)
-            if response.status_code == 200:
-                return response.json()
-            return []
+            for page in range(1, max_pages + 1):
+                url = f"{self.BASE_URL}/user/repos"
+                params = {
+                    "per_page": per_page,
+                    "sort": "updated",
+                    "type": "all",  # owner, collaborator, organization_member
+                    "page": page,
+                }
+
+                response = await client.get(url, headers=self.headers, params=params, timeout=30)
+
+                if response.status_code != 200:
+                    break
+
+                repos = response.json()
+                if not repos:
+                    break  # No more repos
+
+                all_repos.extend(repos)
+
+                # If we got fewer than per_page, we've reached the end
+                if len(repos) < per_page:
+                    break
+
+        return all_repos
 
 
 # Singleton instance

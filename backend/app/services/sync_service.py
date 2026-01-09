@@ -303,6 +303,7 @@ class SyncService:
         self,
         db: AsyncSession,
         organization_id: str,
+        token: str | None = None,
     ) -> int:
         """
         Discover and import all user repositories.
@@ -313,13 +314,18 @@ class SyncService:
         Args:
             db: Database session.
             organization_id: Organization UUID.
+            token: Optional GitHub token. If provided, uses this instead of singleton.
 
         Returns:
             Number of new repositories imported.
         """
         from app.schemas import RepositoryCreate
+        from app.services.github_service import GitHubService
 
-        repos = await github_service.list_user_repositories()
+        # Use provided token or fall back to singleton
+        gh_service = GitHubService(token=token) if token else github_service
+
+        repos = await gh_service.list_user_repositories()
         imported = 0
 
         for repo_data in repos:

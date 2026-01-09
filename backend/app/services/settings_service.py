@@ -38,9 +38,7 @@ async def get_or_create_settings(
         OrganizationSettings instance.
     """
     result = await db.execute(
-        select(OrganizationSettings).where(
-            OrganizationSettings.organization_id == organization_id
-        )
+        select(OrganizationSettings).where(OrganizationSettings.organization_id == organization_id)
     )
     settings = result.scalar_one_or_none()
 
@@ -82,17 +80,23 @@ async def get_integrations_status(
     )
     repos_count = repo_count_result.scalar() or 0
 
-    github_status = IntegrationStatus.CONNECTED if settings.is_github_connected else IntegrationStatus.DISCONNECTED
+    github_status = (
+        IntegrationStatus.CONNECTED
+        if settings.is_github_connected
+        else IntegrationStatus.DISCONNECTED
+    )
 
     return IntegrationsResponse(
         github=GitHubIntegration(
             status=github_status,
             connected_at=settings.updated_at if settings.is_github_connected else None,
             repositories_count=repos_count,
-            organization_name=None, 
+            organization_name=None,
         ),
         slack=SlackIntegration(
-            status=IntegrationStatus.CONNECTED if settings.slack_webhook_url else IntegrationStatus.DISCONNECTED,
+            status=IntegrationStatus.CONNECTED
+            if settings.slack_webhook_url
+            else IntegrationStatus.DISCONNECTED,
             connected_at=settings.updated_at if settings.slack_webhook_url else None,
         ),
     )
@@ -153,11 +157,9 @@ async def connect_github(
     # We do this inline for MVP simplicity. In production, this should be a background task.
     try:
         from app.services.sync_service import sync_service
-        # Re-initialize sync service with the fresh token
-        sync_service.token = token
-        sync_service.headers["Authorization"] = f"Bearer {token}"
-        
-        await sync_service.discover_user_repositories(db, organization_id)
+
+        # Pass the user's token to discover ALL accessible repos
+        await sync_service.discover_user_repositories(db, organization_id, token=token)
     except Exception as e:
         # Don't fail the connection if sync fails, just log it
         print(f"Failed to auto-discover repositories: {e}")
@@ -226,9 +228,11 @@ async def get_data_sources(
 
     # Get repositories with activity counts
     result = await db.execute(
-        select(Repository).where(
+        select(Repository)
+        .where(
             Repository.organization_id == organization_id,
-        ).order_by(Repository.created_at.desc())
+        )
+        .order_by(Repository.created_at.desc())
     )
     repositories = list(result.scalars().all())
 
