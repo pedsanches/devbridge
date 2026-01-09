@@ -548,6 +548,139 @@ Respond with ONLY valid JSON. Example:
                 "category": None,
             }
 
+    async def analyze_developer_strengths(self, activities: list[dict]) -> list[str]:
+        """
+        Identify developer strength tags based on their activity patterns.
+
+        Args:
+            activities: List of activity dicts (title, labels, files_touched, etc).
+
+        Returns:
+            List of strength tags (e.g. ["frontend", "testing", "security"]).
+        """
+        if not self.client or not activities:
+            return []
+
+        # Summarize context
+        files_counter: dict[str, int] = {}
+        labels_counter: dict[str, int] = {}
+        for act in activities[:50]:  # Analyze last 50 activities
+            for f in act.get("files_touched", []) or []:
+                ext = f.split(".")[-1] if "." in f else "unknown"
+                files_counter[ext] = files_counter.get(ext, 0) + 1
+            for label in act.get("labels", []) or []:
+                labels_counter[label] = labels_counter.get(label, 0) + 1
+
+        prompt = f"""Analyze this developer's activity patterns and identify their top 3 technical strengths/Areas of Expertise.
+
+DATA:
+- Top File Extensions: {str(dict(sorted(files_counter.items(), key=lambda x: x[1], reverse=True)[:5]))}
+- Top Labels: {str(dict(sorted(labels_counter.items(), key=lambda x: x[1], reverse=True)[:5]))}
+- Sample Activity Titles: {[a.get('title') for a in activities[:5]]}
+
+Return ONLY a JSON array of strings (max 3 tags). Example: ["frontend", "python", "devops"]"""
+
+        try:
+            response = self.client.chat.completions.create(
+                model=self.model,
+                messages=[{"role": "user", "content": prompt}],
+                max_tokens=50,
+                temperature=0.3,
+            )
+            import json
+
+            result = response.choices[0].message.content or "[]"
+            tags = json.loads(result.strip())
+            return tags if isinstance(tags, list) else []
+        except Exception:
+            return []
+
+    async def calculate_collaboration_score(
+        self, reviews_given: int, reviews_received: int, review_quality: float
+    ) -> float:
+        """
+        Calculate a collaboration score (0-100) for a developer using AI reasoning.
+        """
+        if not self.client:
+            # Fallback algorithmic calculation
+            score = min((reviews_given * 5) + (reviews_received * 2) + (review_quality * 20), 100)
+            return float(score)
+
+        prompt = f"""Calculate a Collaboration Score (0-100) for a developer based on:
+- Reviews Given: {reviews_given}
+- Reviews Received: {reviews_received}
+- Avg Review Quality Score (0-5 scale): {review_quality}
+
+Consider that giving reviews is highly valuable.
+Return ONLY the number (integer)."""
+
+        try:
+            response = self.client.chat.completions.create(
+                model=self.model,
+                messages=[{"role": "user", "content": prompt}],
+                max_tokens=10,
+                temperature=0.0,
+            )
+            result = response.choices[0].message.content or "0"
+            # Extract number
+            import re
+
+            match = re.search(r"\d+", result)
+            return float(match.group()) if match else 0.0
+        except Exception:
+            return 0.0
+
+    async def estimate_complexity_score(self, diff: str, files_touched: list[str]) -> float:
+        """
+        Estimate the complexity of a code change (0-100) using AI analysis.
+        """
+        if not self.client:
+            return 10.0  # Default low complexity
+
+        prompt = f"""Estimate the technical complexity (0-100) of this code change.
+Files: {files_touched}
+Diff Preview:
+{diff[:1000]}
+
+Return ONLY the number (integer)."""
+
+        try:
+            response = self.client.chat.completions.create(
+                model=self.model,
+                messages=[{"role": "user", "content": prompt}],
+                max_tokens=10,
+                temperature=0.0,
+            )
+            result = response.choices[0].message.content or "10"
+            import re
+
+            match = re.search(r"\d+", result)
+            return float(match.group()) if match else 10.0
+        except Exception:
+            return 10.0
+
+    async def generate_developer_summary(self, profile_data: dict[str, Any]) -> str:
+        """
+        Generate a natural language summary of a developer's contributions.
+        """
+        if not self.client:
+            return "Summary unavailable."
+
+        prompt = f"""Generate a 2-sentence professional summary of this developer's contributions.
+Profile Data: {str(profile_data)}
+Language: Portuguese (BR)"""
+
+        try:
+            response = self.client.chat.completions.create(
+                model=self.model,
+                messages=[{"role": "user", "content": prompt}],
+                max_tokens=100,
+                temperature=0.5,
+            )
+            return response.choices[0].message.content or "Resumo indisponível."
+        except Exception:
+            return "Resumo indisponível."
+
 
 # Singleton instance
 ai_service = AIService()

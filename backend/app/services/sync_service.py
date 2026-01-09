@@ -8,7 +8,7 @@ Fetches commits and PRs from GitHub API and creates Activities.
 import logging
 import re
 from contextlib import suppress
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Any
 
 import httpx
@@ -16,6 +16,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
 from app.schemas import ActivityCreate, ActivityType, BusinessUpdateCreate, ImpactLevel
+from app.schemas.code_review import ReviewState
 from app.schemas.issue import IssueCreate, IssueState
 from app.services import activity_service, repository_service
 from app.services.ai_service import ai_service
@@ -422,6 +423,100 @@ class SyncService:
                 issues_synced += 1
 
         return issues_synced
+
+    async def sync_pr_reviews(
+        self,
+        db: AsyncSession,
+        repo_name: str,
+        pr_number: int,
+        token: str | None = None,
+        organization_id: str | None = None,
+    ) -> int:
+        """Sync reviews for a specific PR."""
+        from app.services import code_review_service
+
+        owner, name = repo_name.split("/")
+        gh_service = github_service
+        if token:
+            from app.services.github_service import GitHubService
+
+            gh_service = GitHubService(token)
+
+        # Get Repository to ensure we have the ID validation (and for activity fetch)
+        if not organization_id:
+            logger.warning("No organization_id for sync_pr_reviews")
+            return 0
+
+        repo = await repository_service.get_repository_by_name(db, organization_id, repo_name)
+        if not repo:
+            return 0
+
+        # Get Activity (PR)
+        activity = await activity_service.get_activity_by_external_id(db, repo.id, str(pr_number))
+        if not activity:
+            return 0
+
+        reviews = await gh_service.get_pr_reviews(owner, name, pr_number)
+        synced_count = 0
+
+        for review_data in reviews:
+            # Parse timestamp
+            submitted_at = datetime.now()
+            if review_data.get("submitted_at"):
+                with suppress(ValueError):
+                    submitted_at = datetime.fromisoformat(
+                        review_data["submitted_at"].replace("Z", "+00:00")
+                    )
+
+            review_in = code_review_service.CodeReviewCreate(
+                activity_id=activity.id,
+                review_id=review_data.get("id", 0),
+                reviewer=review_data.get("user", {}).get("login", "unknown"),
+                state=ReviewState(review_data.get("state", "PENDING")),
+                body=review_data.get("body"),
+                submitted_at=submitted_at,
+                comments_count=0,  # Could fetch comments separately if needed
+            )
+
+            _, created = await code_review_service.get_or_create_review(db, review_in)
+            if created:
+                synced_count += 1
+
+        return synced_count
+
+    async def sync_contributor_stats(
+        self,
+        db: AsyncSession,
+        repo_name: str,
+        _token: str | None = None,
+        organization_id: str | None = None,
+    ) -> int:
+        """Sync weekly contributor statistics."""
+        # Note: This syncs RAW stats from GitHub.
+        # Ideally we use our own metrics_service.update_weekly_contributor_stats
+        # which calculates from Activity implementation.
+        # But this method exists to pull historical data if needed.
+        # For now, we'll implement it as a wrapper to metrics calculation
+        # using our own data to ensure consistency with our new models.
+
+        from app.services import metrics_service
+
+        org_id = organization_id
+        if not org_id:
+            return 0
+
+        repo = await repository_service.get_repository_by_name(db, org_id, repo_name)
+        if not repo:
+            return 0
+
+        # Calculate stats for the current week based on local data
+        today = datetime.now().date()
+        week_start = today - timedelta(days=today.weekday())
+
+        # We can also backfill previous weeks if needed, but let's start with current
+        # token is unused here as we use DB activity data
+        await metrics_service.update_weekly_contributor_stats(db, str(repo.id), week_start)
+        return 1
 
     async def discover_user_repositories(
         self,
