@@ -8,6 +8,7 @@ from app.models.conversation import (
     ConversationStatus,
     MessageRole,
 )
+from app.models.issue import Issue, IssueState
 from app.models.magic_link import MagicLink
 from app.models.membership import MemberRole, Membership
 from app.models.organization import Organization, PlanType
@@ -39,6 +40,8 @@ __all__ = [
     "BusinessUpdate",
     "ActivityType",
     "ImpactLevel",
+    "Issue",
+    "IssueState",
     # Chat
     "Conversation",
     "ChatMessage",

@@ -16,6 +16,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
 from app.schemas import ActivityCreate, ActivityType, BusinessUpdateCreate, ImpactLevel
+from app.schemas.issue import IssueCreate, IssueState
 from app.services import activity_service, repository_service
 from app.services.ai_service import ai_service
 from app.services.github_service import github_service
@@ -323,6 +324,104 @@ class SyncService:
                     logger.warning(f"Failed to generate business update for PR #{pr_number}: {e}")
 
         return {"commits_synced": commits_synced, "prs_synced": prs_synced}
+
+    async def sync_issues(
+        self,
+        db: AsyncSession,
+        repo_name: str,
+        max_issues: int = 100,
+        token: str | None = None,
+        organization_id: str | None = None,
+    ) -> int:
+        """
+        Sync repository issues to database.
+
+        Args:
+            db: Database session.
+            repo_name: Repository name (owner/repo).
+            max_issues: Maximum issues to fetch.
+            token: Optional GitHub token.
+            organization_id: Organization ID.
+
+        Returns:
+            Number of issues synced.
+        """
+        from app.services import issue_service
+
+        # Get or validate repository
+        owner, name = repo_name.split("/")
+
+        # Get repository from database
+        org_id = organization_id
+        if not org_id:
+            logger.warning("No organization_id for sync_issues")
+            return 0
+
+        repo = await repository_service.get_repository_by_name(db, org_id, repo_name)
+        if not repo:
+            logger.warning(f"Repository {repo_name} not found")
+            return 0
+
+        # Use provided token or instance token
+        gh_service = github_service
+        if token:
+            from app.services.github_service import GitHubService
+
+            gh_service = GitHubService(token)
+
+        # Fetch issues from GitHub
+        issues = await gh_service.fetch_issues(owner, name, state="all", per_page=max_issues)
+        issues_synced = 0
+
+        for issue_data in issues:
+            issue_number = issue_data.get("number")
+            if not issue_number:
+                continue
+
+            # Parse timestamps
+            opened_at = None
+            closed_at = None
+            created_at_str = issue_data.get("created_at")
+            closed_at_str = issue_data.get("closed_at")
+
+            if created_at_str:
+                with suppress(ValueError):
+                    opened_at = datetime.fromisoformat(created_at_str.replace("Z", "+00:00"))
+
+            if closed_at_str:
+                with suppress(ValueError):
+                    closed_at = datetime.fromisoformat(closed_at_str.replace("Z", "+00:00"))
+
+            # Calculate time to close
+            time_to_close_hours = None
+            if opened_at and closed_at:
+                delta = closed_at - opened_at
+                time_to_close_hours = delta.total_seconds() / 3600
+
+            state_str = issue_data.get("state", "open")
+            issue_state = IssueState.CLOSED if state_str == "closed" else IssueState.OPEN
+
+            issue_create = IssueCreate(
+                repository_id=repo.id,
+                issue_number=issue_number,
+                title=issue_data.get("title", "")[:500],
+                body=issue_data.get("body"),
+                state=issue_state,
+                author=issue_data.get("author", "unknown"),
+                assignees=issue_data.get("assignees"),
+                labels=issue_data.get("labels"),
+                milestone=issue_data.get("milestone"),
+                opened_at=opened_at or datetime.now(),
+                closed_at=closed_at,
+                closed_by=issue_data.get("closed_by"),
+                time_to_close_hours=time_to_close_hours,
+            )
+
+            _, created = await issue_service.get_or_create_issue(db, issue_create)
+            if created:
+                issues_synced += 1
+
+        return issues_synced
 
     async def discover_user_repositories(
         self,

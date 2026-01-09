@@ -159,6 +159,52 @@ class GitHubService:
 
         return all_repos
 
+    async def fetch_issues(
+        self, owner: str, repo: str, state: str = "all", per_page: int = 100
+    ) -> list[dict[str, Any]]:
+        """
+        Fetch repository issues.
+
+        Args:
+            owner: Repository owner.
+            repo: Repository name.
+            state: Issue state filter (open, closed, all).
+            per_page: Number of issues per page.
+
+        Returns:
+            List of issue dicts with number, title, body, state, etc.
+        """
+        url = f"{self.BASE_URL}/repos/{owner}/{repo}/issues"
+        params = {"state": state, "per_page": per_page, "filter": "all"}
+
+        async with httpx.AsyncClient() as client:
+            response = await client.get(url, headers=self.headers, params=params, timeout=30)
+            if response.status_code == 200:
+                issues = response.json()
+                # Filter out pull requests (GitHub API returns PRs in issues endpoint)
+                return [
+                    {
+                        "number": i.get("number"),
+                        "title": i.get("title"),
+                        "body": i.get("body"),
+                        "state": i.get("state"),
+                        "author": i.get("user", {}).get("login"),
+                        "assignees": [a.get("login") for a in i.get("assignees", [])],
+                        "labels": [label.get("name") for label in i.get("labels", [])],
+                        "milestone": i.get("milestone", {}).get("title")
+                        if i.get("milestone")
+                        else None,
+                        "created_at": i.get("created_at"),
+                        "closed_at": i.get("closed_at"),
+                        "closed_by": i.get("closed_by", {}).get("login")
+                        if i.get("closed_by")
+                        else None,
+                    }
+                    for i in issues
+                    if "pull_request" not in i  # Filter out PRs
+                ]
+            return []
+
     async def get_pr_details(self, owner: str, repo: str, pr_number: int) -> dict[str, Any] | None:
         """
         Get detailed PR information including file stats and merge info.

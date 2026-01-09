@@ -44,3 +44,4 @@ class Repository(Base, UUIDMixin, TimestampMixin):
     organization = relationship("Organization", back_populates="repositories")
     team = relationship("Team", back_populates="repositories")
     activities = relationship("Activity", back_populates="repository", cascade="all, delete-orphan")
+    issues = relationship("Issue", back_populates="repository", cascade="all, delete-orphan")
