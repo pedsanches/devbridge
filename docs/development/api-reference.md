@@ -263,6 +263,47 @@ Recebe eventos do GitHub.
 
 ---
 
+---
+
+## Reports
+
+### `POST /reports`
+Gera um novo relatório.
+
+### `GET /reports`
+Lista relatórios gerados.
+
+### `POST /report-templates`
+Cria um novo template de relatório.
+
+### `GET /report-templates`
+Lista templates disponíveis.
+
+---
+
+## Sync
+
+### `POST /sync/repos/:id`
+Força a sincronização de um repositório.
+
+### `POST /sync/issues/:repo_id`
+Sincroniza issues de um repositório.
+
+### `POST /sync/reviews/:repo_id`
+Sincroniza code reviews de um repositório.
+
+---
+
+## Settings
+
+### `GET /settings`
+Obtém configurações da organização.
+
+### `PUT /settings`
+Atualiza configurações.
+
+---
+
 ## Traduções
 
 ### `GET /translations`

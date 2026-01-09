@@ -217,6 +217,18 @@ export async function disconnectGitHub(): Promise<void> {
     await fetchAPI("/settings/github/disconnect", { method: "POST" });
 }
 
+export interface RefreshRepositoriesResponse {
+    status: string;
+    repositories_discovered: number;
+    message: string;
+}
+
+export async function refreshGitHubRepositories(): Promise<RefreshRepositoriesResponse> {
+    return fetchAPI<RefreshRepositoriesResponse>("/settings/github/refresh", {
+        method: "POST",
+    });
+}
+
 export async function getDataSources(): Promise<DataSourcesResponse> {
     return fetchAPI<DataSourcesResponse>("/settings/data-sources");
 }

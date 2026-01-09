@@ -22,8 +22,8 @@ export function RepositorySelector({ selectedRepos, onChange, disabled }: Reposi
             setIsLoading(true);
             try {
                 const data = await getDataSources();
-                // Filter only active repos? Or all? Let's show all for now.
-                setRepos(data.sources.filter(s => s.is_active));
+                // Filter only repos that have been synced (have activities)
+                setRepos(data.sources.filter(s => s.is_active && s.activities_count > 0));
             } catch (e) {
                 console.error("Failed to load sources", e);
             } finally {

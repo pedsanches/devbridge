@@ -5,6 +5,7 @@ API for organization settings and data source integrations.
 """
 
 from fastapi import APIRouter, HTTPException
+from pydantic import BaseModel
 
 from app.api.deps import CurrentOrgId, CurrentUserRequired, DbSession
 from app.schemas.settings import (
@@ -88,6 +89,47 @@ async def disconnect_github(
         _current_user: Authenticated user.
     """
     await settings_service.disconnect_github(db, org_id)
+
+
+class RefreshRepositoriesResponse(BaseModel):
+    """Response from refresh repositories operation."""
+
+    status: str
+    repositories_discovered: int
+    message: str
+
+
+@router.post("/github/refresh", response_model=RefreshRepositoriesResponse)
+async def refresh_repositories(
+    db: DbSession,
+    org_id: CurrentOrgId,
+    _current_user: CurrentUserRequired,
+) -> RefreshRepositoriesResponse:
+    """
+    Refresh/rediscover GitHub repositories.
+
+    Uses the existing stored token to fetch all accessible repositories
+    and adds any new ones that weren't previously discovered.
+    Existing repositories and their activities are not affected.
+
+    Args:
+        db: Database session.
+        org_id: Current organization context.
+        _current_user: Authenticated user.
+
+    Returns:
+        Number of new repositories discovered.
+    """
+    result = await settings_service.refresh_repositories(db, org_id)
+
+    if result["status"] == "error":
+        raise HTTPException(status_code=400, detail=result["message"])
+
+    return RefreshRepositoriesResponse(
+        status=str(result["status"]),
+        repositories_discovered=int(result["count"]),
+        message=str(result["message"]),
+    )
 
 
 @router.get("/data-sources", response_model=DataSourcesResponse)

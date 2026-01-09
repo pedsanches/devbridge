@@ -210,6 +210,54 @@ async def get_github_token(
     return decrypt_token(settings.github_token_encrypted)
 
 
+async def refresh_repositories(
+    db: AsyncSession,
+    organization_id: str,
+) -> dict[str, str | int]:
+    """
+    Refresh/rediscover GitHub repositories using stored token.
+
+    Fetches all accessible repositories from GitHub and adds any new ones.
+    Existing repositories and their activities are not affected.
+
+    Args:
+        db: Database session.
+        organization_id: Organization UUID.
+
+    Returns:
+        Dict with status, count, and message.
+    """
+    # Get stored token
+    token = await get_github_token(db, organization_id)
+
+    if not token:
+        return {
+            "status": "error",
+            "count": 0,
+            "message": "GitHub not connected. Please connect first.",
+        }
+
+    # Rediscover repositories
+    try:
+        from app.services.sync_service import sync_service
+
+        count = await sync_service.discover_user_repositories(db, organization_id, token=token)
+
+        await db.commit()
+
+        return {
+            "status": "success",
+            "count": count,
+            "message": f"Discovered {count} new repositories.",
+        }
+    except Exception as e:
+        return {
+            "status": "error",
+            "count": 0,
+            "message": f"Failed to refresh: {e!s}",
+        }
+
+
 async def get_data_sources(
     db: AsyncSession,
     organization_id: str,
