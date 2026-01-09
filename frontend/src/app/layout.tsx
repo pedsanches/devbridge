@@ -2,8 +2,9 @@ import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "@/hooks/use-auth";
-import { GlobalHeader } from "@/components/layout/GlobalHeader";
+import { AppLayout } from "@/components/layout/AppLayout";
 import { ThemeProvider } from "@/components/layout/ThemeProvider";
+import { OnboardingProvider } from "@/components/onboarding";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -22,8 +23,9 @@ export default function RootLayout({
             <body className={inter.className} suppressHydrationWarning>
                 <ThemeProvider>
                     <AuthProvider>
-                        <GlobalHeader />
-                        {children}
+                        <OnboardingProvider>
+                            <AppLayout>{children}</AppLayout>
+                        </OnboardingProvider>
                     </AuthProvider>
                 </ThemeProvider>
             </body>
