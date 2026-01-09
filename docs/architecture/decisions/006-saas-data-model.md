@@ -187,6 +187,119 @@ class OrganizationSettings(Base, UUIDMixin, TimestampMixin):
     organization = relationship("Organization", back_populates="settings")
 ```
 
+#### 6. Issue
+Rastreamento de tarefas e bugs.
+
+```python
+class IssueState(str, enum.Enum):
+    OPEN = "open"
+    CLOSED = "closed"
+
+class Issue(Base, UUIDMixin, TimestampMixin):
+    __tablename__ = "issues"
+
+    repository_id = Column(UUID, ForeignKey("repositories.id"), nullable=False, index=True)
+    issue_number = Column(Integer, nullable=False)
+    title = Column(String(500), nullable=False)
+    body = Column(Text, nullable=True)
+    state = Column(Enum(IssueState), nullable=False)
+    author = Column(String(255), nullable=False)
+    assignees = Column(ARRAY(String), nullable=True)
+    labels = Column(ARRAY(String), nullable=True)
+    milestone = Column(String(255), nullable=True)
+    opened_at = Column(DateTime(timezone=True), nullable=False)
+    closed_at = Column(DateTime(timezone=True), nullable=True)
+    closed_by = Column(String(255), nullable=True)
+
+    # Metrics
+    time_to_close_hours = Column(Float, nullable=True)
+    linked_pr_numbers = Column(ARRAY(Integer), nullable=True)
+
+    __table_args__ = (
+        UniqueConstraint("repository_id", "issue_number", name="uq_issue_repo_number"),
+    )
+```
+
+#### 7. CodeReview
+Rastreamento de qualidade de revisão de código.
+
+```python
+class ReviewState(str, enum.Enum):
+    APPROVED = "APPROVED"
+    CHANGES_REQUESTED = "CHANGES_REQUESTED"
+    COMMENTED = "COMMENTED"
+    PENDING = "PENDING"
+    DISMISSED = "DISMISSED"
+
+class CodeReview(Base, UUIDMixin, TimestampMixin):
+    __tablename__ = "code_reviews"
+
+    activity_id = Column(UUID, ForeignKey("activities.id"), nullable=False, index=True)
+    reviewer = Column(String(255), nullable=False)
+    state = Column(Enum(ReviewState), nullable=False)
+    body = Column(Text, nullable=True)
+    submitted_at = Column(DateTime(timezone=True), nullable=False)
+
+    # Metrics
+    comments_count = Column(Integer, default=0)
+```
+
+#### 8. DeveloperProfile
+Métricas agregadas por desenvolvedor.
+
+```python
+class DeveloperProfile(Base, UUIDMixin, TimestampMixin):
+    __tablename__ = "developer_profiles"
+
+    organization_id = Column(UUID, ForeignKey("organizations.id"), nullable=False)
+    github_username = Column(String(255), nullable=False)
+
+    # Aggregated Metrics
+    total_commits = Column(Integer, default=0)
+    total_prs_created = Column(Integer, default=0)
+    total_prs_merged = Column(Integer, default=0)
+    total_reviews_given = Column(Integer, default=0)
+    total_issues_closed = Column(Integer, default=0)
+    total_lines_added = Column(BigInteger, default=0)
+    total_lines_deleted = Column(BigInteger, default=0)
+
+    # Averages
+    avg_review_time_hours = Column(Float, nullable=True)
+    avg_pr_merge_time_hours = Column(Float, nullable=True)
+
+    # AI Insights
+    strength_tags = Column(ARRAY(String), nullable=True)
+    collaboration_score = Column(Float, nullable=True)
+
+    __table_args__ = (
+        UniqueConstraint("organization_id", "github_username", name="uq_dev_org_username"),
+    )
+```
+
+#### 9. TeamMetrics (DORA)
+Métricas de time agregadas por período.
+
+```python
+class TeamMetrics(Base, UUIDMixin, TimestampMixin):
+    __tablename__ = "team_metrics"
+
+    organization_id = Column(UUID, ForeignKey("organizations.id"), nullable=False)
+    team_id = Column(UUID, ForeignKey("teams.id"), nullable=True)
+    period_start = Column(Date, nullable=False)
+    period_end = Column(Date, nullable=False)
+
+    # DORA Metrics
+    deployment_frequency = Column(Float, nullable=True)
+    lead_time_hours = Column(Float, nullable=True)
+    change_failure_rate = Column(Float, nullable=True)
+    mttr_hours = Column(Float, nullable=True)
+    dora_level = Column(String(20), nullable=True)
+
+    __table_args__ = (
+        UniqueConstraint("organization_id", "team_id", "period_start", name="uq_team_metrics"),
+    )
+```
+
 ### Alterações em Entidades Existentes
 
 #### Repository (adicionar FK para Organization)

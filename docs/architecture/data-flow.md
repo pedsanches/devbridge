@@ -15,27 +15,30 @@ sequenceDiagram
     participant AGENT as LangGraph
     participant PG as PostgreSQL
     participant QD as Qdrant
-    
-    GH->>API: Webhook (push/PR)
+
+    GH->>API: Webhook (push/PR/review/issue)
     API->>API: Valida HMAC signature
     API->>REDIS: Enfileira task
     API-->>GH: 200 OK
-    
+
     REDIS->>WORKER: Dequeue task
-    WORKER->>GH: Busca diff completo
+    WORKER->>GH: Busca detalhes (diff, reviews, stats)
     WORKER->>AST: Parse código alterado
     AST-->>WORKER: Estrutura AST
-    
+
     WORKER->>PII: Sanitiza conteúdo
     PII-->>WORKER: Conteúdo limpo
-    
+
+    WORKER->>METRICS: Calcula métricas (DORA/SPACE)
+    METRICS-->>WORKER: Métricas atualizadas
+
     WORKER->>AGENT: Processa com contexto
     AGENT->>AGENT: Nó 1: Análise Técnica
     AGENT->>AGENT: Nó 2: Mapeamento de Negócio
     AGENT->>AGENT: Nó 3: Auditoria de Qualidade
     AGENT-->>WORKER: BusinessTranslation (JSON)
-    
-    WORKER->>PG: Salva metadados
+
+    WORKER->>PG: Salva metadados e métricas
     WORKER->>QD: Salva embeddings
 ```
 
@@ -50,14 +53,14 @@ async def receive_webhook(
     x_hub_signature_256: str = Header()
 ):
     payload = await request.body()
-    
+
     # Valida assinatura HMAC
     if not verify_signature(payload, x_hub_signature_256):
         raise HTTPException(401)
-    
+
     # Enfileira para processamento async
     task_id = process_github_event.delay(payload)
-    
+
     return {"status": "queued", "task_id": task_id}
 ```
 
@@ -128,18 +131,18 @@ sequenceDiagram
     participant ROUTER as Query Router
     participant QD as Qdrant
     participant LLM as Claude 3.5
-    
+
     USER->>UI: "O que o time fez essa semana?"
     UI->>API: POST /api/chat
     API->>ROUTER: Classifica intenção
     ROUTER-->>API: tipo: weekly_summary
-    
+
     API->>QD: Busca semântica + filtro temporal
     QD-->>API: Top 20 commits/PRs
-    
+
     API->>LLM: Prompt + contexto
     LLM-->>API: Streaming response
-    
+
     API-->>UI: SSE chunks
     UI-->>USER: Resposta formatada
 ```

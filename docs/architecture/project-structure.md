@@ -97,8 +97,16 @@ backend/
 │   │
 │   ├── models/              # SQLAlchemy models
 │   │   ├── __init__.py
+│   │   ├── __init__.py
 │   │   ├── base.py          # Base class
 │   │   ├── repository.py
+│   │   ├── activity.py
+│   │   ├── business_update.py
+│   │   ├── issue.py         # [NEW] Issue tracking
+│   │   ├── code_review.py   # [NEW] PR reviews
+│   │   ├── developer_profile.py # [NEW] Dev metrics
+│   │   ├── contributor_stats.py # [NEW] Weekly stats
+│   │   ├── team_metrics.py  # [NEW] DORA metrics
 │   │   ├── commit.py
 │   │   ├── translation.py
 │   │   └── user.py
@@ -106,15 +114,24 @@ backend/
 │   ├── schemas/             # Pydantic schemas (request/response)
 │   │   ├── __init__.py
 │   │   ├── repository.py
-│   │   ├── commit.py
+│   │   ├── activity.py
+│   │   ├── business_update.py
+│   │   ├── issue.py
+│   │   ├── code_review.py
 │   │   ├── translation.py
-│   │   └── common.py        # Schemas compartilhados
+│   │   └── common.py
 │   │
 │   ├── services/            # Business logic
 │   │   ├── __init__.py
 │   │   ├── webhook_service.py
-│   │   ├── translation_service.py
+│   │   ├── activity_service.py
 │   │   ├── github_service.py
+│   │   ├── sync_service.py
+│   │   ├── ai_service.py
+│   │   ├── metrics_service.py      # [NEW] DORA/SPACE calc
+│   │   ├── issue_service.py        # [NEW] Issue logic
+│   │   ├── code_review_service.py  # [NEW] Review logic
+│   │   ├── translation_service.py
 │   │   └── slack_service.py
 │   │
 │   ├── agents/              # LangGraph agents

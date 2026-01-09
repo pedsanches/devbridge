@@ -65,6 +65,13 @@ Geração automática de **análises de impacto de negócio** para cada atividad
 - Tradução automática de commits para linguagem de negócio
 - Integrado ao processo de sync
 
+### Métricas de Time e Desenvolvedor
+Rastreamento avançado de produtividade e qualidade ([ADR-009](architecture/decisions/009-developer-effort-tracking.md)):
+- **DORA Metrics**: Deployment Frequency, Lead Time, Change Failure Rate, MTTR.
+- **SPACE Framework**: Análise holística de produtividade.
+- **Developer Profiles**: Insights individuais, tags de força técnica e colaboração.
+- **Ciclo de Vida de PR**: Métricas detalhadas de review, merge e qualidade.
+
 ## 🔌 Integrações
 
 | Integração | Descrição |

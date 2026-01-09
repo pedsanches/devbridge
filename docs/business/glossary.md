@@ -45,6 +45,9 @@ Arquivo de configuração na raiz do repositório monitorado que define métrica
 ### Diff
 Diferença entre duas versões de código, geralmente entre commits ou branches.
 
+### DORA (DevOps Research and Assessment)
+Framework de métricas focado em velocidade (Deployment Frequency, Lead Time) e estabilidade (Change Failure Rate, MTTR) de times de software.
+
 ---
 
 ## E
@@ -73,8 +76,18 @@ Biblioteca Python que força LLMs a retornarem objetos Pydantic validados, garan
 ### LangGraph
 Framework de orquestração de AI que permite fluxos cíclicos e controle de estado. Usado para o pipeline de tradução.
 
+### Lead Time for Changes
+Métrica DORA que mede o tempo desde o primeiro commit até o deploy em produção (ou merge na master).
+
 ### LLM (Large Language Model)
 Modelo de linguagem de grande escala. DevBridge usa Claude 3.5 Sonnet da Anthropic.
+
+---
+
+## M
+
+### MTTR (Mean Time To Recovery)
+Métrica DORA que mede o tempo médio necessário para restaurar o serviço após uma falha em produção.
 
 ---
 
@@ -109,6 +122,9 @@ Técnica que combina recuperação de informações com geração de texto. DevB
 ---
 
 ## S
+
+### SPACE Framework
+Framework holístico para medir produtividade de desenvolvedores considerando: Satisfaction, Performance, Activity, Communication, e Efficiency.
 
 ### Stakeholder
 Pessoa interessada no progresso técnico mas sem background técnico profundo (ex: PM, Product, C-Level).

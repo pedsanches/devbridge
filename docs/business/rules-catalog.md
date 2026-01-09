@@ -163,11 +163,48 @@ Cada regra segue o padrão:
 
 ---
 
+## Regras de Métricas e Performance
+
+### BR-050: Validação DORA
+| Campo | Valor |
+|-------|-------|
+| **Regra** | Métricas DORA (Deployment Frequency, Lead Time, etc.) devem ser calculadas apenas para PRs mergados na branch principal (`main`/`master`). |
+| **Justificativa** | Padronização com benchmark da indústria |
+| **Módulo** | `services/metrics` |
+| **Prioridade** | High |
+
+### BR-051: Limiar de Review Superficial
+| Campo | Valor |
+|-------|-------|
+| **Regra** | Reviews sem comentários ou com menos de 3 minutos entre abertura e aprovação são classificados como "Rubber Stamp" (Superficial). |
+| **Justificativa** | Garantir qualidade do code review |
+| **Módulo** | `services/metrics` |
+| **Prioridade** | Medium |
+
+### BR-052: Issue Tracking Consistente
+| Campo | Valor |
+|-------|-------|
+| **Regra** | Issues sem data de fechamento (`closed_at` null) são consideradas "Abertas" para cálculo de WIP (Work In Progress), independente de labels. |
+| **Justificativa** | Consistência no cálculo de métricas de fluxo |
+| **Módulo** | `services/issue` |
+| **Prioridade** | Low |
+
+### BR-053: Agregação Semanal de Stats
+| Campo | Valor |
+|-------|-------|
+| **Regra** | Estatísticas de contribuidores (SPACE-Activity) devem ser agregadas semanalmente (segunda a domingo) para evitar flutuações diárias ruidosas. |
+| **Justificativa** | Análise de tendência mais estável |
+| **Módulo** | `services/metrics` |
+| **Prioridade** | Low |
+
+---
+
 ## Versionamento deste Documento
 
 | Versão | Data | Autor | Mudanças |
 |--------|------|-------|----------|
 | 1.0 | 2025-01-01 | Pedro | Criação inicial |
+| 1.1 | 2026-01-09 | Antigravity | Adição de Regras de Métricas (BR-050 a BR-053) |
 
 ## Como Adicionar Novas Regras
 
