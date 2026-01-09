@@ -8,6 +8,8 @@ import { Loader2 } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { ActivityFeed } from "@/components/dashboard/ActivityFeed";
 import { RepoStatusWidget } from "@/components/dashboard/RepoStatusWidget";
+import { MetricsBar } from "@/components/dashboard/MetricsBar";
+import { QuickChatInput } from "@/components/dashboard/QuickChatInput";
 
 // Copied interface to match ActivityFeed expectation
 interface ActivityItem {
@@ -40,7 +42,7 @@ interface PaginatedResponse {
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
 
 export default function DashboardPage() {
-    const { isAuthenticated, isLoading: authLoading } = useAuth();
+    const { isAuthenticated, isLoading: authLoading, user } = useAuth();
     const router = useRouter();
     const [activities, setActivities] = useState<ActivityItem[]>([]);
     const [isLoading, setIsLoading] = useState(true);
@@ -85,25 +87,50 @@ export default function DashboardPage() {
         return null; // Will redirect
     }
 
+    // Get greeting based on time of day
+    const getGreeting = () => {
+        const hour = new Date().getHours();
+        if (hour < 12) return "Bom dia";
+        if (hour < 18) return "Boa tarde";
+        return "Boa noite";
+    };
+
+    const userName = user?.name || user?.email?.split("@")[0] || "usuário";
+
     return (
         <div className="flex min-h-screen flex-col bg-[var(--background)]">
             <main className="flex-1 py-8">
                 <div className="container mx-auto max-w-6xl px-4">
-                    <div className="mb-8 flex flex-col justify-between gap-4 md:flex-row md:items-end">
-                        <div>
-                            <h1 className="text-2xl font-semibold tracking-tight text-[var(--foreground)]">
-                                Dashboard
-                            </h1>
-                            <p className="mt-1 text-sm text-[var(--muted-foreground)]">
-                                Overview of activities and project health
-                            </p>
-                        </div>
+                    {/* Header with greeting */}
+                    <div className="mb-6">
+                        <h1 className="text-2xl font-semibold tracking-tight text-[var(--foreground)]">
+                            {getGreeting()}, {userName} 👋
+                        </h1>
+                        <p className="mt-1 text-sm text-[var(--muted-foreground)]">
+                            Aqui está o resumo da sua organização
+                        </p>
                     </div>
 
+                    {/* Quick Chat Input */}
+                    <div className="mb-6">
+                        <QuickChatInput />
+                    </div>
+
+                    {/* Metrics Bar */}
+                    <div className="mb-8">
+                        <h2 className="mb-4 text-sm font-medium text-[var(--muted-foreground)] uppercase tracking-wide">
+                            Métricas DORA
+                        </h2>
+                        <MetricsBar />
+                    </div>
+
+                    {/* Main Content Grid */}
                     <div className="grid gap-8 lg:grid-cols-3">
                         {/* Main Stream */}
-                        <div className="space-y-6 lg:col-span-2">
-                            <h2 className="text-base font-medium text-[var(--foreground)]">Recent Activities</h2>
+                        <div className="space-y-4 lg:col-span-2">
+                            <h2 className="text-sm font-medium text-[var(--muted-foreground)] uppercase tracking-wide">
+                                Atividades Recentes
+                            </h2>
                             {error ? (
                                 <div className="rounded-xl bg-red-50 p-6 text-red-600 ring-1 ring-red-100 dark:bg-red-900/10 dark:text-red-400 dark:ring-red-900/20">
                                     {error}
@@ -115,8 +142,10 @@ export default function DashboardPage() {
 
                         {/* Sidebar Widgets */}
                         <div className="space-y-6">
+                            <h2 className="text-sm font-medium text-[var(--muted-foreground)] uppercase tracking-wide">
+                                Repositórios
+                            </h2>
                             <RepoStatusWidget />
-                            {/* Future widgets can go here */}
                         </div>
                     </div>
                 </div>
