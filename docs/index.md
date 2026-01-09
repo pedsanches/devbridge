@@ -43,6 +43,38 @@ Bem-vindo à documentação do DevBridge! 🎉
 | [Monitoring](operations/monitoring.md) | Observabilidade |
 | [Runbook](operations/runbook.md) | Procedimentos operacionais |
 
+## 🤖 Features Principais
+
+### Chat com IA
+O DevBridge oferece um **chat inteligente** que usa RAG (Retrieval-Augmented Generation) para responder perguntas sobre suas atividades de desenvolvimento:
+- Contexto multi-repositório
+- Histórico de conversas persistente
+- Transparência de fontes (mostra de onde vem a informação)
+
+### Reports Estruturados
+Sistema de geração de **relatórios por persona** ([ADR-008](architecture/decisions/008-reports-system.md)):
+- **Resumo Semanal** (PM): Entregas e progresso
+- **Relatório Técnico** (CTO): Métricas e decisões arquiteturais
+- **Resumo Executivo** (CEO): Máx 5 bullets, zero jargão
+- Templates reutilizáveis
+- Export em PDF
+
+### Business Updates
+Geração automática de **análises de impacto de negócio** para cada atividade técnica:
+- Value Tagging (feature, refactor, bugfix, etc.)
+- Tradução automática de commits para linguagem de negócio
+- Integrado ao processo de sync
+
+## 🔌 Integrações
+
+| Integração | Descrição |
+|------------|-----------|
+| [MCP Toolbox](operations/mcp-integration.md) | Acesso DB para agentes IA |
+| GitHub | Webhooks e sync de repositórios |
+| Qdrant | Banco vetorial para RAG |
+| Anthropic Claude | LLM para processamento |
+| Resend | Envio de emails (Magic Link) |
+
 ---
 
 ## Navegação Rápida por Perfil
