@@ -9,6 +9,15 @@ e este projeto adere ao [Semantic Versioning](https://semver.org/lang/pt-BR/).
 
 ### Added
 
+#### 📈 Developer Metrics & Tracking (ADR-009)
+- **Code Metrics**: Rastreamento de linhas adicionadas/removidas, arquivos alterados e complexidade.
+- **PR Lifecycle**: Métricas detalhadas de tempo (Pickup, Review, Merge, Cycle Time).
+- **Quality**: Classificação de reviews (Superficial vs Profundo) e métricas de rejeição.
+- **Issue Tracking**: Sincronização e métricas de Issues e vinculação com PRs.
+- **DORA Metrics**: Cálculo automático de Deployment Frequency, Lead Time, Change Failure Rate e MTTR.
+- **Developer Profiles**: Agregação de dados por desenvolvedor com análise de IA (pontos fortes, colaboração).
+- **SPACE Framework**: Suporte a métricas holísticas de produtividade.
+
 #### 📊 Sistema de Reports
 - Sistema completo de geração de relatórios por persona (PM, CTO, CEO)
 - Templates de report reutilizáveis com configuração dinâmica
