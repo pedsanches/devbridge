@@ -65,6 +65,7 @@ Baseado em `docs/architecture/overview.md`:
 | **Value Tagging** | `ai_service.py` | - |
 | **Multi-tenant** | Todas as queries filtram por `org_id` | [ADR-006](architecture/decisions/006-saas-data-model.md) |
 | **Magic Link Auth** | `auth_service.py`, `email_service.py` | [ADR-007](architecture/decisions/007-auth-strategy.md) |
+| **Developer Metrics** | `metrics_service.py`, `issue_service.py` | [ADR-009](architecture/decisions/009-developer-effort-tracking.md) |
 
 ### Estrutura de Services (Backend)
 
@@ -73,8 +74,11 @@ app/services/
 ├── ai_service.py          # Integração Claude, Business Updates, Value Tags
 ├── chat_service.py        # Chat com RAG, contexto de conversas
 ├── report_service.py      # Geração de reports estruturados
+├── metrics_service.py     # [NEW] DORA, SPACE e Developer Profiles
+├── issue_service.py       # [NEW] Gestão de Issues
+├── code_review_service.py # [NEW] Code Review Metrics
 ├── pdf_export_service.py  # Export para PDF (WeasyPrint)
-├── sync_service.py        # Sincronização com GitHub
+├── sync_service.py        # Sincronização com GitHub (agora inclui Issues/Stats)
 ├── vector_service.py      # Qdrant embeddings
 ├── auth_service.py        # Magic links, JWT
 └── conversation_service.py # Persistência de conversas

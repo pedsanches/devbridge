@@ -13,7 +13,7 @@
 
 Times de desenvolvimento fazem trabalho invisível (refactoring, arquitetura, dívida técnica) que stakeholders não conseguem entender ou valorizar.
 
-**DevBridge traduz atividade técnica em valor de negócio** usando AI generativa com guardrails estritos.
+**DevBridge traduz atividade técnica em valor de negócio** usando AI generativa com guardrails estritos. Agora com suporte nativo a métricas **DORA** e **SPACE**.
 
 ## ⚡ Quick Start
 
@@ -41,7 +41,7 @@ curl -X POST http://localhost:8000/api/repos \
 ```
 GitHub Webhook → FastAPI → Redis Queue → Celery Worker
                                               ↓
-                                    Tree-sitter (AST) 
+                                    Tree-sitter (AST)
                                               ↓
                                     Presidio (Privacidade)
                                               ↓
