@@ -112,7 +112,7 @@ jobs:
         run: poetry install --no-interaction
 
       - name: Run tests
-        run: poetry run pytest --cov=app --cov-report=xml
+        run: poetry run pytest --cov=app --cov-report=xml --cov-fail-under=70
         env:
           DATABASE_URL: postgresql://test:test@localhost:5432/devbridge_test
           REDIS_URL: redis://localhost:6379/0

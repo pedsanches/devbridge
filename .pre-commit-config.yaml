@@ -37,6 +37,15 @@ repos:
       - id: detect-private-key
       - id: check-case-conflict
 
+  # Security
+  - repo: https://github.com/PyCQA/bandit
+    rev: 1.7.10
+    hooks:
+      - id: bandit
+        args: ["-c", "backend/pyproject.toml", "-r", "backend/app"]
+        additional_dependencies: ["bandit[toml]"]
+        pass_filenames: false
+
   # Conventional commits
   - repo: https://github.com/compilerla/conventional-pre-commit
     rev: v4.0.0

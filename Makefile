@@ -71,6 +71,19 @@ lint: ## Run linters
 	@cd frontend && pnpm lint
 	@echo "$(GREEN)[OK]$(NC) All checks passed"
 
+complexity: ## Check code complexity
+	@echo "$(BLUE)[COMPLEXITY]$(NC) Checking complexity (Radon)..."
+	@cd backend && poetry run radon cc app/ -a -s
+
+security: ## Check for security vulnerabilities
+	@echo "$(BLUE)[SECURITY]$(NC) Checking security (Bandit)..."
+	@cd backend && poetry run bandit -r app/ -c pyproject.toml
+
+check-docs: ## Check documentation coverage
+	@echo "$(BLUE)[DOCS]$(NC) Checking documentation (Interrogate)..."
+	@cd backend && poetry run interrogate -v app/
+
+
 format: ## Format code
 	@echo "$(BLUE)[FORMAT]$(NC) Formatting Python..."
 	@cd backend && poetry run ruff format .
