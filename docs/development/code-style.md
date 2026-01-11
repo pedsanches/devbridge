@@ -12,7 +12,10 @@ Guia de estilo para código Python e TypeScript no DevBridge.
 |------------|-----|
 | **Ruff** | Linting + Formatting (substitui black, isort, flake8) |
 | **mypy** | Type checking |
-| **pytest** | Testes |
+| **pytest** | Testes (Coverage min: 70%) |
+| **Bandit** | Análise de Segurança (`make security`) |
+| **Radon** | Complexidade Ciclomática (`make complexity`) |
+| **Interrogate** | Cobertura de Docstrings (`make check-docs`) |
 
 ### Configuração (pyproject.toml)
 

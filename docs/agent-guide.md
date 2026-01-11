@@ -18,9 +18,10 @@ Antes de realizar qualquer alteração, o Agente deve:
 ## 🧪 Verificação
 
 Ao concluir uma tarefa:
-- Execute `pytest` para garantir que nada quebrou.
-- Execute `ruff check .` se alterou arquivos Python.
-- Se criar novos arquivos, atualize o `docs/system-context.md` se relevante.
+- Execute `make precommit` para rodar todas as verificações (Lint, Types, Security).
+- Execute `make complexity` para garantir que o código não ficou complexo demais (Grade A ou B).
+- Execute `make test-backend` para garantir que nada quebrou.
+- Se criar novos arquivos, atualize o `docs/system-context.md`.
 
 ## 📝 Documentação é Código
 

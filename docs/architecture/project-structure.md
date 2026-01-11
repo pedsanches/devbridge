@@ -127,7 +127,15 @@ backend/
 │   │   ├── activity_service.py
 │   │   ├── github_service.py
 │   │   ├── sync_service.py
-│   │   ├── ai_service.py
+│   │   ├── sync_service.py
+│   │   ├── ai_service.py           # Facade (Wrapper para app.services.ai)
+│   │   ├── ai/                     # [NEW] Módulos de IA
+│   │   │   ├── __init__.py
+│   │   │   ├── facade.py           # Implementação da Facade
+│   │   │   ├── conversation.py     # Lógica de Chat
+│   │   │   ├── business_translator.py # Tradução técnica->negócio
+│   │   │   ├── activity_analyzer.py # Classificação de atividades
+│   │   │   └── developer_analyzer.py # Análise de perfil dev
 │   │   ├── metrics_service.py      # [NEW] DORA/SPACE calc
 │   │   ├── issue_service.py        # [NEW] Issue logic
 │   │   ├── code_review_service.py  # [NEW] Review logic
