@@ -9,7 +9,7 @@ from datetime import datetime
 from typing import Any
 from zoneinfo import ZoneInfo
 
-import anthropic
+import openai
 
 from app.core.config import settings
 
@@ -58,12 +58,12 @@ class BaseAIService:
         Initialize AI service.
 
         Args:
-            api_key: Anthropic API key (uses settings if not provided).
+            api_key: OpenAI API key (uses settings if not provided).
             model: Model to use (uses settings if not provided).
         """
-        self.api_key = api_key or getattr(settings, "ANTHROPIC_API_KEY", None)
-        self.model = model or getattr(settings, "ANTHROPIC_MODEL", "claude-3-5-sonnet-20241022")
-        self.client = anthropic.Anthropic(api_key=self.api_key)
+        self.api_key = api_key or getattr(settings, "OPENAI_API_KEY", None)
+        self.model = model or getattr(settings, "OPENAI_MODEL", "gpt-4o-mini")
+        self.client = openai.OpenAI(api_key=self.api_key)
 
     async def _call_llm(
         self,
@@ -85,14 +85,16 @@ class BaseAIService:
             The LLM response text.
         """
         try:
-            message = self.client.messages.create(
+            response = self.client.chat.completions.create(
                 model=self.model,
                 max_tokens=max_tokens,
-                system=system_prompt,
-                messages=[{"role": "user", "content": user_message}],
+                messages=[
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_message},
+                ],
                 temperature=temperature,
             )
-            return message.content[0].text
+            return response.choices[0].message.content or ""
         except Exception as e:
             logger.error(f"LLM call failed: {e}")
             raise
@@ -117,14 +119,16 @@ class BaseAIService:
             The LLM response text.
         """
         try:
-            message = self.client.messages.create(
+            # Prepend system prompt to messages
+            full_messages = [{"role": "system", "content": system_prompt}] + messages
+
+            response = self.client.chat.completions.create(
                 model=self.model,
                 max_tokens=max_tokens,
-                system=system_prompt,
-                messages=messages,
+                messages=full_messages,
                 temperature=temperature,
             )
-            return message.content[0].text
+            return response.choices[0].message.content or ""
         except Exception as e:
             logger.error(f"LLM call with history failed: {e}")
             raise

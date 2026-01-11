@@ -118,15 +118,20 @@ Contexto das atividades recentes:
         """
         system_prompt, messages = self._build_messages(user_message, context, persona, chat_history)
 
+        # Prepare messages including system prompt
+        full_messages = [{"role": "system", "content": system_prompt}] + messages
+
         try:
-            with self.client.messages.stream(
+            stream = self.client.chat.completions.create(
                 model=self.model,
                 max_tokens=max_tokens,
-                system=system_prompt,
-                messages=messages,
-            ) as stream:
-                for text in stream.text_stream:
-                    yield text
+                messages=full_messages,
+                stream=True,
+            )
+
+            for chunk in stream:
+                if chunk.choices[0].delta.content:
+                    yield chunk.choices[0].delta.content
         except Exception as e:
             logger.error(f"Streaming response failed: {e}")
             yield f"Erro ao gerar resposta: {e}"

@@ -28,7 +28,7 @@ class AIService:
         Initialize all AI service modules.
 
         Args:
-            api_key: Anthropic API key (uses settings if not provided).
+            api_key: OpenAI API key (uses settings if not provided).
             model: Model to use (uses settings if not provided).
         """
         self._conversation = ConversationAI(api_key, model)
