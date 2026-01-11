@@ -1,0 +1,186 @@
+"""
+Base AI Service.
+
+Core functionality shared by all AI service modules.
+"""
+
+import logging
+from datetime import datetime
+from typing import Any
+from zoneinfo import ZoneInfo
+
+import anthropic
+
+from app.core.config import settings
+
+logger = logging.getLogger(__name__)
+
+# Day of week names in Portuguese
+WEEKDAY_NAMES = {
+    0: "Segunda-feira",
+    1: "Terça-feira",
+    2: "Quarta-feira",
+    3: "Quinta-feira",
+    4: "Sexta-feira",
+    5: "Sábado",
+    6: "Domingo",
+}
+
+
+def get_temporal_context(timezone: str = "America/Sao_Paulo") -> str:
+    """
+    Generate temporal context string for LLM grounding.
+
+    Provides the current date, time, and day of week to help
+    the LLM interpret time-relative queries correctly.
+    """
+    try:
+        tz = ZoneInfo(timezone)
+        now = datetime.now(tz)
+        weekday = WEEKDAY_NAMES.get(now.weekday(), now.strftime("%A"))
+        date_str = now.strftime("%d/%m/%Y")
+        time_str = now.strftime("%H:%M")
+        return f"Data atual: {weekday}, {date_str} às {time_str} (horário de Brasília)"
+    except Exception:
+        return f"Data atual: {datetime.now().strftime('%d/%m/%Y')}"
+
+
+class BaseAIService:
+    """
+    Base class for AI-powered services.
+
+    Provides common functionality for API calls, message building,
+    and response handling.
+    """
+
+    def __init__(self, api_key: str | None = None, model: str | None = None):
+        """
+        Initialize AI service.
+
+        Args:
+            api_key: Anthropic API key (uses settings if not provided).
+            model: Model to use (uses settings if not provided).
+        """
+        self.api_key = api_key or getattr(settings, "ANTHROPIC_API_KEY", None)
+        self.model = model or getattr(settings, "ANTHROPIC_MODEL", "claude-3-5-sonnet-20241022")
+        self.client = anthropic.Anthropic(api_key=self.api_key)
+
+    async def _call_llm(
+        self,
+        system_prompt: str,
+        user_message: str,
+        max_tokens: int = 1024,
+        temperature: float = 0.7,
+    ) -> str:
+        """
+        Make a call to the LLM with the given prompts.
+
+        Args:
+            system_prompt: System message to set context.
+            user_message: User message/query.
+            max_tokens: Maximum tokens in response.
+            temperature: Sampling temperature.
+
+        Returns:
+            The LLM response text.
+        """
+        try:
+            message = self.client.messages.create(
+                model=self.model,
+                max_tokens=max_tokens,
+                system=system_prompt,
+                messages=[{"role": "user", "content": user_message}],
+                temperature=temperature,
+            )
+            return message.content[0].text
+        except Exception as e:
+            logger.error(f"LLM call failed: {e}")
+            raise
+
+    async def _call_llm_with_history(
+        self,
+        system_prompt: str,
+        messages: list[dict[str, str]],
+        max_tokens: int = 1024,
+        temperature: float = 0.7,
+    ) -> str:
+        """
+        Make a call to the LLM with conversation history.
+
+        Args:
+            system_prompt: System message to set context.
+            messages: List of message dicts with 'role' and 'content'.
+            max_tokens: Maximum tokens in response.
+            temperature: Sampling temperature.
+
+        Returns:
+            The LLM response text.
+        """
+        try:
+            message = self.client.messages.create(
+                model=self.model,
+                max_tokens=max_tokens,
+                system=system_prompt,
+                messages=messages,
+                temperature=temperature,
+            )
+            return message.content[0].text
+        except Exception as e:
+            logger.error(f"LLM call with history failed: {e}")
+            raise
+
+    def _format_activities_context(self, activities: list[dict[str, Any]]) -> str:
+        """
+        Format activities list into a context string for the LLM.
+
+        Args:
+            activities: List of activity dictionaries.
+
+        Returns:
+            Formatted context string.
+        """
+        if not activities:
+            return "Nenhuma atividade encontrada no período selecionado."
+
+        context_parts = []
+        for i, activity in enumerate(activities[:50], 1):
+            # Get the proper date field
+            date = activity.get("occurred_at") or activity.get("created_at", "")
+            if hasattr(date, "strftime"):
+                date = date.strftime("%d/%m/%Y %H:%M")
+            elif isinstance(date, str) and "T" in date:
+                date = date.split("T")[0]
+
+            activity_type = activity.get("type", "COMMIT")
+            title = activity.get("title", "Sem título")
+            author = activity.get("author", "desconhecido")
+            repo = activity.get("repository_name", "")
+
+            # Build activity info
+            parts = [f"{i}. [{activity_type}] {title}"]
+            parts.append(f"   Autor: {author} | Data: {date}")
+            if repo:
+                parts.append(f"   Repositório: {repo}")
+
+            # Add metrics if available
+            lines_added = activity.get("lines_added")
+            lines_deleted = activity.get("lines_deleted")
+            if lines_added is not None or lines_deleted is not None:
+                parts.append(f"   +{lines_added or 0}/-{lines_deleted or 0} linhas")
+
+            # Add labels if available
+            labels = activity.get("labels")
+            if labels:
+                parts.append(f"   Labels: {', '.join(labels)}")
+
+            # Add business update if available
+            business_update = activity.get("business_update")
+            if business_update:
+                summary = business_update.get("summary", "")
+                impact = business_update.get("impact_level", "")
+                if summary:
+                    parts.append(f"   Impacto: [{impact}] {summary}")
+
+            context_parts.append("\n".join(parts))
+
+        return "\n\n".join(context_parts)
