@@ -17,6 +17,7 @@ import {
     Save,
     Sparkles,
     FolderOpen,
+    Users,
 } from "lucide-react";
 
 import ReportBuilder, { ReportBuilderConfig } from "@/components/reports/ReportBuilder";
@@ -96,6 +97,8 @@ interface SavedReport {
     id: string;
     report_type: string;
     title: string;
+    team_id: string | null;
+    team_name: string | null;
     period_description: string;
     generated_at: string;
     sources_count: number;
@@ -207,6 +210,15 @@ function ReportHistoryCard({
                 <span>{formatDate(report.generated_at)}</span>
                 <span>•</span>
                 <span>{report.sources_count} fontes</span>
+                {report.team_name && (
+                    <>
+                        <span>•</span>
+                        <span className="flex items-center gap-1">
+                            <Users className="h-3 w-3" />
+                            {report.team_name}
+                        </span>
+                    </>
+                )}
                 <Badge variant={report.confidence_score >= 0.7 ? "default" : "secondary"} className="ml-auto">
                     {Math.round(report.confidence_score * 100)}%
                 </Badge>
@@ -526,6 +538,7 @@ export default function ReportsPage() {
                     title: generatedReport.title,
                     subtitle: generatedReport.subtitle,
                     report_type: generatedReport.report_type,
+                    team_id: selectedTeamId,
                     period_start: start.toISOString(),
                     period_end: now.toISOString(),
                     period_description: generatedReport.period_description,

@@ -381,6 +381,7 @@ Responda APENAS com o JSON no formato especificado, sem texto adicional."""
         report = ReportModel(
             organization_id=org_id,
             user_id=user_id,
+            team_id=request.team_id,
             report_type=db_report_type,
             title=request.title,
             subtitle=request.subtitle,
@@ -409,6 +410,7 @@ Responda APENAS com o JSON no formato especificado, sem texto adicional."""
         page: int = 1,
         page_size: int = 10,
         report_type: ReportType | None = None,
+        team_id: str | None = None,
     ) -> "ReportListResponse":
         """
         List saved reports for an organization.
@@ -436,6 +438,9 @@ Responda APENAS com o JSON no formato especificado, sem texto adicional."""
 
             query = query.where(ReportModel.report_type == ReportTypeEnum(report_type.value))
 
+        if team_id:
+            query = query.where(ReportModel.team_id == team_id)
+
         # Get total count
         count_query = select(func.count()).select_from(query.subquery())
         total_result = await db.execute(count_query)
@@ -448,11 +453,23 @@ Responda APENAS com o JSON no formato especificado, sem texto adicional."""
         result = await db.execute(query)
         reports = result.scalars().all()
 
+        # Get team names for the reports
+        from app.models import Team
+
+        team_ids = {str(r.team_id) for r in reports if r.team_id}
+        team_names: dict[str, str] = {}
+        if team_ids:
+            team_query = select(Team.id, Team.name).where(Team.id.in_(team_ids))
+            team_result = await db.execute(team_query)
+            team_names = {str(row[0]): row[1] for row in team_result.all()}
+
         items = [
             ReportListItem(
                 id=str(r.id),
                 report_type=ReportType(r.report_type.value),
                 title=r.title,
+                team_id=str(r.team_id) if r.team_id else None,
+                team_name=team_names.get(str(r.team_id)) if r.team_id else None,
                 period_description=r.period_description,
                 generated_at=r.generated_at,
                 sources_count=r.sources_count,

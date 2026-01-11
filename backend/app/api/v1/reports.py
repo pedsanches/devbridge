@@ -142,6 +142,7 @@ async def list_reports(
     page: int = Query(1, ge=1, description="Page number"),
     page_size: int = Query(10, ge=1, le=50, description="Items per page"),
     report_type: ReportType | None = Query(None, description="Filter by report type"),
+    team_id: str | None = Query(None, description="Filter by team ID"),
 ) -> ReportListResponse:
     """
     List saved reports for the organization.
@@ -151,6 +152,7 @@ async def list_reports(
         page: Page number (1-indexed).
         page_size: Number of items per page (max 50).
         report_type: Optional filter by report type.
+        team_id: Optional filter by team ID.
 
     Returns:
         ReportListResponse with paginated list of reports.
@@ -161,6 +163,7 @@ async def list_reports(
         page=page,
         page_size=page_size,
         report_type=report_type,
+        team_id=team_id,
     )
 
 

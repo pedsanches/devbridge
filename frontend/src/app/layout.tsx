@@ -4,7 +4,7 @@ import "./globals.css";
 import { AuthProvider } from "@/hooks/use-auth";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { ThemeProvider } from "@/components/layout/ThemeProvider";
-import { OnboardingProvider } from "@/components/onboarding";
+import { OnboardingProvider, WelcomeModal } from "@/components/onboarding";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -24,6 +24,7 @@ export default function RootLayout({
                 <ThemeProvider>
                     <AuthProvider>
                         <OnboardingProvider>
+                            <WelcomeModal />
                             <AppLayout>{children}</AppLayout>
                         </OnboardingProvider>
                     </AuthProvider>

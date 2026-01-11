@@ -40,6 +40,9 @@ class Report(Base, UUIDMixin, TimestampMixin):
     user_id: Mapped[UUID] = mapped_column(
         ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
     )
+    team_id: Mapped[UUID | None] = mapped_column(
+        ForeignKey("teams.id", ondelete="SET NULL"), nullable=True, index=True
+    )
 
     # Report metadata
     report_type: Mapped[ReportType] = mapped_column(Enum(ReportType), nullable=False, index=True)
@@ -65,3 +68,4 @@ class Report(Base, UUIDMixin, TimestampMixin):
     # Relationships
     organization = relationship("Organization", back_populates="reports")
     user = relationship("User", back_populates="reports")
+    team = relationship("Team", foreign_keys=[team_id])

@@ -27,24 +27,45 @@ const STORAGE_KEY = "devbridge_onboarding";
 // Define onboarding steps
 const ONBOARDING_STEPS: OnboardingStep[] = [
     {
+        id: "welcome",
+        targetSelector: "[data-onboarding='dashboard']",
+        title: "🎉 Bem-vindo ao DevBridge!",
+        description: "Vamos configurar sua conta em poucos passos para você começar a usar.",
+        position: "bottom",
+    },
+    {
+        id: "github-connect",
+        targetSelector: "[data-onboarding='data-sources']",
+        title: "🔗 Conectar GitHub",
+        description: "Primeiro, conecte sua conta GitHub para importar seus repositórios.",
+        position: "right",
+    },
+    {
+        id: "teams-setup",
+        targetSelector: "[data-onboarding='settings']",
+        title: "👥 Organize seus Times",
+        description: "Agrupe repositórios em times para facilitar relatórios e análises.",
+        position: "right",
+    },
+    {
         id: "chat-intro",
         targetSelector: "[data-onboarding='novo-chat']",
         title: "💬 Chat com IA",
-        description: "Este é seu assistente inteligente. Pergunte sobre seus projetos, commits, PRs e mais.",
+        description: "Use o assistente para perguntar sobre seus projetos, commits e PRs.",
         position: "right",
     },
     {
         id: "metrics-intro",
         targetSelector: "[data-onboarding='metrics']",
         title: "📊 Métricas DORA",
-        description: "Acompanhe a saúde do seu time com métricas de engenharia em tempo real.",
+        description: "Acompanhe a saúde do seu time com métricas de engenharia.",
         position: "bottom",
     },
     {
         id: "reports-intro",
         targetSelector: "[data-onboarding='reports']",
         title: "📄 Relatórios",
-        description: "Gere relatórios personalizados para diferentes stakeholders.",
+        description: "Gere relatórios personalizados para stakeholders.",
         position: "right",
     },
 ];

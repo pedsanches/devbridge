@@ -33,6 +33,7 @@ class ReportRequest(BaseModel):
 
     report_type: ReportType = Field(..., description="Type of report to generate")
     period: ReportPeriod = Field(..., description="Time period for the report")
+    team_id: str | None = Field(None, description="Team ID to scope the report")
     repositories: list[str] | None = Field(
         None, description="Filter by repository names (None = all accessible)"
     )
@@ -108,6 +109,7 @@ class SaveReportRequest(BaseModel):
     title: str = Field(..., description="Report title")
     subtitle: str = Field(..., description="Brief description")
     report_type: ReportType = Field(..., description="Type of report")
+    team_id: str | None = Field(None, description="Team ID associated with this report")
     period_start: datetime = Field(..., description="Period start date")
     period_end: datetime = Field(..., description="Period end date")
     period_description: str = Field(..., description="Human-readable period")
@@ -124,6 +126,8 @@ class ReportListItem(BaseModel):
     id: str = Field(..., description="Report UUID")
     report_type: ReportType = Field(..., description="Type of report")
     title: str = Field(..., description="Report title")
+    team_id: str | None = Field(None, description="Associated team ID")
+    team_name: str | None = Field(None, description="Associated team name")
     period_description: str = Field(..., description="Human-readable period")
     generated_at: datetime = Field(..., description="When report was generated")
     sources_count: int = Field(..., description="Number of sources used")
