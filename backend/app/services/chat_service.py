@@ -273,7 +273,8 @@ class ChatService:
             )
 
         # Persist User Message
-        assert conversation_id is not None
+        if conversation_id is None:
+            raise ValueError("Conversation ID cannot be None")
         await conversation_service.add_message(
             conversation_id=conversation_id,
             role=MessageRole.USER,

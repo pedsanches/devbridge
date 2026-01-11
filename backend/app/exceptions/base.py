@@ -21,9 +21,9 @@ class ErrorCode(str, Enum):
 
     # Authentication/Authorization errors (2xxx)
     AUTHENTICATION_REQUIRED = "E2000"
-    INVALID_TOKEN = "E2001"
-    TOKEN_EXPIRED = "E2002"
-    INSUFFICIENT_PERMISSIONS = "E2003"
+    INVALID_TOKEN = "E2001"  # nosec B105
+    TOKEN_EXPIRED = "E2002"  # nosec B105
+    INSUFFICIENT_PERMISSIONS = "E2003"  # nosec B105
 
     # GitHub integration errors (3xxx)
     GITHUB_API_ERROR = "E3000"

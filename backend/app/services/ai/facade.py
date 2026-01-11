@@ -36,6 +36,16 @@ class AIService:
         self._business_translator = BusinessTranslator(api_key, model)
         self._developer_analyzer = DeveloperAnalyzer(api_key, model)
 
+    @property
+    def api_key(self) -> str | None:
+        """Get API key from conversation service."""
+        return self._conversation.api_key
+
+    @property
+    def model(self) -> str:
+        """Get model from conversation service."""
+        return str(self._conversation.model)
+
     # =========================================================================
     # Conversation methods (delegated to ConversationAI)
     # =========================================================================
