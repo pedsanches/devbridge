@@ -28,6 +28,7 @@ class ChatRequest(BaseModel):
     persona: Persona = Field(
         default=Persona.PRODUCT, description="User persona for response adaptation"
     )
+    days: int | None = Field(30, description="Filter activities by last N days (default 30)")
     conversation_id: UUID | None = Field(
         None,
         alias="conversationId",

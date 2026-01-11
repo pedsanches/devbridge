@@ -55,6 +55,7 @@ async def chat(
         repository=request.repository,
         author=request.author,
         persona=request.persona,
+        days=request.days or 30,
         org_id=org_id,
     )
 
@@ -147,6 +148,7 @@ async def chat_stream(
             org_id=org_id,
             repository_name=request.repository,
             author=request.author,
+            days=request.days or 30,
         )
 
     # Build sources list for transparency (top 5)

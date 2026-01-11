@@ -216,6 +216,7 @@ class ChatService:
         repository: str | list[str] | None = None,
         author: str | None = None,
         persona: Persona = Persona.PRODUCT,
+        days: int = 30,
         use_semantic_search: bool = True,
     ) -> dict[str, Any]:
         """
@@ -301,16 +302,6 @@ class ChatService:
 
         # Fall back to SQL-based search
         if not activities:
-            query_lower = query.lower()
-            if "esta semana" in query_lower or "essa semana" in query_lower:
-                days = 7
-            elif "hoje" in query_lower:
-                days = 1
-            elif "este mês" in query_lower or "esse mês" in query_lower:
-                days = 30
-            else:
-                days = 7
-
             activities = await self.get_context_activities(
                 db,
                 org_id=org_id,

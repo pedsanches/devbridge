@@ -1,6 +1,6 @@
 "use client";
 
-import { MessageSquare, Sparkles, Search, Zap } from "lucide-react";
+import { MessageSquare, Sparkles, Search, Zap, ChevronDown } from "lucide-react";
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { ChatMessage } from "@/components/chat/ChatMessage";
@@ -45,6 +45,7 @@ export function ChatInterface({ conversationId, initialMessages }: ChatInterface
     const [persona, setPersona] = useState<Persona>("product");
     const [selectedRepos, setSelectedRepos] = useState<string[]>([]);
     const [selectedTeamId, setSelectedTeamId] = useState<string | null>(null);
+    const [days, setDays] = useState<number>(30);
     const [currentConversationId, setCurrentConversationId] = useState<string | undefined>(conversationId);
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const router = useRouter();
@@ -140,6 +141,7 @@ export function ChatInterface({ conversationId, initialMessages }: ChatInterface
                 persona,
                 conversationId: currentConversationId,
                 repository: repositories,
+                days,
             },
             // onChunk
             (chunk) => {
@@ -213,7 +215,7 @@ export function ChatInterface({ conversationId, initialMessages }: ChatInterface
                 setIsLoading(false);
             }
         );
-    }, [persona, conversationId, selectedRepos, router]);
+    }, [persona, currentConversationId, conversationId, selectedRepos, router, days]);
 
     return (
         <div className="flex h-full flex-col bg-neutral-50 dark:bg-neutral-900">
@@ -292,26 +294,28 @@ export function ChatInterface({ conversationId, initialMessages }: ChatInterface
             <footer className="sticky bottom-0 border-t border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-900">
                 <div className="container mx-auto max-w-3xl">
                     {/* Controls Row */}
-                    <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
-                        <div className="flex flex-wrap gap-2">
-                            <TeamSelector
-                                selectedTeamId={selectedTeamId}
-                                onTeamChange={handleTeamChange}
-                                disabled={isLoading}
-                                allowAll={true}
-                            />
-                            <PersonaSelector
-                                selected={persona}
-                                onChange={setPersona}
-                                disabled={isLoading}
-                            />
-                            <RepositorySelector
-                                selectedRepos={selectedRepos}
-                                onChange={setSelectedRepos}
-                                disabled={isLoading}
-                            />
+                    <div className="mb-3 flex flex-wrap items-center justify-between">
+                        <div className="flex w-full items-center gap-2 border-b border-[var(--border)] bg-[var(--app-bg)] p-4 flex-wrap">
+                            <PersonaSelector selected={persona} onChange={setPersona} />
+                            <div className="h-6 w-px bg-[var(--border)] hidden sm:block" />
+                            <div className="w-[200px]">
+                                <TeamSelector
+                                    selectedTeamId={selectedTeamId}
+                                    onTeamChange={handleTeamChange}
+                                    allowAll
+                                    className="w-full"
+                                />
+                            </div>
+                            <div className="h-6 w-px bg-[var(--border)] hidden sm:block" />
+                            <div className="w-[300px]">
+                                <RepositorySelector
+                                    selectedRepos={selectedRepos}
+                                    onChange={setSelectedRepos}
+                                />
+                            </div>
+                            <div className="h-6 w-px bg-[var(--border)] hidden sm:block" />
+                            <PeriodSelector days={days} onChange={setDays} />
                         </div>
-
                         <div className="flex items-center gap-1 text-xs text-neutral-400">
                             <Search className="h-3 w-3" />
                             <span>RAG ativo</span>
@@ -320,6 +324,27 @@ export function ChatInterface({ conversationId, initialMessages }: ChatInterface
                     <ChatInput onSend={handleSendMessage} disabled={isLoading} />
                 </div>
             </footer>
+        </div>
+    );
+}
+
+function PeriodSelector({ days, onChange }: { days: number; onChange: (d: number) => void }) {
+    return (
+        <div className="relative">
+            <select
+                value={days}
+                onChange={(e) => onChange(Number(e.target.value))}
+                className="h-9 w-[140px] appearance-none rounded-md border border-neutral-200 bg-white px-3 py-2 text-sm text-[var(--foreground)] shadow-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary dark:border-neutral-800 dark:bg-neutral-950"
+            >
+                <option value={1}>Últimas 24h</option>
+                <option value={7}>Últimos 7 dias</option>
+                <option value={30}>Últimos 30 dias</option>
+                <option value={90}>Últimos 3 meses</option>
+                <option value={365}>Último ano</option>
+            </select>
+            <div className="pointer-events-none absolute right-2 top-2.5 text-neutral-400">
+                <ChevronDown className="h-4 w-4" />
+            </div>
         </div>
     );
 }

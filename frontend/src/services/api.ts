@@ -63,6 +63,7 @@ export interface ChatRequest {
     author?: string;
     persona?: Persona;
     conversationId?: string;
+    days?: number;
 }
 
 export interface ChatMetadata {
