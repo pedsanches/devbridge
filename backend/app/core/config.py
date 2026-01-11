@@ -35,9 +35,16 @@ class Settings(BaseSettings):
     # API
     # ============================================================
     API_HOST: str = "0.0.0.0"
-    API_PORT: int = 8000
+    API_PORT: int = 8001
     API_PREFIX: str = "/api/v1"
-    CORS_ORIGINS: list[str] = Field(default=["http://localhost:3000", "http://127.0.0.1:3000"])
+    CORS_ORIGINS: list[str] = Field(
+        default=[
+            "http://localhost:3000",
+            "http://127.0.0.1:3000",
+            "http://localhost:3001",
+            "http://127.0.0.1:3001",
+        ]
+    )
 
     # ============================================================
     # Database
@@ -94,7 +101,7 @@ class Settings(BaseSettings):
     # ============================================================
     RESEND_API_KEY: str = ""
     EMAIL_FROM: str = "DevBridge <noreply@devbridge.io>"
-    FRONTEND_URL: str = "http://localhost:3000"
+    FRONTEND_URL: str = "http://localhost:3001"
 
     # ============================================================
     # Privacy (Presidio)

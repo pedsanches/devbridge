@@ -41,7 +41,7 @@ def get_test_token(user_id: str = "test-user", org_id: str = DEFAULT_ORG_ID) -> 
 class DevBridgeClient:
     """HTTP client for DevBridge API."""
 
-    def __init__(self, base_url: str = "http://localhost:8000", token: str | None = None):
+    def __init__(self, base_url: str = "http://localhost:8001", token: str | None = None):
         self.base_url = base_url
         self.token = token or get_test_token()
         self.headers = {

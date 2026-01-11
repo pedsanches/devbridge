@@ -29,7 +29,7 @@ cp .env.example .env
 docker-compose up -d
 
 # Configure o repositório a monitorar
-curl -X POST http://localhost:8000/api/repos \
+curl -X POST http://localhost:8001/api/repos \
   -H "Content-Type: application/json" \
   -d '{"url": "https://github.com/seu-usuario/seu-repo"}'
 ```
