@@ -25,6 +25,7 @@ Bem-vindo à documentação do DevBridge! 🎉
 | [Regras de Negócio](business/rules-catalog.md) | Catálogo completo de regras |
 | [Glossário](business/glossary.md) | Definição de termos |
 | [Personas](business/personas.md) | Perfis de usuário |
+| [User Stories](business/user-stories.md) | Histórias de Usuário |
 
 ## 💻 Desenvolvimento
 
@@ -79,7 +80,7 @@ Rastreamento avançado de produtividade e qualidade ([ADR-009](architecture/deci
 | [MCP Toolbox](operations/mcp-integration.md) | Acesso DB para agentes IA |
 | GitHub | Webhooks e sync de repositórios |
 | Qdrant | Banco vetorial para RAG |
-| Anthropic Claude | LLM para processamento |
+| OpenAI GPT-4o | LLM para processamento |
 | Resend | Envio de emails (Magic Link) |
 
 ---
