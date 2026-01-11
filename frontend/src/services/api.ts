@@ -280,3 +280,108 @@ export interface ConversationDetail extends ConversationSummary {
 export async function getConversation(id: string): Promise<ConversationDetail> {
     return fetchAPI<ConversationDetail>(`/conversations/${id}`);
 }
+
+// Teams API
+export interface Team {
+    id: string;
+    name: string;
+    slug: string;
+    description: string | null;
+    color: string | null;
+    is_default: boolean;
+    github_team_slug: string | null;
+    repositories_count: number;
+    created_at: string;
+    updated_at: string;
+}
+
+export interface RepositorySummary {
+    id: string;
+    name: string;
+    url: string;
+    is_active: boolean;
+    activities_count: number;
+}
+
+export interface TeamDetail extends Team {
+    repositories: RepositorySummary[];
+}
+
+export interface TeamListResponse {
+    items: Team[];
+    total: number;
+    page: number;
+    page_size: number;
+    has_more: boolean;
+}
+
+export interface TeamCreateRequest {
+    name: string;
+    description?: string;
+    color?: string;
+    repository_ids?: string[];
+    github_team_slug?: string;
+}
+
+export interface TeamUpdateRequest {
+    name?: string;
+    description?: string;
+    color?: string;
+    is_default?: boolean;
+    github_team_slug?: string;
+}
+
+export async function getTeams(page: number = 1, pageSize: number = 20): Promise<TeamListResponse> {
+    return fetchAPI<TeamListResponse>(`/teams?page=${page}&page_size=${pageSize}`);
+}
+
+export async function getTeam(id: string): Promise<TeamDetail> {
+    return fetchAPI<TeamDetail>(`/teams/${id}`);
+}
+
+export async function createTeam(data: TeamCreateRequest): Promise<Team> {
+    return fetchAPI<Team>("/teams", {
+        method: "POST",
+        body: JSON.stringify(data),
+    });
+}
+
+export async function updateTeam(id: string, data: TeamUpdateRequest): Promise<Team> {
+    return fetchAPI<Team>(`/teams/${id}`, {
+        method: "PATCH",
+        body: JSON.stringify(data),
+    });
+}
+
+export async function deleteTeam(id: string): Promise<void> {
+    return fetchAPI(`/teams/${id}`, { method: "DELETE" });
+}
+
+export async function getDefaultTeam(): Promise<Team | null> {
+    return fetchAPI<Team | null>("/teams/default");
+}
+
+export async function ensureDefaultTeam(): Promise<Team> {
+    return fetchAPI<Team>("/teams/default", { method: "POST" });
+}
+
+export async function setDefaultTeam(teamId: string): Promise<Team> {
+    return fetchAPI<Team>("/teams/default", {
+        method: "PUT",
+        body: JSON.stringify({ team_id: teamId }),
+    });
+}
+
+export async function addRepositoriesToTeam(teamId: string, repositoryIds: string[]): Promise<{ added: number; message: string }> {
+    return fetchAPI(`/teams/${teamId}/repositories`, {
+        method: "POST",
+        body: JSON.stringify({ repository_ids: repositoryIds }),
+    });
+}
+
+export async function removeRepositoriesFromTeam(teamId: string, repositoryIds: string[]): Promise<{ removed: number; message: string }> {
+    return fetchAPI(`/teams/${teamId}/repositories`, {
+        method: "DELETE",
+        body: JSON.stringify({ repository_ids: repositoryIds }),
+    });
+}

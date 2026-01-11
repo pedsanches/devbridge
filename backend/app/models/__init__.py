@@ -19,7 +19,7 @@ from app.models.organization_settings import OrganizationSettings
 from app.models.repo import Repository
 from app.models.report import Report, ReportType
 from app.models.report_template import ReportTemplate
-from app.models.team import Team
+from app.models.team import Team, team_repositories
 from app.models.team_metrics import TeamMetrics
 from app.models.user import User
 
@@ -32,6 +32,7 @@ __all__ = [
     "Organization",
     "PlanType",
     "Team",
+    "team_repositories",
     "User",
     "Membership",
     "MemberRole",

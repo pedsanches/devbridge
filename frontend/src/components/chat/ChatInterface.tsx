@@ -7,7 +7,8 @@ import { ChatMessage } from "@/components/chat/ChatMessage";
 import { ChatInput } from "@/components/chat/ChatInput";
 import { PersonaSelector } from "@/components/chat/PersonaSelector";
 import { RepositorySelector } from "@/components/chat/RepositorySelector";
-import { sendChatMessageStream, Persona } from "@/services/api";
+import { TeamSelector } from "@/components/teams";
+import { sendChatMessageStream, Persona, Team, getTeam } from "@/services/api";
 
 interface Source {
     title: string;
@@ -43,6 +44,7 @@ export function ChatInterface({ conversationId, initialMessages }: ChatInterface
     const [error, setError] = useState<string | null>(null);
     const [persona, setPersona] = useState<Persona>("product");
     const [selectedRepos, setSelectedRepos] = useState<string[]>([]);
+    const [selectedTeamId, setSelectedTeamId] = useState<string | null>(null);
     const [currentConversationId, setCurrentConversationId] = useState<string | undefined>(conversationId);
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const router = useRouter();
@@ -66,6 +68,25 @@ export function ChatInterface({ conversationId, initialMessages }: ChatInterface
     useEffect(() => {
         setCurrentConversationId(conversationId);
     }, [conversationId]);
+
+    // Handle team selection - load team repos
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const handleTeamChange = useCallback(async (teamId: string | null, _team: Team | null) => {
+        setSelectedTeamId(teamId);
+
+        // If team selected, load its repositories as default filter
+        if (teamId) {
+            try {
+                const teamDetail = await getTeam(teamId);
+                const repoNames = teamDetail.repositories.map(r => r.name);
+                setSelectedRepos(repoNames);
+            } catch (err) {
+                console.error("Failed to load team repos:", err);
+            }
+        } else {
+            setSelectedRepos([]);
+        }
+    }, []);
 
     const handleSendMessage = useCallback(async (content: string) => {
         setError(null);
@@ -272,7 +293,13 @@ export function ChatInterface({ conversationId, initialMessages }: ChatInterface
                 <div className="container mx-auto max-w-3xl">
                     {/* Controls Row */}
                     <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
-                        <div className="flex gap-2">
+                        <div className="flex flex-wrap gap-2">
+                            <TeamSelector
+                                selectedTeamId={selectedTeamId}
+                                onTeamChange={handleTeamChange}
+                                disabled={isLoading}
+                                allowAll={true}
+                            />
                             <PersonaSelector
                                 selected={persona}
                                 onChange={setPersona}

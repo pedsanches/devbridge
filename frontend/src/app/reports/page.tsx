@@ -21,11 +21,13 @@ import {
 
 import ReportBuilder, { ReportBuilderConfig } from "@/components/reports/ReportBuilder";
 import TemplatesManager, { FullTemplate } from "@/components/reports/TemplatesManager";
+import { TeamSelector } from "@/components/teams";
 
 import { useAuth } from "@/hooks/use-auth";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Team } from "@/services/api";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
 
@@ -385,6 +387,7 @@ export default function ReportsPage() {
     const [error, setError] = useState<string | null>(null);
     const [isSaving, setIsSaving] = useState(false);
     const [saveSuccess, setSaveSuccess] = useState(false);
+    const [selectedTeamId, setSelectedTeamId] = useState<string | null>(null);
 
     // History tab state
     const [historyReports, setHistoryReports] = useState<SavedReport[]>([]);
@@ -458,7 +461,18 @@ export default function ReportsPage() {
         }
     }, [selectedHistoryReport]);
 
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const handleTeamChange = (teamId: string | null, _team: Team | null) => {
+        setSelectedTeamId(teamId);
+    };
+
     const handleGenerateReport = async () => {
+        // Require team selection
+        if (!selectedTeamId) {
+            setError("Selecione um time para gerar o relatório");
+            return;
+        }
+
         setIsGenerating(true);
         setError(null);
         setSaveSuccess(false);
@@ -784,6 +798,19 @@ export default function ReportsPage() {
                                                     </button>
                                                 ))}
                                             </div>
+                                        </div>
+
+                                        {/* Team Selector - REQUIRED */}
+                                        <div className="min-w-[200px]">
+                                            <label className="text-sm font-medium text-[var(--foreground)] mb-2 block">
+                                                Time <span className="text-red-500">*</span>
+                                            </label>
+                                            <TeamSelector
+                                                selectedTeamId={selectedTeamId}
+                                                onTeamChange={handleTeamChange}
+                                                disabled={isGenerating}
+                                                allowAll={false}
+                                            />
                                         </div>
 
                                         {/* Period Selector */}

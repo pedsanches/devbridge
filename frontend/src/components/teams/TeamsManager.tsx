@@ -1,0 +1,580 @@
+"use client";
+
+import { useState, useEffect, useCallback } from "react";
+import {
+    Users,
+    Plus,
+    Trash2,
+    Edit2,
+    Star,
+    GitBranch,
+    ExternalLink,
+    Check,
+    X,
+    Loader2,
+} from "lucide-react";
+import {
+    getTeams,
+    getTeam,
+    createTeam,
+    updateTeam,
+    deleteTeam,
+    setDefaultTeam,
+    getDataSources,
+    addRepositoriesToTeam,
+    removeRepositoriesFromTeam,
+    Team,
+    TeamDetail,
+    DataSource,
+} from "@/services/api";
+
+// Color palette for teams
+const TEAM_COLORS = [
+    "#6366F1", // Indigo
+    "#8B5CF6", // Violet
+    "#EC4899", // Pink
+    "#EF4444", // Red
+    "#F97316", // Orange
+    "#EAB308", // Yellow
+    "#22C55E", // Green
+    "#14B8A6", // Teal
+    "#0EA5E9", // Sky
+    "#3B82F6", // Blue
+];
+
+interface TeamFormData {
+    name: string;
+    description: string;
+    color: string;
+}
+
+export function TeamsManager() {
+    const [teams, setTeams] = useState<Team[]>([]);
+    const [selectedTeam, setSelectedTeam] = useState<TeamDetail | null>(null);
+    const [dataSources, setDataSources] = useState<DataSource[]>([]);
+    const [isLoading, setIsLoading] = useState(true);
+    const [isCreating, setIsCreating] = useState(false);
+    const [isEditing, setIsEditing] = useState(false);
+    const [isSaving, setIsSaving] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+
+    const [formData, setFormData] = useState<TeamFormData>({
+        name: "",
+        description: "",
+        color: TEAM_COLORS[0],
+    });
+
+    const fetchTeams = useCallback(async () => {
+        try {
+            setIsLoading(true);
+            const [teamsResponse, sourcesResponse] = await Promise.all([
+                getTeams(),
+                getDataSources(),
+            ]);
+            setTeams(teamsResponse.items);
+            setDataSources(sourcesResponse.sources);
+            setError(null);
+        } catch (err) {
+            setError("Erro ao carregar times");
+            console.error(err);
+        } finally {
+            setIsLoading(false);
+        }
+    }, []);
+
+    useEffect(() => {
+        fetchTeams();
+    }, [fetchTeams]);
+
+    const handleSelectTeam = async (teamId: string) => {
+        try {
+            const detail = await getTeam(teamId);
+            setSelectedTeam(detail);
+            setIsEditing(false);
+            setIsCreating(false);
+        } catch (err) {
+            console.error("Failed to fetch team details:", err);
+        }
+    };
+
+    const handleCreateTeam = async () => {
+        if (!formData.name.trim()) return;
+
+        try {
+            setIsSaving(true);
+            const newTeam = await createTeam({
+                name: formData.name,
+                description: formData.description || undefined,
+                color: formData.color,
+            });
+            setTeams([...teams, newTeam]);
+            setFormData({ name: "", description: "", color: TEAM_COLORS[0] });
+            setIsCreating(false);
+            handleSelectTeam(newTeam.id);
+        } catch (err) {
+            console.error("Failed to create team:", err);
+            setError("Erro ao criar time");
+        } finally {
+            setIsSaving(false);
+        }
+    };
+
+    const handleUpdateTeam = async () => {
+        if (!selectedTeam || !formData.name.trim()) return;
+
+        try {
+            setIsSaving(true);
+            const updated = await updateTeam(selectedTeam.id, {
+                name: formData.name,
+                description: formData.description || undefined,
+                color: formData.color,
+            });
+            setTeams(teams.map(t => (t.id === updated.id ? updated : t)));
+            setSelectedTeam({ ...selectedTeam, ...updated });
+            setIsEditing(false);
+        } catch (err) {
+            console.error("Failed to update team:", err);
+            setError("Erro ao atualizar time");
+        } finally {
+            setIsSaving(false);
+        }
+    };
+
+    const handleDeleteTeam = async (teamId: string) => {
+        if (!confirm("Tem certeza que deseja excluir este time?")) return;
+
+        try {
+            await deleteTeam(teamId);
+            setTeams(teams.filter(t => t.id !== teamId));
+            if (selectedTeam?.id === teamId) {
+                setSelectedTeam(null);
+            }
+        } catch (err) {
+            console.error("Failed to delete team:", err);
+            setError("Erro ao excluir time");
+        }
+    };
+
+    const handleSetDefault = async (teamId: string) => {
+        try {
+            await setDefaultTeam(teamId);
+            setTeams(teams.map(t => ({ ...t, is_default: t.id === teamId })));
+            if (selectedTeam) {
+                setSelectedTeam({ ...selectedTeam, is_default: selectedTeam.id === teamId });
+            }
+        } catch (err) {
+            console.error("Failed to set default:", err);
+        }
+    };
+
+    const handleToggleRepository = async (repoId: string, isInTeam: boolean) => {
+        if (!selectedTeam) return;
+
+        try {
+            if (isInTeam) {
+                await removeRepositoriesFromTeam(selectedTeam.id, [repoId]);
+                setSelectedTeam({
+                    ...selectedTeam,
+                    repositories: selectedTeam.repositories.filter(r => r.id !== repoId),
+                    repositories_count: selectedTeam.repositories_count - 1,
+                });
+            } else {
+                await addRepositoriesToTeam(selectedTeam.id, [repoId]);
+                const repo = dataSources.find(ds => ds.id === repoId);
+                if (repo) {
+                    setSelectedTeam({
+                        ...selectedTeam,
+                        repositories: [
+                            ...selectedTeam.repositories,
+                            {
+                                id: repo.id,
+                                name: repo.name,
+                                url: repo.url,
+                                is_active: repo.is_active,
+                                activities_count: repo.activities_count,
+                            },
+                        ],
+                        repositories_count: selectedTeam.repositories_count + 1,
+                    });
+                }
+            }
+            // Update team list count
+            setTeams(teams.map(t =>
+                t.id === selectedTeam.id
+                    ? { ...t, repositories_count: t.repositories_count + (isInTeam ? -1 : 1) }
+                    : t
+            ));
+        } catch (err) {
+            console.error("Failed to toggle repository:", err);
+        }
+    };
+
+    const startEditing = () => {
+        if (selectedTeam) {
+            setFormData({
+                name: selectedTeam.name,
+                description: selectedTeam.description || "",
+                color: selectedTeam.color || TEAM_COLORS[0],
+            });
+            setIsEditing(true);
+        }
+    };
+
+    const startCreating = () => {
+        setFormData({ name: "", description: "", color: TEAM_COLORS[0] });
+        setIsCreating(true);
+        setSelectedTeam(null);
+        setIsEditing(false);
+    };
+
+    if (isLoading) {
+        return (
+            <div className="flex items-center justify-center py-12">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            </div>
+        );
+    }
+
+    return (
+        <div className="grid h-full gap-6 lg:grid-cols-[300px_1fr]">
+            {/* Sidebar - Team List */}
+            <div className="rounded-xl border border-neutral-200 bg-white p-4 dark:border-neutral-700 dark:bg-neutral-800">
+                <div className="mb-4 flex items-center justify-between">
+                    <h3 className="font-semibold">Times</h3>
+                    <button
+                        onClick={startCreating}
+                        className="flex items-center gap-1 rounded-lg bg-primary px-3 py-1.5 text-sm font-medium text-white transition-colors hover:bg-primary/90"
+                    >
+                        <Plus className="h-4 w-4" />
+                        Novo
+                    </button>
+                </div>
+
+                {error && (
+                    <div className="mb-4 rounded-lg bg-red-50 p-3 text-sm text-red-600 dark:bg-red-900/20 dark:text-red-400">
+                        {error}
+                    </div>
+                )}
+
+                <div className="space-y-2">
+                    {teams.length === 0 ? (
+                        <p className="py-8 text-center text-sm text-neutral-500">
+                            Nenhum time criado.
+                            <br />
+                            Crie um time para organizar seus repositórios.
+                        </p>
+                    ) : (
+                        teams.map((team) => (
+                            <button
+                                key={team.id}
+                                onClick={() => handleSelectTeam(team.id)}
+                                className={`
+                                    flex w-full items-center gap-3 rounded-lg p-3 text-left transition-colors
+                                    ${selectedTeam?.id === team.id
+                                        ? "bg-primary/10 ring-1 ring-primary"
+                                        : "hover:bg-neutral-100 dark:hover:bg-neutral-700"
+                                    }
+                                `}
+                            >
+                                <span
+                                    className="h-4 w-4 flex-shrink-0 rounded-full"
+                                    style={{ backgroundColor: team.color || "#6B7280" }}
+                                />
+                                <div className="flex-1 overflow-hidden">
+                                    <div className="flex items-center gap-2">
+                                        <span className="truncate font-medium">{team.name}</span>
+                                        {team.is_default && (
+                                            <Star className="h-3 w-3 fill-yellow-400 text-yellow-400" />
+                                        )}
+                                    </div>
+                                    <div className="text-xs text-neutral-500">
+                                        {team.repositories_count} repos
+                                    </div>
+                                </div>
+                            </button>
+                        ))
+                    )}
+                </div>
+            </div>
+
+            {/* Main Content */}
+            <div className="rounded-xl border border-neutral-200 bg-white p-6 dark:border-neutral-700 dark:bg-neutral-800">
+                {/* Create Form */}
+                {isCreating && (
+                    <div>
+                        <h3 className="mb-4 text-lg font-semibold">Criar Novo Time</h3>
+                        <div className="space-y-4">
+                            <div>
+                                <label className="mb-1 block text-sm font-medium">Nome</label>
+                                <input
+                                    type="text"
+                                    value={formData.name}
+                                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                                    placeholder="Ex: Squad Pagamentos"
+                                    className="w-full rounded-lg border border-neutral-200 bg-white px-4 py-2 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 dark:border-neutral-700 dark:bg-neutral-900"
+                                />
+                            </div>
+                            <div>
+                                <label className="mb-1 block text-sm font-medium">Descrição (opcional)</label>
+                                <textarea
+                                    value={formData.description}
+                                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                                    placeholder="Descreva o time..."
+                                    rows={3}
+                                    className="w-full rounded-lg border border-neutral-200 bg-white px-4 py-2 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 dark:border-neutral-700 dark:bg-neutral-900"
+                                />
+                            </div>
+                            <div>
+                                <label className="mb-2 block text-sm font-medium">Cor</label>
+                                <div className="flex flex-wrap gap-2">
+                                    {TEAM_COLORS.map((color) => (
+                                        <button
+                                            key={color}
+                                            onClick={() => setFormData({ ...formData, color })}
+                                            className={`
+                                                h-8 w-8 rounded-full transition-transform
+                                                ${formData.color === color ? "scale-110 ring-2 ring-offset-2 ring-neutral-400" : "hover:scale-105"}
+                                            `}
+                                            style={{ backgroundColor: color }}
+                                        />
+                                    ))}
+                                </div>
+                            </div>
+                            <div className="flex gap-3">
+                                <button
+                                    onClick={handleCreateTeam}
+                                    disabled={!formData.name.trim() || isSaving}
+                                    className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2 font-medium text-white transition-colors hover:bg-primary/90 disabled:opacity-50"
+                                >
+                                    {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
+                                    Criar Time
+                                </button>
+                                <button
+                                    onClick={() => setIsCreating(false)}
+                                    className="rounded-lg border px-4 py-2 transition-colors hover:bg-neutral-100 dark:hover:bg-neutral-700"
+                                >
+                                    Cancelar
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {/* Team Details */}
+                {selectedTeam && !isCreating && (
+                    <div>
+                        {/* Header */}
+                        <div className="mb-6 flex items-start justify-between">
+                            <div className="flex items-center gap-4">
+                                <span
+                                    className="h-10 w-10 rounded-xl"
+                                    style={{ backgroundColor: selectedTeam.color || "#6B7280" }}
+                                />
+                                <div>
+                                    {isEditing ? (
+                                        <input
+                                            type="text"
+                                            value={formData.name}
+                                            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                                            className="rounded-lg border border-neutral-200 bg-white px-3 py-1 text-xl font-bold focus:border-primary focus:outline-none dark:border-neutral-700 dark:bg-neutral-900"
+                                        />
+                                    ) : (
+                                        <h2 className="text-xl font-bold">{selectedTeam.name}</h2>
+                                    )}
+                                    <p className="text-sm text-neutral-500">
+                                        {selectedTeam.repositories_count} repositórios • Criado em{" "}
+                                        {new Date(selectedTeam.created_at).toLocaleDateString("pt-BR")}
+                                    </p>
+                                </div>
+                            </div>
+                            <div className="flex gap-2">
+                                {isEditing ? (
+                                    <>
+                                        <button
+                                            onClick={handleUpdateTeam}
+                                            disabled={isSaving}
+                                            className="flex items-center gap-1 rounded-lg bg-primary px-3 py-1.5 text-sm font-medium text-white hover:bg-primary/90"
+                                        >
+                                            {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
+                                            Salvar
+                                        </button>
+                                        <button
+                                            onClick={() => setIsEditing(false)}
+                                            className="flex items-center gap-1 rounded-lg border px-3 py-1.5 text-sm hover:bg-neutral-100 dark:hover:bg-neutral-700"
+                                        >
+                                            <X className="h-4 w-4" />
+                                            Cancelar
+                                        </button>
+                                    </>
+                                ) : (
+                                    <>
+                                        <button
+                                            onClick={startEditing}
+                                            className="flex items-center gap-1 rounded-lg border px-3 py-1.5 text-sm hover:bg-neutral-100 dark:hover:bg-neutral-700"
+                                        >
+                                            <Edit2 className="h-4 w-4" />
+                                            Editar
+                                        </button>
+                                        {!selectedTeam.is_default && (
+                                            <button
+                                                onClick={() => handleSetDefault(selectedTeam.id)}
+                                                className="flex items-center gap-1 rounded-lg border px-3 py-1.5 text-sm hover:bg-neutral-100 dark:hover:bg-neutral-700"
+                                            >
+                                                <Star className="h-4 w-4" />
+                                                Tornar Padrão
+                                            </button>
+                                        )}
+                                        <button
+                                            onClick={() => handleDeleteTeam(selectedTeam.id)}
+                                            className="flex items-center gap-1 rounded-lg border border-red-200 px-3 py-1.5 text-sm text-red-600 hover:bg-red-50 dark:border-red-800 dark:hover:bg-red-900/20"
+                                        >
+                                            <Trash2 className="h-4 w-4" />
+                                            Excluir
+                                        </button>
+                                    </>
+                                )}
+                            </div>
+                        </div>
+
+                        {/* Color picker in edit mode */}
+                        {isEditing && (
+                            <div className="mb-6">
+                                <label className="mb-2 block text-sm font-medium">Cor</label>
+                                <div className="flex flex-wrap gap-2">
+                                    {TEAM_COLORS.map((color) => (
+                                        <button
+                                            key={color}
+                                            onClick={() => setFormData({ ...formData, color })}
+                                            className={`
+                                                h-8 w-8 rounded-full transition-transform
+                                                ${formData.color === color ? "scale-110 ring-2 ring-offset-2" : "hover:scale-105"}
+                                            `}
+                                            style={{ backgroundColor: color }}
+                                        />
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Description */}
+                        {(selectedTeam.description || isEditing) && (
+                            <div className="mb-6">
+                                {isEditing ? (
+                                    <textarea
+                                        value={formData.description}
+                                        onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                                        placeholder="Descrição do time..."
+                                        rows={2}
+                                        className="w-full rounded-lg border border-neutral-200 bg-white px-4 py-2 text-sm focus:border-primary focus:outline-none dark:border-neutral-700 dark:bg-neutral-900"
+                                    />
+                                ) : (
+                                    <p className="text-sm text-neutral-600 dark:text-neutral-400">
+                                        {selectedTeam.description}
+                                    </p>
+                                )}
+                            </div>
+                        )}
+
+                        {/* Repositories */}
+                        <div>
+                            <h3 className="mb-4 flex items-center gap-2 text-lg font-semibold">
+                                <GitBranch className="h-5 w-5" />
+                                Repositórios
+                            </h3>
+
+                            <div className="space-y-2">
+                                {dataSources.map((source) => {
+                                    const isInTeam = selectedTeam.repositories.some(r => r.id === source.id);
+                                    return (
+                                        <div
+                                            key={source.id}
+                                            className={`
+                                                flex items-center justify-between rounded-lg border p-3 transition-colors
+                                                ${isInTeam
+                                                    ? "border-primary/30 bg-primary/5"
+                                                    : "border-neutral-200 dark:border-neutral-700"
+                                                }
+                                            `}
+                                        >
+                                            <div className="flex items-center gap-3">
+                                                <GitBranch className="h-5 w-5 text-neutral-500" />
+                                                <div>
+                                                    <div className="font-medium">{source.name}</div>
+                                                    <div className="text-xs text-neutral-500">
+                                                        {source.activities_count} atividades
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div className="flex items-center gap-2">
+                                                <a
+                                                    href={source.url}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    className="p-1 text-neutral-400 hover:text-neutral-600"
+                                                >
+                                                    <ExternalLink className="h-4 w-4" />
+                                                </a>
+                                                <button
+                                                    onClick={() => handleToggleRepository(source.id, isInTeam)}
+                                                    className={`
+                                                        rounded-lg px-3 py-1.5 text-sm font-medium transition-colors
+                                                        ${isInTeam
+                                                            ? "bg-primary text-white hover:bg-primary/90"
+                                                            : "border border-neutral-200 hover:bg-neutral-100 dark:border-neutral-700 dark:hover:bg-neutral-700"
+                                                        }
+                                                    `}
+                                                >
+                                                    {isInTeam ? (
+                                                        <>
+                                                            <Check className="mr-1 inline h-4 w-4" />
+                                                            Adicionado
+                                                        </>
+                                                    ) : (
+                                                        <>
+                                                            <Plus className="mr-1 inline h-4 w-4" />
+                                                            Adicionar
+                                                        </>
+                                                    )}
+                                                </button>
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+
+                                {dataSources.length === 0 && (
+                                    <div className="rounded-lg border border-dashed border-neutral-300 p-8 text-center dark:border-neutral-600">
+                                        <GitBranch className="mx-auto mb-2 h-8 w-8 text-neutral-400" />
+                                        <p className="text-neutral-500">
+                                            Nenhum repositório disponível.
+                                            <br />
+                                            Conecte sua conta GitHub nas integrações.
+                                        </p>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {/* Empty State */}
+                {!selectedTeam && !isCreating && (
+                    <div className="flex flex-col items-center justify-center py-16 text-center">
+                        <Users className="mb-4 h-16 w-16 text-neutral-300" />
+                        <h3 className="mb-2 text-lg font-semibold">Organize seus repositórios</h3>
+                        <p className="mb-6 max-w-md text-neutral-500">
+                            Times permitem agrupar repositórios relacionados para facilitar
+                            a geração de relatórios e conversas no chat.
+                        </p>
+                        <button
+                            onClick={startCreating}
+                            className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2 font-medium text-white transition-colors hover:bg-primary/90"
+                        >
+                            <Plus className="h-5 w-5" />
+                            Criar Primeiro Time
+                        </button>
+                    </div>
+                )}
+            </div>
+        </div>
+    );
+}

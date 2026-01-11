@@ -17,6 +17,7 @@ from app.api.v1.reports import router as reports_router
 from app.api.v1.repos import router as repos_router
 from app.api.v1.settings import router as settings_router
 from app.api.v1.sync import router as sync_router
+from app.api.v1.teams import router as teams_router
 from app.api.v1.webhooks import router as webhooks_router
 
 api_router = APIRouter()
@@ -35,4 +36,5 @@ api_router.include_router(
 )
 api_router.include_router(metrics_router, tags=["Metrics"])
 api_router.include_router(sync_router, prefix="/sync", tags=["Sync"])
+api_router.include_router(teams_router, tags=["Teams"])
 api_router.include_router(webhooks_router, prefix="/webhooks", tags=["Webhooks"])
