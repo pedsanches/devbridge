@@ -399,3 +399,33 @@ export async function syncGitHubTeams(): Promise<TeamSyncResult> {
         method: "POST",
     });
 }
+
+// ============================================================
+// Metrics API
+// ============================================================
+
+export interface DoraMetric {
+    value: number | string;
+    formatted: string;
+    change: number | null;
+    trend: "up" | "down" | "stable" | null;
+    status: "elite" | "high" | "medium" | "low";
+}
+
+export interface DoraMetricsResponse {
+    deployment_frequency: DoraMetric;
+    lead_time: DoraMetric;
+    change_failure_rate: DoraMetric;
+    mttr: DoraMetric;
+    overall_level: "elite" | "high" | "medium" | "low";
+    period_start: string;
+    period_end: string;
+}
+
+export async function getDoraMetrics(days: number = 30, teamId?: string): Promise<DoraMetricsResponse> {
+    const params = new URLSearchParams({ days: days.toString() });
+    if (teamId) {
+        params.append("team_id", teamId);
+    }
+    return fetchAPI<DoraMetricsResponse>(`/metrics/dora?${params.toString()}`);
+}

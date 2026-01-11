@@ -15,6 +15,8 @@ from app.models.code_review import CodeReview
 from app.models.contributor_stats import ContributorStats
 from app.models.developer_profile import DeveloperProfile
 from app.models.issue import Issue, IssueState
+from app.models.repository import Repository
+from app.models.team import team_repositories
 from app.models.team_metrics import TeamMetrics
 
 logger = logging.getLogger(__name__)
@@ -296,15 +298,21 @@ async def calculate_dora_metrics(
     period_days = (period_end - period_start).days or 1
 
     # Deployment Frequency: PRs merged to main
-    deploy_query = (
-        select(func.count(Activity.id))
-        .join(Activity.repository)
-        .where(
-            Activity.type == ActivityType.PULL_REQUEST,
-            Activity.merged_at.isnot(None),
-            Activity.merged_at >= period_start,
-            Activity.merged_at < period_end,
+    # Deployment Frequency: PRs merged to main
+    deploy_query = select(func.count(Activity.id)).join(Activity.repository)
+
+    if team_id:
+        deploy_query = deploy_query.join(
+            team_repositories,
+            (team_repositories.c.repository_id == Repository.id)
+            & (team_repositories.c.team_id == team_id),
         )
+
+    deploy_query = deploy_query.where(
+        Activity.type == ActivityType.PULL_REQUEST,
+        Activity.merged_at.isnot(None),
+        Activity.merged_at >= period_start,
+        Activity.merged_at < period_end,
     )
     deploy_result = await db.execute(deploy_query)
     total_deploys = deploy_result.scalar() or 0
@@ -312,7 +320,17 @@ async def calculate_dora_metrics(
     metrics.total_prs_merged = total_deploys
 
     # Lead Time: Average cycle time
-    lead_time_query = select(func.avg(Activity.cycle_time_hours)).where(
+    # Lead Time: Average cycle time
+    lead_time_query = select(func.avg(Activity.cycle_time_hours)).join(Activity.repository)
+
+    if team_id:
+        lead_time_query = lead_time_query.join(
+            team_repositories,
+            (team_repositories.c.repository_id == Repository.id)
+            & (team_repositories.c.team_id == team_id),
+        )
+
+    lead_time_query = lead_time_query.where(
         Activity.type == ActivityType.PULL_REQUEST,
         Activity.merged_at >= period_start,
         Activity.merged_at < period_end,
@@ -322,7 +340,17 @@ async def calculate_dora_metrics(
     metrics.lead_time_hours = lead_time_result.scalar() or 0
 
     # Change Failure Rate: Reverted PRs / Total
-    reverted_query = select(func.count(Activity.id)).where(
+    # Change Failure Rate: Reverted PRs / Total
+    reverted_query = select(func.count(Activity.id)).join(Activity.repository)
+
+    if team_id:
+        reverted_query = reverted_query.join(
+            team_repositories,
+            (team_repositories.c.repository_id == Repository.id)
+            & (team_repositories.c.team_id == team_id),
+        )
+
+    reverted_query = reverted_query.where(
         Activity.type == ActivityType.PULL_REQUEST,
         Activity.is_reverted.is_(True),
         Activity.merged_at >= period_start,
@@ -333,11 +361,21 @@ async def calculate_dora_metrics(
     metrics.change_failure_rate = reverted_count / total_deploys if total_deploys > 0 else 0
 
     # Average cycle and pickup times
+    # Average cycle and pickup times
     time_query = select(
         func.avg(Activity.cycle_time_hours),
         func.avg(Activity.pickup_time_hours),
         func.avg(Activity.review_time_hours),
-    ).where(
+    ).join(Activity.repository)
+
+    if team_id:
+        time_query = time_query.join(
+            team_repositories,
+            (team_repositories.c.repository_id == Repository.id)
+            & (team_repositories.c.team_id == team_id),
+        )
+
+    time_query = time_query.where(
         Activity.type == ActivityType.PULL_REQUEST,
         Activity.merged_at >= period_start,
         Activity.merged_at < period_end,
@@ -349,7 +387,17 @@ async def calculate_dora_metrics(
     metrics.avg_review_time_hours = time_row[2]
 
     # Total commits
-    commits_query = select(func.count(Activity.id)).where(
+    # Total commits
+    commits_query = select(func.count(Activity.id)).join(Activity.repository)
+
+    if team_id:
+        commits_query = commits_query.join(
+            team_repositories,
+            (team_repositories.c.repository_id == Repository.id)
+            & (team_repositories.c.team_id == team_id),
+        )
+
+    commits_query = commits_query.where(
         Activity.type == ActivityType.COMMIT,
         Activity.created_at >= period_start,
         Activity.created_at < period_end,

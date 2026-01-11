@@ -108,6 +108,7 @@ async def get_dora_metrics(
     db: Annotated[AsyncSession, Depends(get_db)],
     org_id: CurrentOrgId,
     days: int = Query(default=30, ge=7, le=365, description="Period in days"),
+    team_id: str | None = Query(default=None, description="Filter metrics by Team ID"),
 ):
     """
     Get DORA metrics for the organization.
@@ -123,6 +124,7 @@ async def get_dora_metrics(
         organization_id=org_id,
         period_start=period_start,
         period_end=period_end,
+        team_id=team_id,
     )
 
     # Calculate previous period for trend comparison
@@ -133,6 +135,7 @@ async def get_dora_metrics(
         organization_id=org_id,
         period_start=prev_period_start,
         period_end=prev_period_end,
+        team_id=team_id,
     )
 
     # Calculate trends
