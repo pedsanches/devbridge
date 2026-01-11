@@ -35,14 +35,16 @@ const statusLabels = {
     low: "Low",
 };
 
-export function MetricsBar() {
+export function MetricsBar({ teamId }: { teamId?: string | null }) {
     const [metrics, setMetrics] = useState<MetricsResponse | null>(null);
     const [isLoading, setIsLoading] = useState(true);
 
     useEffect(() => {
         const fetchMetrics = async () => {
             try {
-                const response = await fetch(`${API_BASE_URL}/metrics/dora?days=30`, {
+                setIsLoading(true);
+                const query = teamId ? `&team_id=${teamId}` : "";
+                const response = await fetch(`${API_BASE_URL}/metrics/dora?days=30${query}`, {
                     credentials: "include",
                 });
 
@@ -95,7 +97,7 @@ export function MetricsBar() {
         };
 
         fetchMetrics();
-    }, []);
+    }, [teamId]);
 
     if (isLoading) {
         return (

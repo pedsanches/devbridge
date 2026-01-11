@@ -10,6 +10,7 @@ import { ActivityFeed } from "@/components/dashboard/ActivityFeed";
 import { RepoStatusWidget } from "@/components/dashboard/RepoStatusWidget";
 import { MetricsBar } from "@/components/dashboard/MetricsBar";
 import { QuickChatInput } from "@/components/dashboard/QuickChatInput";
+import { TeamSelector } from "@/components/teams/TeamSelector";
 
 // Copied interface to match ActivityFeed expectation
 interface ActivityItem {
@@ -47,6 +48,7 @@ export default function DashboardPage() {
     const [activities, setActivities] = useState<ActivityItem[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const [selectedTeamId, setSelectedTeamId] = useState<string | null>(null);
 
     useEffect(() => {
         if (!authLoading && !isAuthenticated) {
@@ -59,7 +61,8 @@ export default function DashboardPage() {
 
         const fetchActivities = async () => {
             try {
-                const response = await fetch(`${API_BASE_URL}/activities?page=1&page_size=20`, {
+                const query = selectedTeamId ? `&team_id=${selectedTeamId}` : "";
+                const response = await fetch(`${API_BASE_URL}/activities?page=1&page_size=20${query}`, {
                     credentials: "include",
                 });
                 if (!response.ok) throw new Error("Failed to fetch activities");
@@ -73,7 +76,7 @@ export default function DashboardPage() {
         };
 
         fetchActivities();
-    }, [isAuthenticated]);
+    }, [isAuthenticated, selectedTeamId]);
 
     if (authLoading) {
         return (
@@ -102,13 +105,21 @@ export default function DashboardPage() {
             <main className="flex-1 py-8">
                 <div className="container mx-auto max-w-6xl px-4">
                     {/* Header with greeting */}
-                    <div className="mb-6">
-                        <h1 className="text-2xl font-semibold tracking-tight text-[var(--foreground)]">
-                            {getGreeting()}, {userName} 👋
-                        </h1>
-                        <p className="mt-1 text-sm text-[var(--muted-foreground)]">
-                            Aqui está o resumo da sua organização
-                        </p>
+                    <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                        <div>
+                            <h1 className="text-2xl font-semibold tracking-tight text-[var(--foreground)]">
+                                {getGreeting()}, {userName} 👋
+                            </h1>
+                            <p className="mt-1 text-sm text-[var(--muted-foreground)]">
+                                Aqui está o resumo da sua organização
+                            </p>
+                        </div>
+                        <TeamSelector
+                            selectedTeamId={selectedTeamId}
+                            onTeamChange={(id) => setSelectedTeamId(id)}
+                            allowAll
+                            allLabel="Visão Global"
+                        />
                     </div>
 
                     {/* Quick Chat Input */}
@@ -121,7 +132,7 @@ export default function DashboardPage() {
                         <h2 className="mb-4 text-sm font-medium text-[var(--muted-foreground)] uppercase tracking-wide">
                             Métricas DORA
                         </h2>
-                        <MetricsBar />
+                        <MetricsBar teamId={selectedTeamId} />
                     </div>
 
                     {/* Main Content Grid */}

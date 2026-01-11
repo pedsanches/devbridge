@@ -26,6 +26,7 @@ async def list_activities(
     db: DbSession,
     org_id: CurrentOrgId,
     repository_id: str | None = Query(None, description="Filter by repository"),
+    team_id: str | None = Query(None, description="Filter by team"),
     page: int = Query(1, ge=1, description="Page number"),
     page_size: int = Query(20, ge=1, le=100, description="Items per page"),
 ) -> PaginatedResponse:
@@ -36,6 +37,7 @@ async def list_activities(
         db: Database session.
         org_id: Current organization ID (from session).
         repository_id: Filter by repository ID.
+        team_id: Filter by team ID.
         page: Page number (1-indexed).
         page_size: Number of items per page.
 
@@ -47,6 +49,7 @@ async def list_activities(
         db,
         organization_id=org_id,
         repository_id=UUID(repository_id) if repository_id else None,
+        team_id=team_id,
         skip=skip,
         limit=page_size,
         include_updates=True,

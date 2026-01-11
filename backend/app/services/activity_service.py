@@ -19,6 +19,7 @@ async def get_activities(
     *,
     organization_id: str | None = None,
     repository_id: UUID | None = None,
+    team_id: str | int | None = None,
     activity_type: ActivityType | None = None,
     skip: int = 0,
     limit: int = 20,
@@ -31,6 +32,7 @@ async def get_activities(
         db: Database session.
         organization_id: Filter by organization ID (multi-tenant).
         repository_id: Filter by repository ID.
+        team_id: Filter by Team ID (includes direct and grouped repositories).
         activity_type: Filter by activity type (COMMIT/PULL_REQUEST).
         skip: Number of records to skip.
         limit: Maximum number of records to return.
@@ -39,29 +41,47 @@ async def get_activities(
     Returns:
         Tuple of (activities list, total count).
     """
-    from app.models import Repository
+    from sqlalchemy import or_
 
-    query = select(Activity)
+    from app.models import Repository
+    from app.models.team import team_repositories
+
+    query = select(Activity).join(Repository)
 
     # Multi-tenant: filter by organization through repository
     if organization_id:
-        query = query.join(Repository).where(Repository.organization_id == organization_id)
+        query = query.where(Repository.organization_id == organization_id)
 
     if repository_id:
         query = query.where(Activity.repository_id == repository_id)
+
+    if team_id:
+        # Filter by team: either direct ownership (team_id) or via group association
+        query = query.outerjoin(
+            team_repositories, Repository.id == team_repositories.c.repository_id
+        ).where(
+            or_(Repository.team_id == str(team_id), team_repositories.c.team_id == str(team_id))
+        )
+
     if activity_type:
         query = query.where(Activity.type == activity_type)
     if include_updates:
         query = query.options(selectinload(Activity.business_update))
 
     # Get total count
-    count_query = select(Activity.id)
+    count_query = select(Activity.id).join(Repository)
     if organization_id:
-        count_query = count_query.join(Repository).where(
-            Repository.organization_id == organization_id
-        )
+        count_query = count_query.where(Repository.organization_id == organization_id)
     if repository_id:
         count_query = count_query.where(Activity.repository_id == repository_id)
+
+    if team_id:
+        count_query = count_query.outerjoin(
+            team_repositories, Repository.id == team_repositories.c.repository_id
+        ).where(
+            or_(Repository.team_id == str(team_id), team_repositories.c.team_id == str(team_id))
+        )
+
     if activity_type:
         count_query = count_query.where(Activity.type == activity_type)
 

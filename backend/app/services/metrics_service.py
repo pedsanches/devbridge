@@ -297,15 +297,16 @@ async def calculate_dora_metrics(
     # Calculate days in period
     period_days = (period_end - period_start).days or 1
 
-    # Deployment Frequency: PRs merged to main
+    from sqlalchemy import or_
+
     # Deployment Frequency: PRs merged to main
     deploy_query = select(func.count(Activity.id)).join(Activity.repository)
 
     if team_id:
-        deploy_query = deploy_query.join(
-            team_repositories,
-            (team_repositories.c.repository_id == Repository.id)
-            & (team_repositories.c.team_id == team_id),
+        deploy_query = deploy_query.outerjoin(
+            team_repositories, Repository.id == team_repositories.c.repository_id
+        ).where(
+            or_(Repository.team_id == str(team_id), team_repositories.c.team_id == str(team_id))
         )
 
     deploy_query = deploy_query.where(
@@ -320,14 +321,13 @@ async def calculate_dora_metrics(
     metrics.total_prs_merged = total_deploys
 
     # Lead Time: Average cycle time
-    # Lead Time: Average cycle time
     lead_time_query = select(func.avg(Activity.cycle_time_hours)).join(Activity.repository)
 
     if team_id:
-        lead_time_query = lead_time_query.join(
-            team_repositories,
-            (team_repositories.c.repository_id == Repository.id)
-            & (team_repositories.c.team_id == team_id),
+        lead_time_query = lead_time_query.outerjoin(
+            team_repositories, Repository.id == team_repositories.c.repository_id
+        ).where(
+            or_(Repository.team_id == str(team_id), team_repositories.c.team_id == str(team_id))
         )
 
     lead_time_query = lead_time_query.where(
@@ -340,14 +340,13 @@ async def calculate_dora_metrics(
     metrics.lead_time_hours = lead_time_result.scalar() or 0
 
     # Change Failure Rate: Reverted PRs / Total
-    # Change Failure Rate: Reverted PRs / Total
     reverted_query = select(func.count(Activity.id)).join(Activity.repository)
 
     if team_id:
-        reverted_query = reverted_query.join(
-            team_repositories,
-            (team_repositories.c.repository_id == Repository.id)
-            & (team_repositories.c.team_id == team_id),
+        reverted_query = reverted_query.outerjoin(
+            team_repositories, Repository.id == team_repositories.c.repository_id
+        ).where(
+            or_(Repository.team_id == str(team_id), team_repositories.c.team_id == str(team_id))
         )
 
     reverted_query = reverted_query.where(
@@ -361,7 +360,6 @@ async def calculate_dora_metrics(
     metrics.change_failure_rate = reverted_count / total_deploys if total_deploys > 0 else 0
 
     # Average cycle and pickup times
-    # Average cycle and pickup times
     time_query = select(
         func.avg(Activity.cycle_time_hours),
         func.avg(Activity.pickup_time_hours),
@@ -369,10 +367,10 @@ async def calculate_dora_metrics(
     ).join(Activity.repository)
 
     if team_id:
-        time_query = time_query.join(
-            team_repositories,
-            (team_repositories.c.repository_id == Repository.id)
-            & (team_repositories.c.team_id == team_id),
+        time_query = time_query.outerjoin(
+            team_repositories, Repository.id == team_repositories.c.repository_id
+        ).where(
+            or_(Repository.team_id == str(team_id), team_repositories.c.team_id == str(team_id))
         )
 
     time_query = time_query.where(
@@ -387,14 +385,13 @@ async def calculate_dora_metrics(
     metrics.avg_review_time_hours = time_row[2]
 
     # Total commits
-    # Total commits
     commits_query = select(func.count(Activity.id)).join(Activity.repository)
 
     if team_id:
-        commits_query = commits_query.join(
-            team_repositories,
-            (team_repositories.c.repository_id == Repository.id)
-            & (team_repositories.c.team_id == team_id),
+        commits_query = commits_query.outerjoin(
+            team_repositories, Repository.id == team_repositories.c.repository_id
+        ).where(
+            or_(Repository.team_id == str(team_id), team_repositories.c.team_id == str(team_id))
         )
 
     commits_query = commits_query.where(
