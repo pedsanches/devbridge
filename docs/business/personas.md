@@ -170,17 +170,17 @@ audience_profiles:
   - role: "pm"
     detail_level: "outcome-focused"
     language: "pt-BR"
-    
+
   - role: "cto"
     detail_level: "technical"
     language: "pt-BR"
     include_metrics: true
-    
+
   - role: "ceo"
     detail_level: "executive-summary"
     language: "pt-BR"
     max_bullets: 5
-    
+
   - role: "engineer"
     detail_level: "full-technical"
     language: "pt-BR"

@@ -52,7 +52,7 @@ graph LR
 ### Alternativa A: Regex Custom
 
 - **Prós:** Simples, sem dependência externa
-- **Contras:** 
+- **Contras:**
   - Manter regex para cada tipo é trabalhoso
   - Falsos negativos em formatos variados
   - Não detecta contexto (ex: "meu CPF é...")

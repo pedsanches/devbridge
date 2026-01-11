@@ -1,7 +1,7 @@
 # ADR-004: Estratégia de Embeddings
 
-**Status:** Aceito  
-**Data:** 2026-01-02  
+**Status:** Aceito
+**Data:** 2026-01-02
 **Decisores:** Time de Arquitetura
 
 ## Contexto
@@ -82,7 +82,7 @@ class OpenAIEmbeddingProvider(EmbeddingProvider):
     def __init__(self, model: str = "text-embedding-3-small"):
         self.model = model
         self.client = AsyncOpenAI()
-    
+
     async def embed(self, texts: list[str]) -> list[EmbeddingResult]:
         response = await self.client.embeddings.create(
             model=self.model,
@@ -105,7 +105,7 @@ class LocalEmbeddingProvider(EmbeddingProvider):
     def __init__(self, model: str = "all-MiniLM-L6-v2"):
         from sentence_transformers import SentenceTransformer
         self.model = SentenceTransformer(model)
-    
+
     async def embed(self, texts: list[str]) -> list[EmbeddingResult]:
         vectors = self.model.encode(texts)
         return [
@@ -119,7 +119,7 @@ class LocalEmbeddingProvider(EmbeddingProvider):
 ```python
 def get_embedding_provider() -> EmbeddingProvider:
     provider = settings.EMBEDDING_PROVIDER
-    
+
     if provider == "openai":
         return OpenAIEmbeddingProvider(settings.EMBEDDING_MODEL)
     elif provider == "local":

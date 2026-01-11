@@ -41,7 +41,7 @@ O time tem experiência predominante em Python e TypeScript.
 ### Alternativa A: Node.js/TypeScript Full-Stack
 
 - **Prós:** Única linguagem, ecossistema npm
-- **Contras:** 
+- **Contras:**
   - Menos bibliotecas maduras para AI/ML
   - Tree-sitter bindings menos estáveis
   - LangGraph não tem port oficial

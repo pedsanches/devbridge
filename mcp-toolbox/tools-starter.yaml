@@ -21,7 +21,7 @@ tools:
     source: local-postgres
     description: List all databases in the PostgreSQL instance
     statement: |
-      SELECT 
+      SELECT
         datname as database_name,
         pg_size_pretty(pg_database_size(datname)) as size,
         datcollate as collation
@@ -35,7 +35,7 @@ tools:
     source: local-postgres
     description: List all tables in the current database
     statement: |
-      SELECT 
+      SELECT
         schemaname as schema,
         tablename as table_name,
         pg_size_pretty(pg_total_relation_size(schemaname||'.'||tablename)) as total_size
@@ -53,7 +53,7 @@ tools:
         type: string
         description: The name of the table to describe
     statement: |
-      SELECT 
+      SELECT
         column_name,
         data_type,
         character_maximum_length,

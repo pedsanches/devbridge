@@ -74,14 +74,14 @@ def handle_result(result: str | dict[str, Any]) -> None:
 # ✅ Docstrings para funções públicas
 def sanitize_content(content: str, language: str = "pt") -> str:
     """Remove PII from content before LLM processing.
-    
+
     Args:
         content: Raw content to sanitize
         language: Language code for Presidio
-        
+
     Returns:
         Sanitized content with PII replaced by placeholders
-        
+
     Raises:
         SanitizationError: If content cannot be processed
     """
@@ -90,11 +90,11 @@ def sanitize_content(content: str, language: str = "pt") -> str:
 # ✅ Pydantic para modelos de dados
 class CommitAnalysis(BaseModel):
     """Analysis result for a single commit."""
-    
+
     commit_sha: str
     files_changed: list[str]
     impact_score: int = Field(..., ge=0, le=100)
-    
+
     model_config = ConfigDict(frozen=True)
 ```
 
@@ -104,7 +104,7 @@ class CommitAnalysis(BaseModel):
 # ✅ Exceções customizadas com contexto
 class WebhookValidationError(Exception):
     """Raised when webhook signature validation fails."""
-    
+
     def __init__(self, signature: str, expected: str):
         self.signature = signature
         self.expected = expected
@@ -197,13 +197,13 @@ interface ChatInputProps {
 
 ```typescript
 // ✅ Function components com tipos explícitos
-export function ChatInput({ 
-  onSubmit, 
+export function ChatInput({
+  onSubmit,
   disabled = false,
-  placeholder = "Digite sua mensagem..." 
+  placeholder = "Digite sua mensagem..."
 }: ChatInputProps): JSX.Element {
   const [input, setInput] = useState('');
-  
+
   const handleSubmit = (e: React.FormEvent): void => {
     e.preventDefault();
     if (input.trim()) {
@@ -211,10 +211,10 @@ export function ChatInput({
       setInput('');
     }
   };
-  
+
   return (
     <form onSubmit={handleSubmit}>
-      <input 
+      <input
         value={input}
         onChange={(e) => setInput(e.target.value)}
         disabled={disabled}

@@ -92,7 +92,7 @@ tools:
         type: string
         description: The name of the table to analyze
     statement: |
-      SELECT 
+      SELECT
         schemaname,
         tablename,
         pg_size_pretty(pg_total_relation_size(schemaname||'.'||tablename)) AS total_size,
@@ -107,7 +107,7 @@ tools:
     source: my-alloydb-production
     description: List all tables in the database
     statement: |
-      SELECT 
+      SELECT
         table_schema,
         table_name,
         table_type
@@ -128,7 +128,7 @@ tools:
         type: string
         description: End date in YYYY-MM-DD format
     statement: |
-      SELECT 
+      SELECT
         DATE(timestamp) as date,
         COUNT(*) as total_events,
         COUNT(DISTINCT user_id) as unique_users
@@ -172,12 +172,12 @@ prompts:
     messages:
       - content: |
           Please analyze the following SQL query for performance issues and suggest improvements:
-          
+
           Query:
           {{.query}}
-          
+
           Database: {{.database_type}}
-          
+
           Consider:
           - Index usage
           - Join optimization
@@ -194,9 +194,9 @@ prompts:
     messages:
       - content: |
           Generate realistic test data for the following table schema:
-          
+
           {{.schema}}
-          
+
           Requirements:
           - Generate {{.row_count}} rows
           - Ensure data is realistic and follows common patterns

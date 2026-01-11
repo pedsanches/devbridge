@@ -42,7 +42,7 @@ print_info() {
 # Check if toolbox binary exists
 check_binary() {
     print_header "Checking Toolbox Binary"
-    
+
     if [ -f "./toolbox" ]; then
         print_success "Toolbox binary found"
         VERSION=$(./toolbox --version 2>&1 || echo "unknown")
@@ -58,10 +58,10 @@ check_binary() {
 # Check Google Cloud authentication
 check_gcloud_auth() {
     print_header "Checking Google Cloud Authentication"
-    
+
     if command -v gcloud &> /dev/null; then
         print_success "gcloud CLI found"
-        
+
         # Check if authenticated
         if gcloud auth application-default print-access-token &> /dev/null; then
             print_success "Application Default Credentials (ADC) configured"
@@ -80,7 +80,7 @@ check_gcloud_auth() {
 # Create environment file template
 create_env_template() {
     print_header "Creating Environment Template"
-    
+
     if [ -f ".env" ]; then
         print_warning ".env file already exists"
         read -p "Overwrite? (y/N): " -n 1 -r
@@ -90,7 +90,7 @@ create_env_template() {
             return 0
         fi
     fi
-    
+
     cat > .env << 'EOF'
 # Google Cloud Project Configuration
 export GCP_PROJECT_ID="your-project-id"
@@ -118,7 +118,7 @@ export LOCAL_PG_DATABASE="local_db"
 export LOCAL_PG_USER="postgres"
 export LOCAL_PG_PASSWORD="postgres"
 EOF
-    
+
     print_success "Created .env template"
     print_warning "Please edit .env with your actual credentials"
 }
@@ -126,7 +126,7 @@ EOF
 # Create minimal tools.yaml
 create_minimal_config() {
     print_header "Creating Minimal Configuration"
-    
+
     if [ -f "tools.yaml" ]; then
         print_warning "tools.yaml already exists"
         read -p "Overwrite? (y/N): " -n 1 -r
@@ -136,7 +136,7 @@ create_minimal_config() {
             return 0
         fi
     fi
-    
+
     cat > tools.yaml << 'EOF'
 # Minimal MCP Toolbox Configuration
 # This is a starter configuration - customize it for your needs
@@ -168,7 +168,7 @@ tools:
     source: local-db
     description: List all tables in the current database
     statement: |
-      SELECT 
+      SELECT
         schemaname,
         tablename
       FROM pg_tables
@@ -180,7 +180,7 @@ toolsets:
     - list-databases
     - list-tables
 EOF
-    
+
     print_success "Created minimal tools.yaml"
     print_info "This configuration uses local PostgreSQL for testing"
 }
@@ -188,18 +188,18 @@ EOF
 # Test configuration
 test_config() {
     print_header "Testing Configuration"
-    
+
     if [ ! -f "tools.yaml" ]; then
         print_error "tools.yaml not found"
         print_info "Create it first using option 3"
         return 1
     fi
-    
+
     print_info "Validating configuration..."
-    
+
     # Try to start the server briefly
     timeout 5s ./toolbox --tools-file tools.yaml --log-level INFO 2>&1 | head -n 20 || true
-    
+
     print_success "Configuration validation complete"
     print_info "Check the output above for any errors"
 }
@@ -207,23 +207,23 @@ test_config() {
 # Run with UI
 run_with_ui() {
     print_header "Starting Toolbox with UI"
-    
+
     if [ ! -f "tools.yaml" ]; then
         print_error "tools.yaml not found"
         print_info "Create it first using option 3"
         return 1
     fi
-    
+
     print_info "Starting server on http://127.0.0.1:5000"
     print_info "Press Ctrl+C to stop"
-    
+
     ./toolbox --tools-file tools.yaml --ui
 }
 
 # Run with prebuilt config
 run_prebuilt() {
     print_header "Available Prebuilt Configurations"
-    
+
     echo "AlloyDB:"
     echo "  1. alloydb-postgres"
     echo "  2. alloydb-postgres-admin"
@@ -240,9 +240,9 @@ run_prebuilt() {
     echo "  9. bigquery"
     echo "  10. spanner"
     echo ""
-    
+
     read -p "Enter number (or 'q' to quit): " choice
-    
+
     case $choice in
         1) CONFIG="alloydb-postgres" ;;
         2) CONFIG="alloydb-postgres-admin" ;;
@@ -257,10 +257,10 @@ run_prebuilt() {
         q|Q) return 0 ;;
         *) print_error "Invalid choice"; return 1 ;;
     esac
-    
+
     print_info "Starting with prebuilt config: $CONFIG"
     print_info "Press Ctrl+C to stop"
-    
+
     ./toolbox --prebuilt "$CONFIG"
 }
 
@@ -276,29 +276,29 @@ Options:
   1. Check system requirements
      - Verifies toolbox binary exists
      - Checks Google Cloud authentication
-     
+
   2. Create environment template
      - Creates .env file with placeholder values
      - You need to edit it with your actual credentials
-     
+
   3. Create minimal configuration
      - Creates a basic tools.yaml for testing
      - Uses local PostgreSQL by default
-     
+
   4. Test configuration
      - Validates your tools.yaml
      - Shows any configuration errors
-     
+
   5. Run with UI
      - Starts the toolbox with web interface
      - Access at http://127.0.0.1:5000
-     
+
   6. Run with prebuilt config
      - Quick start with predefined configurations
      - No tools.yaml needed
-     
+
   7. Show this help
-  
+
   0. Exit
 
 For more information, see README.md
@@ -310,7 +310,7 @@ EOF
 main_menu() {
     while true; do
         print_header "MCP Toolbox Setup Menu"
-        
+
         echo "1. Check system requirements"
         echo "2. Create environment template (.env)"
         echo "3. Create minimal configuration (tools.yaml)"
@@ -320,9 +320,9 @@ main_menu() {
         echo "7. Show help"
         echo "0. Exit"
         echo ""
-        
+
         read -p "Select an option: " choice
-        
+
         case $choice in
             1)
                 check_binary
@@ -354,7 +354,7 @@ main_menu() {
                 print_error "Invalid option"
                 ;;
         esac
-        
+
         echo ""
         read -p "Press Enter to continue..."
     done

@@ -66,6 +66,7 @@ def decode_access_token(token: str) -> dict | None:
 
 # --- Fernet Encryption for Sensitive Data ---
 
+
 def _get_fernet() -> Fernet:
     """Get Fernet instance using JWT secret as key base."""
     # Derive a 32-byte key from JWT secret (Fernet requires URL-safe base64 key)
@@ -103,4 +104,3 @@ def decrypt_token(encrypted: bytes) -> str:
     """
     fernet = _get_fernet()
     return fernet.decrypt(encrypted).decode()
-

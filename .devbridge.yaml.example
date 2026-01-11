@@ -18,15 +18,15 @@ business:
     - id: "conv_rate"
       name: "Conversion Rate"
       description: "Improvements that increase user conversion"
-      
+
     - id: "reliability"
       name: "System Reliability"
       description: "Uptime, performance, incident reduction"
-      
+
     - id: "dev_velocity"
       name: "Developer Velocity"
       description: "Faster delivery, less friction"
-      
+
     - id: "security"
       name: "Security & Compliance"
       description: "Security improvements and compliance"
@@ -38,7 +38,7 @@ business:
       name: "Average Checkout Value"
       value: 150.00
       currency: "BRL"
-      
+
     - id: "hourly_revenue"
       name: "Revenue per Hour"
       value: 5000.00
@@ -60,13 +60,13 @@ notifications:
   slack:
     enabled: true
     channel: "#eng-updates"
-    
+
   # When to send summaries
   daily_summary:
     enabled: true
     time: "09:00"
     timezone: "America/Sao_Paulo"
-    
+
   # Real-time notifications for specific events
   real_time:
     - event: "production_deploy"
@@ -78,9 +78,9 @@ notifications:
 translation:
   # Target audience for translations
   audience: "product_managers"
-  
+
   # Language for output
   language: "pt-BR"
-  
+
   # Level of technical detail (low, medium, high)
   technical_detail: "low"

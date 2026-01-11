@@ -13,15 +13,15 @@ graph LR
         CURSOR[Cursor]
         OTHER[Outros Agentes]
     end
-    
+
     subgraph "MCP Layer"
         TOOLBOX[MCP Toolbox\n:5000]
     end
-    
+
     subgraph "Database"
         PG[(PostgreSQL)]
     end
-    
+
     CLAUDE --> TOOLBOX
     CURSOR --> TOOLBOX
     OTHER --> TOOLBOX

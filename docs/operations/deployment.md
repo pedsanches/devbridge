@@ -133,34 +133,34 @@ graph TB
     subgraph "Load Balancer"
         LB[ALB/NLB]
     end
-    
+
     subgraph "API Tier"
         API1[API Pod 1]
         API2[API Pod 2]
         API3[API Pod 3]
     end
-    
+
     subgraph "Worker Tier"
         W1[Worker 1]
         W2[Worker 2]
     end
-    
+
     subgraph "Data Tier"
         PG[(PostgreSQL<br/>Primary)]
         PGR[(PostgreSQL<br/>Replica)]
         REDIS[(Redis Cluster)]
         QD[(Qdrant Cluster)]
     end
-    
+
     LB --> API1
     LB --> API2
     LB --> API3
-    
+
     API1 & API2 & API3 --> PG
     API1 & API2 & API3 --> PGR
     API1 & API2 & API3 --> REDIS
     API1 & API2 & API3 --> QD
-    
+
     W1 & W2 --> REDIS
     W1 & W2 --> PG
 ```
@@ -180,21 +180,21 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     environment: production
-    
+
     steps:
       - uses: actions/checkout@v4
-      
+
       - name: Build and push image
         run: |
           docker build -t devbridge/api:${{ github.ref_name }} .
           docker push devbridge/api:${{ github.ref_name }}
-      
+
       - name: Deploy to Kubernetes
         run: |
           kubectl set image deployment/devbridge-api \
             api=devbridge/api:${{ github.ref_name }} \
             --namespace production
-      
+
       - name: Wait for rollout
         run: |
           kubectl rollout status deployment/devbridge-api \

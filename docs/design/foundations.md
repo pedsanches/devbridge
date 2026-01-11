@@ -176,7 +176,7 @@ Todos os valores de espaçamento seguem múltiplos de 8px.
   --color-success: #34C759;
   --color-warning: #FF9500;
   --color-error: #FF3B30;
-  
+
   /* Neutrals */
   --color-neutral-50: #FAFAFA;
   --color-neutral-100: #F5F5F7;
@@ -188,11 +188,11 @@ Todos os valores de espaçamento seguem múltiplos de 8px.
   --color-neutral-700: #3A3A3C;
   --color-neutral-800: #2C2C2E;
   --color-neutral-900: #1D1D1F;
-  
+
   /* Typography */
   --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif;
   --font-mono: 'SF Mono', 'Fira Code', 'Consolas', monospace;
-  
+
   /* Spacing */
   --space-1: 4px;
   --space-2: 8px;
@@ -202,20 +202,20 @@ Todos os valores de espaçamento seguem múltiplos de 8px.
   --space-6: 32px;
   --space-8: 48px;
   --space-10: 64px;
-  
+
   /* Border Radius */
   --radius-sm: 6px;
   --radius-md: 10px;
   --radius-lg: 14px;
   --radius-xl: 20px;
   --radius-full: 9999px;
-  
+
   /* Shadows */
   --shadow-sm: 0 1px 2px rgba(0,0,0,0.04);
   --shadow-md: 0 4px 12px rgba(0,0,0,0.08);
   --shadow-lg: 0 12px 40px rgba(0,0,0,0.12);
   --shadow-xl: 0 24px 80px rgba(0,0,0,0.16);
-  
+
   /* Animation */
   --duration-fast: 100ms;
   --duration-normal: 200ms;

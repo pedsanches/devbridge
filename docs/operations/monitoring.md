@@ -193,7 +193,7 @@ groups:
         annotations:
           summary: "Alta taxa de erro em webhooks"
           description: "Mais de 10% dos webhooks estão falhando"
-      
+
       - alert: QueueBacklog
         expr: devbridge_queue_size > 1000
         for: 10m
@@ -202,7 +202,7 @@ groups:
         annotations:
           summary: "Backlog na fila de processamento"
           description: "Mais de 1000 tarefas esperando processamento"
-      
+
       - alert: LLMHighLatency
         expr: histogram_quantile(0.95, rate(devbridge_translation_duration_seconds_bucket[5m])) > 30
         for: 5m
