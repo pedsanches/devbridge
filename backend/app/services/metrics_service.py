@@ -15,7 +15,7 @@ from app.models.code_review import CodeReview
 from app.models.contributor_stats import ContributorStats
 from app.models.developer_profile import DeveloperProfile
 from app.models.issue import Issue, IssueState
-from app.models.repository import Repository
+from app.models.repo import Repository
 from app.models.team import team_repositories
 from app.models.team_metrics import TeamMetrics
 
