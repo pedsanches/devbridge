@@ -13,10 +13,22 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.v1.router import api_router
 from app.core.config import settings
+from app.core.logging import get_logger, setup_logging
+from app.core.middleware import ObservabilityMiddleware
+from app.core.observability import (
+    instrument_app,
+    metrics_endpoint,
+    setup_metrics,
+    setup_tracing,
+)
+
+# Initialize structured logging early
+setup_logging()
+logger = get_logger(__name__)
 
 
 @asynccontextmanager
-async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
+async def lifespan(_app: FastAPI) -> AsyncGenerator[None, None]:
     """
     Application lifespan manager.
 
@@ -24,13 +36,20 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     Use this for database connections, cache initialization, etc.
     """
     # Startup
-    print(f"🚀 Starting DevBridge API v{settings.VERSION}")
-    print(f"📍 Environment: {settings.ENVIRONMENT}")
+    logger.info(
+        "Starting DevBridge API",
+        version=settings.VERSION,
+        environment=settings.ENVIRONMENT,
+    )
+
+    # Initialize observability
+    setup_tracing()
+    setup_metrics()
 
     yield
 
     # Shutdown
-    print("👋 Shutting down DevBridge API")
+    logger.info("Shutting down DevBridge API")
 
 
 def create_app() -> FastAPI:
@@ -50,6 +69,9 @@ def create_app() -> FastAPI:
         lifespan=lifespan,
     )
 
+    # Observability Middleware (first in chain for accurate timing)
+    app.add_middleware(ObservabilityMiddleware)
+
     # CORS Middleware
     app.add_middleware(
         CORSMiddleware,
@@ -59,8 +81,26 @@ def create_app() -> FastAPI:
         allow_headers=["*"],
     )
 
+    # Instrument app for tracing
+    instrument_app(app)
+
     # Include API router
     app.include_router(api_router, prefix=settings.API_PREFIX)
+
+    # Metrics endpoint (outside API prefix for Prometheus scraping)
+    app.add_route("/metrics", metrics_endpoint, methods=["GET"])
+
+    # Health check endpoints
+    @app.get("/health")
+    async def health_check() -> dict:
+        """Basic health check endpoint."""
+        return {"status": "healthy", "version": settings.VERSION}
+
+    @app.get("/ready")
+    async def readiness_check() -> dict:
+        """Readiness check endpoint."""
+        # TODO: Add database connectivity check
+        return {"status": "ready"}
 
     return app
 
