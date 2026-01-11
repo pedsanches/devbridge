@@ -80,7 +80,7 @@ Framework de orquestração de AI que permite fluxos cíclicos e controle de est
 Métrica DORA que mede o tempo desde o primeiro commit até o deploy em produção (ou merge na master).
 
 ### LLM (Large Language Model)
-Modelo de linguagem de grande escala. DevBridge usa Claude 3.5 Sonnet da Anthropic.
+Modelo de linguagem de grande escala. DevBridge usa GPT-4o da OpenAI.
 
 ---
 

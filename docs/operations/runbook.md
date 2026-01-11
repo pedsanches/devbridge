@@ -127,22 +127,27 @@ kubectl rollout restart deployment/devbridge-worker
 
 **Sintomas:**
 - Traduções falhando com timeout
-- Logs: "anthropic.TimeoutError"
+- Logs: "openai.APITimeoutError"
 
 **Diagnóstico:**
 ```bash
-# 1. Verificar status da Anthropic
-curl https://status.anthropic.com/api/v2/status.json
+# 1. Verificar status da OpenAI
+curl https://status.openai.com/api/v2/status.json
 
 # 2. Verificar se é específico ou geral
-curl -X POST https://api.anthropic.com/v1/messages \
-  -H "x-api-key: $ANTHROPIC_API_KEY" \
-  -d '{"model":"claude-3-5-sonnet-20241022","max_tokens":10,"messages":[{"role":"user","content":"hi"}]}'
+curl https://api.openai.com/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $OPENAI_API_KEY" \
+  -d '{
+    "model": "gpt-4o-mini",
+    "messages": [{"role": "user", "content": "hi"}],
+    "max_tokens": 10
+  }'
 ```
 
 **Resolução:**
 ```bash
-# 1. Se API da Anthropic instável, configurar circuit breaker
+# 1. Se API da OpenAI instável, configurar circuit breaker
 # (já implementado via settings)
 
 # 2. Aumentar timeout temporariamente

@@ -95,12 +95,12 @@ Toda afirmação deve vir com um score de confiança (0-100):
 
 ```python
 import instructor
-from anthropic import Anthropic
+from openai import OpenAI
 
-client = instructor.from_anthropic(Anthropic())
+client = instructor.from_openai(OpenAI())
 
 response = client.chat.completions.create(
-    model="claude-3-5-sonnet-20241022",
+    model="gpt-4o",
     response_model=BusinessTranslation,  # Pydantic model
     messages=[{"role": "user", "content": prompt}]
 )

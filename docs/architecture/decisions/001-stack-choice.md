@@ -28,7 +28,7 @@ O time tem experiência predominante em Python e TypeScript.
 | API | FastAPI |
 | Task Queue | Celery + Redis |
 | AI Orchestration | LangGraph |
-| LLM | Claude 3.5 Sonnet (Anthropic) |
+| LLM | GPT-4o (OpenAI) |
 | Schema Validation | Instructor + Pydantic |
 | Parsing | Tree-sitter |
 | Privacy | Microsoft Presidio |

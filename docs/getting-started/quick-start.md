@@ -6,7 +6,7 @@ Levante o DevBridge em **5 minutos**.
 
 - Docker e Docker Compose
 - Git
-- API Key do Anthropic (Claude)
+- API Key da OpenAI (GPT-4o)
 - Token do GitHub
 
 ## Passos
@@ -28,7 +28,7 @@ Edite `.env` com suas credenciais:
 
 ```env
 # AI
-ANTHROPIC_API_KEY=sk-ant-api03-...
+OPENAI_API_KEY=sk-proj-...
 
 # GitHub
 GITHUB_TOKEN=ghp_...
