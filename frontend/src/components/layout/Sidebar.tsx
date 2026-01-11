@@ -14,6 +14,7 @@ import {
     LogOut,
     X,
     Menu,
+    Users,
 } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { useSidebar } from "./SidebarContext";
@@ -27,6 +28,7 @@ interface NavItem {
 
 const mainNavItems: NavItem[] = [
     { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
+    { href: "/teams", label: "Times", icon: Users },
     { href: "/metrics", label: "Métricas", icon: BarChart3 },
     { href: "/reports", label: "Relatórios", icon: FileText },
 ];
