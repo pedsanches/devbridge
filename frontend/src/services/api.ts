@@ -385,3 +385,17 @@ export async function removeRepositoriesFromTeam(teamId: string, repositoryIds: 
         body: JSON.stringify({ repository_ids: repositoryIds }),
     });
 }
+
+export interface TeamSyncResult {
+    synced_teams: number;
+    created_teams: number;
+    updated_teams: number;
+    total_repos_linked: number;
+    message: string;
+}
+
+export async function syncGitHubTeams(): Promise<TeamSyncResult> {
+    return fetchAPI("/teams/sync", {
+        method: "POST",
+    });
+}

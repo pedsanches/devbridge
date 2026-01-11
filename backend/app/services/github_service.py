@@ -326,6 +326,72 @@ class GitHubService:
                 }
             return None
 
+    async def list_user_teams(self) -> list[dict[str, Any]]:
+        """
+        List all teams the authenticated user belongs to.
+
+        Returns:
+            List of team dicts.
+        """
+        url = f"{self.BASE_URL}/user/teams"
+        all_teams: list[dict[str, Any]] = []
+
+        async with httpx.AsyncClient() as client:
+            page = 1
+            while True:
+                params = {"page": page, "per_page": 100}
+                response = await client.get(url, headers=self.headers, params=params, timeout=30)
+
+                if response.status_code != 200:
+                    break
+
+                teams = response.json()
+                if not teams:
+                    break
+
+                all_teams.extend(teams)
+
+                if len(teams) < 100:
+                    break
+                page += 1
+
+        return all_teams
+
+    async def list_team_repositories(self, org: str, team_slug: str) -> list[dict[str, Any]]:
+        """
+        List repositories belonging to a specific team.
+
+        Args:
+            org: Organization login (e.g. 'devbridge-ai').
+            team_slug: Team slug (e.g. 'frontend').
+
+        Returns:
+            List of repository dicts.
+        """
+        url = f"{self.BASE_URL}/orgs/{org}/teams/{team_slug}/repos"
+        all_repos: list[dict[str, Any]] = []
+
+        async with httpx.AsyncClient() as client:
+            page = 1
+            while True:
+                params = {"page": page, "per_page": 100}
+                response = await client.get(url, headers=self.headers, params=params, timeout=30)
+
+                if response.status_code != 200:
+                    break
+
+                repos = response.json()
+                if not repos:
+                    break
+
+                all_repos.extend(repos)
+
+                if len(repos) < 100:
+                    break
+                page += 1
+
+        return all_repos
+
 
 # Singleton instance
 github_service = GitHubService()

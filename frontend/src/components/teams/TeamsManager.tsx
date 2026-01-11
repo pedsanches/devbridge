@@ -12,6 +12,7 @@ import {
     Check,
     X,
     Loader2,
+    RefreshCw,
 } from "lucide-react";
 import {
     getTeams,
@@ -23,9 +24,11 @@ import {
     getDataSources,
     addRepositoriesToTeam,
     removeRepositoriesFromTeam,
+    syncGitHubTeams,
     Team,
     TeamDetail,
     DataSource,
+    TeamSyncResult,
 } from "@/services/api";
 
 // Color palette for teams
@@ -56,6 +59,8 @@ export function TeamsManager() {
     const [isCreating, setIsCreating] = useState(false);
     const [isEditing, setIsEditing] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
+    const [isSyncing, setIsSyncing] = useState(false);
+    const [syncResult, setSyncResult] = useState<TeamSyncResult | null>(null);
     const [error, setError] = useState<string | null>(null);
 
     const [formData, setFormData] = useState<TeamFormData>({
@@ -227,6 +232,30 @@ export function TeamsManager() {
         setIsEditing(false);
     };
 
+    const handleSyncGitHub = async () => {
+        try {
+            setIsSyncing(true);
+            setSyncResult(null);
+            setError(null);
+            const result = await syncGitHubTeams();
+            setSyncResult(result);
+            // Refresh teams list
+            await fetchTeams();
+            // Clear success message after 5 seconds
+            setTimeout(() => setSyncResult(null), 5000);
+        } catch (err: unknown) {
+            const message = err instanceof Error ? err.message : "Erro ao sincronizar";
+            if (message.includes("not connected")) {
+                setError("Conecte o GitHub primeiro nas configurações de Fontes de Dados");
+            } else {
+                setError(message);
+            }
+            console.error("Sync failed:", err);
+        } finally {
+            setIsSyncing(false);
+        }
+    };
+
     if (isLoading) {
         return (
             <div className="flex items-center justify-center py-12">
@@ -249,6 +278,26 @@ export function TeamsManager() {
                         Novo
                     </button>
                 </div>
+
+                {/* Sync with GitHub */}
+                <button
+                    onClick={handleSyncGitHub}
+                    disabled={isSyncing}
+                    className="mb-4 flex w-full items-center justify-center gap-2 rounded-lg border border-neutral-200 bg-neutral-50 px-3 py-2 text-sm font-medium text-neutral-700 transition-colors hover:bg-neutral-100 disabled:opacity-50 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-300 dark:hover:bg-neutral-800"
+                >
+                    <RefreshCw className={`h-4 w-4 ${isSyncing ? "animate-spin" : ""}`} />
+                    {isSyncing ? "Sincronizando..." : "Sincronizar com GitHub"}
+                </button>
+
+                {/* Sync Result */}
+                {syncResult && (
+                    <div className="mb-4 rounded-lg bg-green-50 p-3 text-sm text-green-700 dark:bg-green-900/20 dark:text-green-400">
+                        <p className="font-medium">{syncResult.message}</p>
+                        <p className="mt-1 text-xs">
+                            {syncResult.created_teams} criados • {syncResult.updated_teams} atualizados • {syncResult.total_repos_linked} repos vinculados
+                        </p>
+                    </div>
+                )}
 
                 {error && (
                     <div className="mb-4 rounded-lg bg-red-50 p-3 text-sm text-red-600 dark:bg-red-900/20 dark:text-red-400">

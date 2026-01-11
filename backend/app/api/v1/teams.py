@@ -19,7 +19,9 @@ from app.schemas.team import (
     TeamResponse,
     TeamUpdate,
 )
+from app.services.settings_service import get_github_token
 from app.services.team_service import team_service
+from app.services.team_sync_service import team_sync_service
 
 router = APIRouter(prefix="/teams", tags=["teams"])
 
@@ -86,6 +88,33 @@ async def ensure_default_team(
     team = await team_service.create_default_team_if_needed(db, org_id)
     await db.commit()
     return team
+
+
+@router.post("/sync", response_model=dict)
+async def sync_github_teams(
+    db: AsyncSession = Depends(get_db),
+    org_id: str = Depends(get_current_org_id),
+    _user: User = Depends(get_current_user),
+) -> dict:
+    """
+    Synchronize GitHub Teams with DevBridge Teams.
+
+    This endpoint fetches the user's GitHub teams and creates/updates
+    corresponding DevBridge teams, linking repositories automatically.
+
+    Requires GitHub integration to be connected.
+    """
+    # Get GitHub token from settings
+    github_token = await get_github_token(db, org_id)
+    if not github_token:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="GitHub integration not connected. Please connect GitHub first.",
+        )
+
+    result = await team_sync_service.sync_github_teams(db, org_id, github_token)
+    await db.commit()
+    return result
 
 
 @router.put("/default", response_model=TeamResponse)
