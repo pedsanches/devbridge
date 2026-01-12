@@ -39,6 +39,9 @@ dev-backend: ## Start only backend
 dev-frontend: ## Start only frontend
 	@./scripts/dev.sh frontend
 
+storybook: ## Start Storybook
+	@cd frontend && pnpm storybook
+
 ## ============================================================
 ## TESTING
 ## ============================================================
@@ -58,6 +61,12 @@ test-frontend: ## Run frontend tests
 test-cov: ## Run tests with coverage
 	@cd backend && poetry run pytest --cov=app --cov-report=html
 	@echo "$(GREEN)[OK]$(NC) Coverage report: backend/htmlcov/index.html"
+
+test-e2e: ## Run E2E tests (headless)
+	@cd frontend && pnpm test:e2e
+
+test-e2e-ui: ## Run E2E tests with UI
+	@cd frontend && pnpm test:e2e --ui
 
 ## ============================================================
 ## CODE QUALITY
@@ -103,6 +112,8 @@ build: ## Build for production
 	@cd backend && poetry build
 	@echo "$(BLUE)[BUILD]$(NC) Building frontend..."
 	@cd frontend && pnpm build
+	@echo "$(BLUE)[BUILD]$(NC) Building Storybook..."
+	@cd frontend && pnpm build-storybook
 	@echo "$(GREEN)[OK]$(NC) Build complete"
 
 docker-build: ## Build Docker images

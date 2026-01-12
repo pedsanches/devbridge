@@ -54,12 +54,12 @@ repos:
         stages: [commit-msg]
         args: [feat, fix, docs, refactor, test, chore, ci, perf]
 
-  # Frontend - ESLint (if frontend exists)
-  # - repo: local
-  #   hooks:
-  #     - id: eslint
-  #       name: ESLint
-  #       entry: pnpm --filter frontend lint
-  #       language: system
-  #       files: \.(ts|tsx)$
-  #       pass_filenames: false
+  # Frontend - ESLint
+  - repo: local
+    hooks:
+      - id: eslint
+        name: ESLint
+        entry: cd frontend && pnpm lint
+        language: system
+        files: \.(ts|tsx)$
+        pass_filenames: false
