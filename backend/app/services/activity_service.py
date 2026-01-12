@@ -169,6 +169,32 @@ async def get_activity_by_external_id(
     return result.scalar_one_or_none()
 
 
+async def _calculate_metrics(activity: Activity) -> None:
+    """Calculate time-based metrics for an activity."""
+    if not activity.occurred_at:
+        return
+
+    # Cycle Time: Time from creation to merge
+    if activity.merged_at:
+        delta = activity.merged_at - activity.occurred_at
+        activity.cycle_time_hours = delta.total_seconds() / 3600
+
+    # Pickup Time: Time from creation to first review
+    if activity.first_review_at:
+        delta = activity.first_review_at - activity.occurred_at
+        activity.pickup_time_hours = delta.total_seconds() / 3600
+
+    # Review Time: Time from first review to approval
+    if activity.first_review_at and activity.approved_at:
+        delta = activity.approved_at - activity.first_review_at
+        activity.review_time_hours = delta.total_seconds() / 3600
+
+    # Merge Time: Time from approval to merge
+    if activity.approved_at and activity.merged_at:
+        delta = activity.merged_at - activity.approved_at
+        activity.merge_time_hours = delta.total_seconds() / 3600
+
+
 async def create_activity(db: AsyncSession, activity_in: ActivityCreate) -> Activity:
     """
     Create a new activity.
@@ -193,7 +219,17 @@ async def create_activity(db: AsyncSession, activity_in: ActivityCreate) -> Acti
         labels=activity_in.labels,
         linked_issues=activity_in.linked_issues,
         value_tags=activity_in.value_tags,
+        # Code Metrics
+        lines_added=activity_in.lines_added,
+        lines_deleted=activity_in.lines_deleted,
+        files_changed_count=activity_in.files_changed_count,
+        # PR Lifecycle
+        first_review_at=activity_in.first_review_at,
+        approved_at=activity_in.approved_at,
+        merged_at=activity_in.merged_at,
     )
+
+    await _calculate_metrics(activity)
 
     db.add(activity)
     await db.flush()
@@ -252,22 +288,29 @@ async def get_or_create_activity(
     )
 
     if existing:
-        # Update fields if provided (Context Enrichment)
+        # Update fields if provided (Context Enrichment & Metrics)
         changed = False
-        if activity_in.files_touched is not None:
-            existing.files_touched = activity_in.files_touched
-            changed = True
-        if activity_in.labels is not None:
-            existing.labels = activity_in.labels
-            changed = True
-        if activity_in.linked_issues is not None:
-            existing.linked_issues = activity_in.linked_issues
-            changed = True
-        if activity_in.value_tags is not None:
-            existing.value_tags = activity_in.value_tags
-            changed = True
+
+        # Helper to update field if changed
+        for field in [
+            "files_touched",
+            "labels",
+            "linked_issues",
+            "value_tags",
+            "lines_added",
+            "lines_deleted",
+            "files_changed_count",
+            "first_review_at",
+            "approved_at",
+            "merged_at",
+        ]:
+            new_val = getattr(activity_in, field)
+            if new_val is not None and getattr(existing, field) != new_val:
+                setattr(existing, field, new_val)
+                changed = True
 
         if changed:
+            await _calculate_metrics(existing)
             db.add(existing)
             await db.flush()
             await db.refresh(existing)

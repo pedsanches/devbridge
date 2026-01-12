@@ -7,14 +7,14 @@ Service for calculating and aggregating developer metrics.
 import logging
 from datetime import date, timedelta
 
-from sqlalchemy import func, select
+from sqlalchemy import String, cast, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.activity import Activity, ActivityType
 from app.models.code_review import CodeReview
 from app.models.contributor_stats import ContributorStats
 from app.models.developer_profile import DeveloperProfile
-from app.models.issue import Issue, IssueState
+from app.models.issue import Issue
 from app.models.repo import Repository
 from app.models.team import team_repositories
 from app.models.team_metrics import TeamMetrics
@@ -94,7 +94,7 @@ async def calculate_developer_metrics(
     # Count issues closed
     issues_query = select(func.count(Issue.id)).where(
         Issue.closed_by == github_username,
-        Issue.state == IssueState.CLOSED,
+        cast(Issue.state, String) == "closed",
     )
     issues_result = await db.execute(issues_query)
     profile.total_issues_closed = issues_result.scalar() or 0

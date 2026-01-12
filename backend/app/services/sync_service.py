@@ -324,6 +324,24 @@ class SyncService:
                 except Exception as e:
                     logger.warning(f"Failed to generate business update for PR #{pr_number}: {e}")
 
+        # Update developer metrics for all affected authors
+        # We perform this after syncing all activities to avoid redundant calculations
+        affected_authors = set()
+        for c in commits:
+            if author := c.get("commit", {}).get("author", {}).get("name"):
+                affected_authors.add(author)
+        for p in prs:
+            if user := p.get("user", {}).get("login"):
+                affected_authors.add(user)
+
+        from app.services import metrics_service
+
+        for author in affected_authors:
+            try:
+                await metrics_service.calculate_developer_metrics(db, org_id, author)
+            except Exception as e:
+                logger.warning(f"Failed to update developer metrics for {author}: {e}")
+
         return {"commits_synced": commits_synced, "prs_synced": prs_synced}
 
     async def sync_issues(
