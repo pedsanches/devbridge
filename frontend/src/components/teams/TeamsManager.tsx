@@ -13,6 +13,10 @@ import {
     X,
     Loader2,
     RefreshCw,
+    Sparkles,
+    MessageSquare,
+    BarChart3,
+    Lightbulb,
 } from "lucide-react";
 import {
     getTeams,
@@ -62,6 +66,19 @@ export function TeamsManager() {
     const [isSyncing, setIsSyncing] = useState(false);
     const [syncResult, setSyncResult] = useState<TeamSyncResult | null>(null);
     const [error, setError] = useState<string | null>(null);
+    const [showOnboardingCard, setShowOnboardingCard] = useState(() => {
+        if (typeof window !== "undefined") {
+            return localStorage.getItem("teams_onboarding_dismissed") !== "true";
+        }
+        return true;
+    });
+
+    const dismissOnboarding = () => {
+        setShowOnboardingCard(false);
+        if (typeof window !== "undefined") {
+            localStorage.setItem("teams_onboarding_dismissed", "true");
+        }
+    };
 
     const [formData, setFormData] = useState<TeamFormData>({
         name: "",
@@ -538,15 +555,21 @@ export function TeamsManager() {
                                         <div
                                             key={source.id}
                                             className={`
-                                                flex items-center justify-between rounded-lg border p-3 transition-colors
+                                                flex items-center justify-between rounded-lg border p-3
+                                                transition-all duration-300 ease-out
                                                 ${isInTeam
-                                                    ? "border-primary/30 bg-primary/5"
-                                                    : "border-neutral-200 dark:border-neutral-700"
+                                                    ? "border-primary/30 bg-primary/5 shadow-sm shadow-primary/10 scale-[1.01]"
+                                                    : "border-neutral-200 hover:border-neutral-300 dark:border-neutral-700 dark:hover:border-neutral-600"
                                                 }
                                             `}
                                         >
                                             <div className="flex items-center gap-3">
-                                                <GitBranch className="h-5 w-5 text-neutral-500" />
+                                                <div className={`
+                                                    flex h-9 w-9 items-center justify-center rounded-lg transition-colors duration-300
+                                                    ${isInTeam ? "bg-primary/10" : "bg-neutral-100 dark:bg-neutral-800"}
+                                                `}>
+                                                    <GitBranch className={`h-5 w-5 transition-colors duration-300 ${isInTeam ? "text-primary" : "text-neutral-500"}`} />
+                                                </div>
                                                 <div>
                                                     <div className="font-medium">{source.name}</div>
                                                     <div className="text-xs text-neutral-500">
@@ -559,28 +582,29 @@ export function TeamsManager() {
                                                     href={source.url}
                                                     target="_blank"
                                                     rel="noopener noreferrer"
-                                                    className="p-1 text-neutral-400 hover:text-neutral-600"
+                                                    className="p-1 text-neutral-400 transition-colors hover:text-neutral-600"
                                                 >
                                                     <ExternalLink className="h-4 w-4" />
                                                 </a>
                                                 <button
                                                     onClick={() => handleToggleRepository(source.id, isInTeam)}
                                                     className={`
-                                                        rounded-lg px-3 py-1.5 text-sm font-medium transition-colors
+                                                        group relative overflow-hidden rounded-lg px-3 py-1.5 text-sm font-medium
+                                                        transition-all duration-300
                                                         ${isInTeam
-                                                            ? "bg-primary text-white hover:bg-primary/90"
-                                                            : "border border-neutral-200 hover:bg-neutral-100 dark:border-neutral-700 dark:hover:bg-neutral-700"
+                                                            ? "bg-primary text-white shadow-md shadow-primary/25 hover:bg-primary/90 hover:shadow-lg hover:shadow-primary/30"
+                                                            : "border border-neutral-200 hover:bg-neutral-100 hover:border-primary/30 dark:border-neutral-700 dark:hover:bg-neutral-700"
                                                         }
                                                     `}
                                                 >
                                                     {isInTeam ? (
                                                         <>
-                                                            <Check className="mr-1 inline h-4 w-4" />
+                                                            <Check className="mr-1 inline h-4 w-4 animate-[bounce_0.3s_ease-out]" />
                                                             Adicionado
                                                         </>
                                                     ) : (
                                                         <>
-                                                            <Plus className="mr-1 inline h-4 w-4" />
+                                                            <Plus className="mr-1 inline h-4 w-4 transition-transform group-hover:rotate-90" />
                                                             Adicionar
                                                         </>
                                                     )}
@@ -605,22 +629,86 @@ export function TeamsManager() {
                     </div>
                 )}
 
-                {/* Empty State */}
-                {!selectedTeam && !isCreating && (
-                    <div className="flex flex-col items-center justify-center py-16 text-center">
-                        <Users className="mb-4 h-16 w-16 text-neutral-300" />
-                        <h3 className="mb-2 text-lg font-semibold">Organize seus repositórios</h3>
-                        <p className="mb-6 max-w-md text-neutral-500">
-                            Times permitem agrupar repositórios relacionados para facilitar
-                            a geração de relatórios e conversas no chat.
-                        </p>
+                {/* Onboarding Card */}
+                {showOnboardingCard && teams.length > 0 && !selectedTeam && !isCreating && (
+                    <div className="relative mb-6 overflow-hidden rounded-xl border border-primary/20 bg-gradient-to-br from-primary/5 via-primary/10 to-violet-500/5 p-6">
                         <button
-                            onClick={startCreating}
-                            className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2 font-medium text-white transition-colors hover:bg-primary/90"
+                            onClick={dismissOnboarding}
+                            className="absolute right-3 top-3 rounded-full p-1 text-neutral-400 transition-colors hover:bg-neutral-200 hover:text-neutral-600 dark:hover:bg-neutral-700"
+                            aria-label="Fechar"
                         >
-                            <Plus className="h-5 w-5" />
-                            Criar Primeiro Time
+                            <X className="h-4 w-4" />
                         </button>
+                        <div className="flex items-start gap-4">
+                            <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-xl bg-primary/10">
+                                <Lightbulb className="h-6 w-6 text-primary" />
+                            </div>
+                            <div>
+                                <h3 className="mb-1 font-semibold text-neutral-900 dark:text-neutral-100">
+                                    💡 Dica: Times focam seu contexto
+                                </h3>
+                                <p className="text-sm text-neutral-600 dark:text-neutral-400">
+                                    Selecione um time para ver seus repositórios, ou crie um novo para organizar projetos relacionados.
+                                    O chat e os relatórios usarão automaticamente o contexto do time selecionado.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {/* Empty State - Enhanced */}
+                {!selectedTeam && !isCreating && (
+                    <div className="flex flex-col items-center justify-center py-12 text-center">
+                        {/* Decorative gradient background */}
+                        <div className="relative mb-6">
+                            <div className="absolute inset-0 blur-3xl">
+                                <div className="h-24 w-24 rounded-full bg-gradient-to-br from-primary/30 to-violet-500/30" />
+                            </div>
+                            <div className="relative flex h-24 w-24 items-center justify-center rounded-2xl bg-gradient-to-br from-primary/10 to-violet-500/10 ring-1 ring-primary/20">
+                                <Users className="h-10 w-10 text-primary" />
+                            </div>
+                        </div>
+
+                        <h3 className="mb-2 text-xl font-semibold text-neutral-900 dark:text-neutral-100">
+                            {teams.length === 0 ? "Crie seu primeiro time" : "Selecione um time"}
+                        </h3>
+                        <p className="mb-8 max-w-md text-neutral-500">
+                            {teams.length === 0
+                                ? "Times agrupam repositórios para contexto focado em relatórios e chat."
+                                : "Clique em um time na lista à esquerda para gerenciar seus repositórios."
+                            }
+                        </p>
+
+                        {/* Feature highlights - only show when no teams */}
+                        {teams.length === 0 && (
+                            <div className="mb-8 grid w-full max-w-lg gap-4 text-left sm:grid-cols-3">
+                                <div className="rounded-xl border border-neutral-200 bg-neutral-50 p-4 dark:border-neutral-700 dark:bg-neutral-800/50">
+                                    <MessageSquare className="mb-2 h-5 w-5 text-primary" />
+                                    <h4 className="text-sm font-medium">Chat Focado</h4>
+                                    <p className="text-xs text-neutral-500">Pergunte sobre o contexto do time</p>
+                                </div>
+                                <div className="rounded-xl border border-neutral-200 bg-neutral-50 p-4 dark:border-neutral-700 dark:bg-neutral-800/50">
+                                    <BarChart3 className="mb-2 h-5 w-5 text-violet-500" />
+                                    <h4 className="text-sm font-medium">Métricas DORA</h4>
+                                    <p className="text-xs text-neutral-500">Acompanhe performance por time</p>
+                                </div>
+                                <div className="rounded-xl border border-neutral-200 bg-neutral-50 p-4 dark:border-neutral-700 dark:bg-neutral-800/50">
+                                    <Sparkles className="mb-2 h-5 w-5 text-amber-500" />
+                                    <h4 className="text-sm font-medium">Relatórios IA</h4>
+                                    <p className="text-xs text-neutral-500">Gere resumos executivos</p>
+                                </div>
+                            </div>
+                        )}
+
+                        {teams.length === 0 && (
+                            <button
+                                onClick={startCreating}
+                                className="group flex items-center gap-2 rounded-xl bg-primary px-6 py-3 font-medium text-white shadow-lg shadow-primary/25 transition-all hover:bg-primary/90 hover:shadow-xl hover:shadow-primary/30"
+                            >
+                                <Plus className="h-5 w-5 transition-transform group-hover:rotate-90" />
+                                Criar Primeiro Time
+                            </button>
+                        )}
                     </div>
                 )}
             </div>
