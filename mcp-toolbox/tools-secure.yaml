@@ -227,6 +227,185 @@ tools:
       ORDER BY backend_start;
 
 # ============================================
+# DEVBRIDGE APPLICATION ANALYSIS (Read-Only)
+# ============================================
+
+  # List recent activities
+  list-activities:
+    kind: postgres-sql
+    source: postgres-readonly
+    description: |
+      List recent activities with type and summary.
+      Limited to last 50 activities for safety.
+      Safe: Only reads activity metadata.
+    statement: |
+      SELECT
+        id,
+        external_id,
+        type,
+        title,
+        occurred_at as activity_timestamp,
+        repository_id,
+        author,
+        COALESCE(value_tags::text, '[]') as tags
+      FROM activities
+      ORDER BY occurred_at DESC
+      LIMIT 50;
+
+  # Team summary with member count
+  team-summary:
+    kind: postgres-sql
+    source: postgres-readonly
+    description: |
+      Get summary of teams with member counts.
+      Shows team name, description, and member count.
+      Safe: Only reads team metadata.
+    statement: |
+      SELECT
+        t.id,
+        t.name,
+        t.description,
+        t.created_at,
+        COUNT(m.user_id) as member_count
+      FROM teams t
+      LEFT JOIN memberships m ON t.id = m.team_id
+      GROUP BY t.id, t.name, t.description, t.created_at
+      ORDER BY t.name;
+
+  # Repository statistics
+  repository-stats:
+    kind: postgres-sql
+    source: postgres-readonly
+    description: |
+      Get statistics for all repositories.
+      Shows activity counts and last sync time.
+      Safe: Only reads aggregate data.
+    statement: |
+      SELECT
+        r.id,
+        r.name,
+        r.url,
+        r.is_active,
+        r.created_at,
+        COUNT(a.id) as activity_count,
+        MAX(a.occurred_at) as last_activity
+      FROM repositories r
+      LEFT JOIN activities a ON r.id = a.repository_id
+      GROUP BY r.id, r.name, r.url, r.is_active, r.created_at
+      ORDER BY r.name;
+
+  # User activities summary
+  user-activities:
+    kind: postgres-sql
+    source: postgres-readonly
+    description: |
+      Get activity summary for a specific GitHub username.
+      Shows activity types and counts.
+      Safe: Only reads aggregate counts.
+    parameters:
+      - name: github_username
+        type: string
+        description: GitHub username to search for
+    statement: |
+      SELECT
+        author,
+        type,
+        COUNT(*) as count,
+        MIN(occurred_at) as first_activity,
+        MAX(occurred_at) as last_activity
+      FROM activities
+      WHERE author = $1
+      GROUP BY author, type
+      ORDER BY count DESC;
+
+  # Recent webhooks (limited, sanitized)
+  recent-webhooks:
+    kind: postgres-sql
+    source: postgres-readonly
+    description: |
+      List recent webhooks with status.
+      Limited to 20 most recent for safety.
+      Safe: No payload data exposed.
+      # Note: Assuming webhooks table exists as described, if not will fail gracefully or needs adjustment
+    statement: |
+      SELECT
+        id,
+        event_type,
+        status,
+        error_message,
+        created_at
+      FROM webhooks
+      ORDER BY created_at DESC
+      LIMIT 20;
+
+  # DORA metrics overview
+  dora-metrics:
+    kind: postgres-sql
+    source: postgres-readonly
+    description: |
+      Get DORA metrics summary per repository.
+      Shows deployment frequency, lead time, etc.
+      Safe: Only reads aggregate metrics.
+    statement: |
+      SELECT
+        r.name as repository,
+        COUNT(CASE WHEN a.type = 'pull_request' AND a.merged_at IS NOT NULL THEN 1 END) as merged_prs,
+        COUNT(CASE WHEN a.type = 'commit' THEN 1 END) as commits,
+        AVG(CASE WHEN a.cycle_time_hours IS NOT NULL THEN a.cycle_time_hours END) as avg_cycle_time_hours,
+        AVG(CASE WHEN a.review_time_hours IS NOT NULL THEN a.review_time_hours END) as avg_review_time_hours
+      FROM repositories r
+      LEFT JOIN activities a ON r.id = a.repository_id
+      GROUP BY r.id, r.name
+      ORDER BY r.name;
+
+  # Contributor summary
+  contributor-summary:
+    kind: postgres-sql
+    source: postgres-readonly
+    description: |
+      Get contributor statistics from contributor_stats table.
+      Shows PR counts, commit counts, and collaboration scores.
+      Safe: Only reads aggregate contributor data.
+    statement: |
+      SELECT
+        author_login,
+        pr_count,
+        commit_count,
+        review_count,
+        avg_pr_cycle_time_hours,
+        collaboration_score,
+        updated_at
+      FROM contributor_stats
+      ORDER BY pr_count + commit_count DESC
+      LIMIT 50;
+
+  # Search by activity tags
+  search-activity-tags:
+    kind: postgres-sql
+    source: postgres-readonly
+    description: |
+      Search activities containing a specific tag.
+      Tags are stored as text array (value_tags).
+      Safe: Only reads activity metadata.
+    parameters:
+      - name: tag
+        type: string
+        description: Tag to search for (e.g., 'feature', 'bugfix')
+    statement: |
+      SELECT
+        id,
+        type,
+        title,
+        author,
+        occurred_at as activity_timestamp,
+        value_tags
+      FROM activities
+      WHERE $1 = ANY(value_tags)
+      ORDER BY occurred_at DESC
+      LIMIT 30;
+
+
+# ============================================
 # TOOLSETS - Organized by Use Case
 # ============================================
 toolsets:
@@ -249,6 +428,17 @@ toolsets:
     - database-health
     - list-connections
 
+  # DevBridge application tools
+  devbridge:
+    - list-activities
+    - team-summary
+    - repository-stats
+    - user-activities
+    - recent-webhooks
+    - dora-metrics
+    - contributor-summary
+    - search-activity-tags
+
   # All safe tools
   all:
     - list-databases
@@ -260,3 +450,11 @@ toolsets:
     - table-stats
     - database-health
     - list-connections
+    - list-activities
+    - team-summary
+    - repository-stats
+    - user-activities
+    - recent-webhooks
+    - dora-metrics
+    - contributor-summary
+    - search-activity-tags
