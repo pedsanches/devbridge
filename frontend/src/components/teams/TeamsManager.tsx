@@ -83,7 +83,7 @@ export function TeamsManager() {
     const [formData, setFormData] = useState<TeamFormData>({
         name: "",
         description: "",
-        color: TEAM_COLORS[0],
+        color: TEAM_COLORS[0] ?? "#6366F1",
     });
 
     const fetchTeams = useCallback(async () => {
@@ -126,11 +126,11 @@ export function TeamsManager() {
             setIsSaving(true);
             const newTeam = await createTeam({
                 name: formData.name,
-                description: formData.description || undefined,
+                description: formData.description || "",
                 color: formData.color,
             });
             setTeams([...teams, newTeam]);
-            setFormData({ name: "", description: "", color: TEAM_COLORS[0] });
+            setFormData({ name: "", description: "", color: TEAM_COLORS[0] ?? "#6366F1" });
             setIsCreating(false);
             handleSelectTeam(newTeam.id);
         } catch (err) {
@@ -148,7 +148,7 @@ export function TeamsManager() {
             setIsSaving(true);
             const updated = await updateTeam(selectedTeam.id, {
                 name: formData.name,
-                description: formData.description || undefined,
+                description: formData.description || "",
                 color: formData.color,
             });
             setTeams(teams.map(t => (t.id === updated.id ? updated : t)));
@@ -236,14 +236,14 @@ export function TeamsManager() {
             setFormData({
                 name: selectedTeam.name,
                 description: selectedTeam.description || "",
-                color: selectedTeam.color || TEAM_COLORS[0],
+                color: selectedTeam.color || (TEAM_COLORS[0] ?? "#6366F1"),
             });
             setIsEditing(true);
         }
     };
 
     const startCreating = () => {
-        setFormData({ name: "", description: "", color: TEAM_COLORS[0] });
+        setFormData({ name: "", description: "", color: TEAM_COLORS[0] ?? "#6366F1" });
         setIsCreating(true);
         setSelectedTeam(null);
         setIsEditing(false);

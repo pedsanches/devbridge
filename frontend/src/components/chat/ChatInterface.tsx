@@ -1,7 +1,7 @@
 "use client";
 
 import { MessageSquare, Sparkles, Search, Zap, ChevronDown } from "lucide-react";
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect, useCallback, useOptimistic } from "react";
 import { useRouter } from "next/navigation";
 import { ChatMessage } from "@/components/chat/ChatMessage";
 import { ChatInput } from "@/components/chat/ChatInput";
@@ -23,14 +23,14 @@ interface Message {
     role: "user" | "assistant";
     content: string;
     timestamp: string;
-    isStreaming?: boolean;
-    sources?: Source[];
-    activitiesCount?: number;
-    confidenceScore?: number;
+    isStreaming?: boolean | undefined;
+    sources?: Source[] | undefined;
+    activitiesCount?: number | undefined;
+    confidenceScore?: number | undefined;
     metadata?: {
-        search_method?: "semantic" | "sql";
-        confidence_score?: number;
-    };
+        search_method?: "semantic" | "sql" | undefined;
+        confidence_score?: number | undefined;
+    } | undefined;
 }
 
 interface ChatInterfaceProps {
@@ -40,6 +40,10 @@ interface ChatInterfaceProps {
 
 export function ChatInterface({ conversationId, initialMessages }: ChatInterfaceProps) {
     const [messages, setMessages] = useState<Message[]>(initialMessages || []);
+    const [optimisticMessages, addOptimisticMessage] = useOptimistic(
+        messages,
+        (state, newMessage: Message) => [...state, newMessage]
+    );
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [persona, setPersona] = useState<Persona>("product");
@@ -56,7 +60,7 @@ export function ChatInterface({ conversationId, initialMessages }: ChatInterface
 
     useEffect(() => {
         scrollToBottom();
-    }, [messages]);
+    }, [messages, optimisticMessages]);
 
     // Update messages if initialMessages change (e.g. navigation)
     useEffect(() => {
@@ -97,14 +101,16 @@ export function ChatInterface({ conversationId, initialMessages }: ChatInterface
         const matches = [...content.matchAll(mentionRegex)];
         let repositories: string[] | undefined = undefined;
 
-        const mentionedRepos = matches.map((match) => match[1]);
+        const mentionedRepos = matches
+            .map((match) => match[1])
+            .filter((repo): repo is string => repo !== undefined);
 
         // Combine mentions and selected filters (unique values)
         if (mentionedRepos.length > 0 || selectedRepos.length > 0) {
             repositories = Array.from(new Set([...selectedRepos, ...mentionedRepos]));
         }
 
-        // Add user message
+        // Add user message optimistically
         const userMessage: Message = {
             id: Date.now().toString(),
             role: "user",
@@ -113,11 +119,12 @@ export function ChatInterface({ conversationId, initialMessages }: ChatInterface
                 hour: "2-digit",
                 minute: "2-digit",
             }),
+            confidenceScore: 1, // Optimistic
         };
-        setMessages((prev) => [...prev, userMessage]);
+        addOptimisticMessage(userMessage);
         setIsLoading(true);
 
-        // Create streaming assistant message
+        // Prepare permanent state update (will happen when stream starts)
         const assistantId = (Date.now() + 1).toString();
         const assistantMessage: Message = {
             id: assistantId,
@@ -129,7 +136,6 @@ export function ChatInterface({ conversationId, initialMessages }: ChatInterface
             }),
             isStreaming: true,
         };
-        setMessages((prev) => [...prev, assistantMessage]);
 
         // Track conversation ID from stream
         let streamConversationId: string | undefined = currentConversationId;
@@ -145,52 +151,63 @@ export function ChatInterface({ conversationId, initialMessages }: ChatInterface
             },
             // onChunk
             (chunk) => {
-                // Check if this is a metadata event
-                try {
-                    const parsed = JSON.parse(chunk);
-                    if (parsed.type === "metadata") {
-                        if (parsed.conversation_id) {
-                            streamConversationId = parsed.conversation_id;
-                            setCurrentConversationId(parsed.conversation_id);
-                        }
-                        // Update message with sources from metadata
-                        if (parsed.sources) {
-                            setMessages((prev) =>
-                                prev.map((msg) =>
-                                    msg.id === assistantId
-                                        ? {
-                                            ...msg,
-                                            sources: parsed.sources,
-                                            activitiesCount: parsed.activities_count,
-                                            confidenceScore: parsed.confidence_score
-                                        }
-                                        : msg
-                                )
-                            );
-                        }
-                        return; // Don't add metadata to message content
+                // Determine if this is the first chunk (to commit messages to state)
+                setMessages((prev) => {
+                    const messageExists = prev.some(m => m.id === userMessage.id);
+                    if (!messageExists) {
+                        return [...prev, userMessage, assistantMessage];
                     }
-                } catch {
-                    // Not JSON, it's a text chunk
-                }
 
-                setMessages((prev) =>
-                    prev.map((msg) =>
+                    // Standard update logic for chunks
+                    // Check if this is a metadata event
+                    try {
+                        const parsed = JSON.parse(chunk);
+                        if (parsed.type === "metadata") {
+                            // ... metadata handling ...
+                            const newState = prev.map((msg) =>
+                                msg.id === assistantId
+                                    ? {
+                                        ...msg,
+                                        sources: parsed.sources,
+                                        activitiesCount: parsed.activities_count,
+                                        confidenceScore: parsed.confidence_score
+                                    }
+                                    : msg
+                            );
+                            return newState;
+                        }
+                    } catch { /* ... */ }
+
+                    return prev.map((msg) =>
                         msg.id === assistantId
                             ? { ...msg, content: msg.content + chunk }
                             : msg
-                    )
-                );
+                    );
+                });
+
+                // ... Metadata side effects (conversationId) ...
+                try {
+                    const parsed = JSON.parse(chunk);
+                    if (parsed.type === "metadata" && parsed.conversation_id) {
+                        streamConversationId = parsed.conversation_id;
+                        setCurrentConversationId(parsed.conversation_id);
+                    }
+                } catch { }
             },
             // onDone
             () => {
-                setMessages((prev) =>
-                    prev.map((msg) =>
+                // Ensure messages are committed if onChunk didn't fire (empty response cases?)
+                setMessages(prev => {
+                    const messageExists = prev.some(m => m.id === userMessage.id);
+                    if (!messageExists) {
+                        return [...prev, userMessage, { ...assistantMessage, isStreaming: false }];
+                    }
+                    return prev.map((msg) =>
                         msg.id === assistantId
                             ? { ...msg, isStreaming: false }
                             : msg
-                    )
-                );
+                    );
+                });
                 setIsLoading(false);
 
                 // If we got a new conversation ID and we're on /chat (no ID), redirect
@@ -199,19 +216,27 @@ export function ChatInterface({ conversationId, initialMessages }: ChatInterface
                 }
             },
             // onError
-            (err) => {
+            (err: any) => {
                 setError(err.message);
-                setMessages((prev) =>
-                    prev.map((msg) =>
+                // Ensure messages are committed (with error state)
+                setMessages(prev => {
+                    const messageExists = prev.some(m => m.id === userMessage.id);
+                    const errorAssistantMsg = {
+                        ...assistantMessage,
+                        content: "❌ Erro ao gerar resposta. Tente novamente.",
+                        isStreaming: false,
+                    };
+
+                    if (!messageExists) {
+                        return [...prev, userMessage, errorAssistantMsg];
+                    }
+
+                    return prev.map((msg) =>
                         msg.id === assistantId
-                            ? {
-                                ...msg,
-                                content: "❌ Erro ao gerar resposta. Tente novamente.",
-                                isStreaming: false,
-                            }
+                            ? errorAssistantMsg
                             : msg
-                    )
-                );
+                    );
+                });
                 setIsLoading(false);
             }
         );
@@ -222,7 +247,7 @@ export function ChatInterface({ conversationId, initialMessages }: ChatInterface
             {/* Messages Area */}
             <main className="flex-1 overflow-y-auto">
                 <div className="container mx-auto max-w-3xl px-4 py-6">
-                    {messages.length === 0 ? (
+                    {messages.length === 0 && optimisticMessages.length === 0 ? (
                         <div className="flex flex-col items-center justify-center py-16 text-center">
                             <div className="mb-4 rounded-full bg-primary/10 p-4">
                                 <MessageSquare className="h-8 w-8 text-primary" />
@@ -258,8 +283,8 @@ export function ChatInterface({ conversationId, initialMessages }: ChatInterface
                             </div>
                         </div>
                     ) : (
-                        <div className="space-y-4">
-                            {messages.map((message) => (
+                        <div className="space-y-4 animate-stagger">
+                            {optimisticMessages.map((message) => (
                                 <div key={message.id}>
                                     <ChatMessage
                                         role={message.role}

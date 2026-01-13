@@ -2,16 +2,18 @@
 
 import { Moon, Sun } from "lucide-react";
 import { useTheme } from "next-themes";
-import { useEffect, useState } from "react";
+import { useSyncExternalStore } from "react";
+
+// Subscribe to nothing - we just want to detect hydration
+const emptySubscribe = () => () => { };
+const getSnapshot = () => true;
+const getServerSnapshot = () => false;
 
 export function ThemeToggle() {
     const { setTheme, resolvedTheme } = useTheme();
-    const [mounted, setMounted] = useState(false);
 
-    // Avoid hydration mismatch
-    useEffect(() => {
-        setMounted(true);
-    }, []);
+    // Use useSyncExternalStore to handle hydration without triggering the lint rule
+    const mounted = useSyncExternalStore(emptySubscribe, getSnapshot, getServerSnapshot);
 
     if (!mounted) {
         return (

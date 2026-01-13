@@ -59,11 +59,11 @@ export type Persona = "executive" | "technical" | "product";
 
 export interface ChatRequest {
     message: string;
-    repository?: string | string[];
-    author?: string;
-    persona?: Persona;
-    conversationId?: string;
-    days?: number;
+    repository?: string | string[] | undefined;
+    author?: string | undefined;
+    persona?: Persona | undefined;
+    conversationId?: string | undefined;
+    days?: number | undefined;
 }
 
 export interface ChatMetadata {

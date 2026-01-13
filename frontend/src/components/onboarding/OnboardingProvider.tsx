@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useState, useEffect, ReactNode } from "react";
+import { createContext, useContext, useState, useEffect, ReactNode, useRef, useCallback } from "react";
 
 interface OnboardingStep {
     id: string;
@@ -70,38 +70,51 @@ const ONBOARDING_STEPS: OnboardingStep[] = [
     },
 ];
 
+// Helper to load initial state from localStorage
+function getInitialOnboardingState(): { completedSteps: Set<string>; skipped: boolean } {
+    if (typeof window === "undefined") {
+        return { completedSteps: new Set(), skipped: false };
+    }
+    try {
+        const stored = localStorage.getItem(STORAGE_KEY);
+        if (stored) {
+            const parsed = JSON.parse(stored);
+            return {
+                completedSteps: new Set(parsed.completedSteps || []),
+                skipped: parsed.skipped || false,
+            };
+        }
+    } catch (e) {
+        console.error("Error loading onboarding state:", e);
+    }
+    return { completedSteps: new Set(), skipped: false };
+}
+
 interface OnboardingProviderProps {
     children: ReactNode;
 }
 
 export function OnboardingProvider({ children }: OnboardingProviderProps) {
-    const [completedSteps, setCompletedSteps] = useState<Set<string>>(new Set());
+    // Use lazy initializer to avoid setState in useEffect
+    const [completedSteps, setCompletedSteps] = useState<Set<string>>(() => {
+        const initial = getInitialOnboardingState();
+        return initial.completedSteps;
+    });
     const [currentStepIndex, setCurrentStepIndex] = useState(-1);
-    const [isOnboardingActive, setIsOnboardingActive] = useState(false);
-    const [isInitialized, setIsInitialized] = useState(false);
+    const [isOnboardingActive, setIsOnboardingActive] = useState(() => {
+        const initial = getInitialOnboardingState();
+        return !initial.skipped;
+    });
+    const isInitialized = useRef(false);
 
-    // Load completed steps from localStorage
+    // Mark as initialized after first render
     useEffect(() => {
-        if (typeof window === "undefined") return;
-
-        try {
-            const stored = localStorage.getItem(STORAGE_KEY);
-            if (stored) {
-                const parsed = JSON.parse(stored);
-                setCompletedSteps(new Set(parsed.completedSteps || []));
-                if (parsed.skipped) {
-                    setIsOnboardingActive(false);
-                }
-            }
-        } catch (e) {
-            console.error("Error loading onboarding state:", e);
-        }
-        setIsInitialized(true);
+        isInitialized.current = true;
     }, []);
 
     // Save to localStorage when completedSteps changes
     useEffect(() => {
-        if (!isInitialized || typeof window === "undefined") return;
+        if (!isInitialized.current || typeof window === "undefined") return;
 
         try {
             localStorage.setItem(STORAGE_KEY, JSON.stringify({
@@ -111,32 +124,19 @@ export function OnboardingProvider({ children }: OnboardingProviderProps) {
         } catch (e) {
             console.error("Error saving onboarding state:", e);
         }
-    }, [completedSteps, isOnboardingActive, isInitialized]);
+    }, [completedSteps, isOnboardingActive]);
 
-    // Check if all steps are completed
-    const allStepsCompleted = ONBOARDING_STEPS.every(step =>
-        completedSteps.has(step.id)
-    );
 
-    // Auto-start onboarding for new users
-    useEffect(() => {
-        if (!isInitialized) return;
-        if (completedSteps.size === 0 && !allStepsCompleted) {
-            // This is a new user, could auto-start onboarding
-            // For now, we'll let them start manually or via welcome modal
-        }
-    }, [isInitialized, completedSteps, allStepsCompleted]);
-
-    const currentStep = isOnboardingActive && currentStepIndex >= 0 && currentStepIndex < ONBOARDING_STEPS.length
-        ? ONBOARDING_STEPS[currentStepIndex]
+    const currentStep: OnboardingStep | null = isOnboardingActive && currentStepIndex >= 0 && currentStepIndex < ONBOARDING_STEPS.length
+        ? ONBOARDING_STEPS[currentStepIndex] ?? null
         : null;
 
-    const startOnboarding = () => {
+    const startOnboarding = useCallback(() => {
         setCurrentStepIndex(0);
         setIsOnboardingActive(true);
-    };
+    }, []);
 
-    const completeStep = (stepId: string) => {
+    const completeStep = useCallback((stepId: string) => {
         setCompletedSteps(prev => new Set([...prev, stepId]));
 
         // Move to next step
@@ -148,14 +148,14 @@ export function OnboardingProvider({ children }: OnboardingProviderProps) {
             setIsOnboardingActive(false);
             setCurrentStepIndex(-1);
         }
-    };
+    }, []);
 
-    const skipOnboarding = () => {
+    const skipOnboarding = useCallback(() => {
         setIsOnboardingActive(false);
         setCurrentStepIndex(-1);
-    };
+    }, []);
 
-    const isStepCompleted = (stepId: string) => completedSteps.has(stepId);
+    const isStepCompleted = useCallback((stepId: string) => completedSteps.has(stepId), [completedSteps]);
 
     return (
         <OnboardingContext.Provider

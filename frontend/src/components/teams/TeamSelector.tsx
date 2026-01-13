@@ -52,8 +52,10 @@ export function TeamSelector({
 
             // Auto-select default team if none selected and NOT allowing all
             if (!selectedTeamId && !allowAll && response.items.length > 0) {
-                const defaultTeam = response.items.find(t => t.is_default) || response.items[0];
-                onTeamChange(defaultTeam.id, defaultTeam);
+                const defaultTeam = response.items.find(t => t.is_default) ?? response.items[0];
+                if (defaultTeam) {
+                    onTeamChange(defaultTeam.id, defaultTeam);
+                }
             }
         } catch (err) {
             setError("Erro ao carregar times");
@@ -61,7 +63,7 @@ export function TeamSelector({
         } finally {
             setIsLoading(false);
         }
-    }, [allowAll]);
+    }, [allowAll, selectedTeamId, onTeamChange]);
 
     useEffect(() => {
         fetchTeams();

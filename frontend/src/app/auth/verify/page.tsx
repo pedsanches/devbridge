@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, Suspense } from "react";
+import { useEffect, useState, Suspense, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Loader2, CheckCircle, XCircle } from "lucide-react";
 import { verifyMagicLink } from "@/services/api";
@@ -8,20 +8,23 @@ import { useAuth } from "@/hooks/use-auth";
 
 
 function VerifyContent() {
-    const [status, setStatus] = useState<"loading" | "success" | "error">("loading");
-    const [error, setError] = useState("");
-    const router = useRouter();
     const searchParams = useSearchParams();
+    const token = searchParams.get("token");
+
+    // Derive initial status from token presence
+    const [status, setStatus] = useState<"loading" | "success" | "error">(
+        token ? "loading" : "error"
+    );
+    const [error, setError] = useState(token ? "" : "Token não encontrado");
+    const hasStartedRef = useRef(false);
+    const router = useRouter();
     const { refreshUser } = useAuth();
 
     useEffect(() => {
-        const token = searchParams.get("token");
+        // Skip if no token or already started (use ref to avoid triggering lint)
+        if (!token || hasStartedRef.current) return;
 
-        if (!token) {
-            setStatus("error");
-            setError("Token não encontrado");
-            return;
-        }
+        hasStartedRef.current = true;
 
         const verify = async () => {
             try {
@@ -39,7 +42,7 @@ function VerifyContent() {
         };
 
         verify();
-    }, [searchParams, router, refreshUser]);
+    }, [token, router, refreshUser]);
 
     return (
         <div className="w-full max-w-md rounded-2xl bg-white p-8 text-center shadow-lg dark:bg-neutral-800">

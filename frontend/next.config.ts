@@ -1,4 +1,9 @@
 import type { NextConfig } from "next";
+import bundleAnalyzer from "@next/bundle-analyzer";
+
+const withBundleAnalyzer = bundleAnalyzer({
+    enabled: process.env.ANALYZE === "true",
+});
 
 const nextConfig: NextConfig = {
     // Enable React strict mode for better development experience
@@ -8,9 +13,12 @@ const nextConfig: NextConfig = {
     experimental: {
         // Enable typed routes
         typedRoutes: true,
+        // Enable filesystem caching for faster builds (Next.js 16)
+        turbopackFileSystemCacheForDev: true,
+        turbopackFileSystemCacheForBuild: true,
     },
 
-    // Image domains (add external domains here if needed)
+    // Image optimization
     images: {
         remotePatterns: [
             {
@@ -18,6 +26,8 @@ const nextConfig: NextConfig = {
                 hostname: "avatars.githubusercontent.com",
             },
         ],
+        // Modern formats for better LCP
+        formats: ["image/avif", "image/webp"],
     },
 
     // Environment variables exposed to the browser
@@ -54,4 +64,4 @@ const nextConfig: NextConfig = {
     },
 };
 
-export default nextConfig;
+export default withBundleAnalyzer(nextConfig);
