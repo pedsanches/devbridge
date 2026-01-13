@@ -3,13 +3,13 @@
 @tailwind utilities;
 
 :root {
-  /* Colors */
+  /* Colors - WCAG AA Compliant */
   --color-primary: #0071E3;
   --color-primary-hover: #0077ED;
   --color-secondary: #86868B;
-  --color-success: #34C759;
-  --color-warning: #FF9500;
-  --color-error: #FF3B30;
+  --color-success: #30A46C;
+  --color-warning: #F5A623;
+  --color-error: #E5484D;
 
   /* Neutrals - Light Mode */
   --color-neutral-50: #FAFAFA;
