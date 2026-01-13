@@ -1,4 +1,5 @@
 import type { Config } from "tailwindcss";
+import typography from "@tailwindcss/typography";
 
 const config: Config = {
     darkMode: "class",
@@ -6,6 +7,7 @@ const config: Config = {
         "./src/pages/**/*.{js,ts,jsx,tsx,mdx}",
         "./src/components/**/*.{js,ts,jsx,tsx,mdx}",
         "./src/app/**/*.{js,ts,jsx,tsx,mdx}",
+        "./src/stories/**/*.{js,ts,jsx,tsx,mdx}",
     ],
     theme: {
         extend: {
@@ -35,6 +37,7 @@ const config: Config = {
             },
             fontFamily: {
                 sans: "var(--font-sans)",
+                heading: "var(--font-heading)",
                 mono: "var(--font-mono)",
             },
             borderRadius: {
@@ -52,6 +55,6 @@ const config: Config = {
             },
         },
     },
-    plugins: [require("@tailwindcss/typography")],
+    plugins: [typography],
 };
 export default config;

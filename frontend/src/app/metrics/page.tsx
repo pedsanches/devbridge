@@ -172,8 +172,8 @@ interface MetricCardProps {
     value: string;
     description: string;
     icon: React.ElementType;
-    status?: "elite" | "high" | "medium" | "low" | "coming-soon" | "active";
-    trend?: "up" | "down" | "stable" | null;
+    status?: "elite" | "high" | "medium" | "low" | "coming-soon" | "active" | undefined;
+    trend?: "up" | "down" | "stable" | null | undefined;
 }
 
 function MetricCard({ title, value, description, icon: Icon, status = "active", trend }: MetricCardProps) {

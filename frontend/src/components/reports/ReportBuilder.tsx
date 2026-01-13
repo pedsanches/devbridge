@@ -38,12 +38,12 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 // ============================================================
 
 export interface DataFilters {
-    repositories?: string[];
-    authors?: string[];
-    activityTypes?: ("COMMIT" | "PULL_REQUEST")[];
-    impactLevels?: ("LOW" | "MEDIUM" | "HIGH")[];
-    valueTags?: string[];
-    labels?: string[];
+    repositories?: string[] | undefined;
+    authors?: string[] | undefined;
+    activityTypes?: ("COMMIT" | "PULL_REQUEST")[] | undefined;
+    impactLevels?: ("LOW" | "MEDIUM" | "HIGH")[] | undefined;
+    valueTags?: string[] | undefined;
+    labels?: string[] | undefined;
 }
 
 export interface SectionConfig {
@@ -52,7 +52,7 @@ export interface SectionConfig {
     enabled: boolean;
     order: number;
     detailLevel: "minimal" | "normal" | "detailed";
-    customPrompt?: string;
+    customPrompt?: string | undefined;
 }
 
 export interface LanguageConfig {
@@ -68,9 +68,9 @@ export interface VisualConfig {
     primaryColor: string;
     secondaryColor: string;
     fontFamily: "Inter" | "Roboto" | "Arial";
-    logoUrl?: string;
+    logoUrl?: string | undefined;
     showCharts: boolean;
-    watermark?: "CONFIDENTIAL" | "DRAFT" | null;
+    watermark?: "CONFIDENTIAL" | "DRAFT" | null | undefined;
     headerStyle: "minimal" | "full";
 }
 
@@ -376,14 +376,20 @@ function SectionsStep({ config, onChange }: StepProps) {
 
     const toggleSection = (index: number) => {
         const updated = [...config.sections];
-        updated[index] = { ...updated[index], enabled: !updated[index].enabled };
-        onChange({ sections: updated });
+        const section = updated[index];
+        if (section) {
+            updated[index] = { ...section, enabled: !section.enabled };
+            onChange({ sections: updated });
+        }
     };
 
     const setDetailLevel = (index: number, level: "minimal" | "normal" | "detailed") => {
         const updated = [...config.sections];
-        updated[index] = { ...updated[index], detailLevel: level };
-        onChange({ sections: updated });
+        const section = updated[index];
+        if (section) {
+            updated[index] = { ...section, detailLevel: level };
+            onChange({ sections: updated });
+        }
     };
 
     return (
@@ -910,8 +916,8 @@ export function ReportBuilder({ onGenerate, onSaveTemplate, isGenerating, initia
             <Card className="min-h-[400px]">
                 <CardHeader>
                     <CardTitle className="flex items-center gap-2">
-                        {(() => { const Icon = steps[currentStep].icon; return <Icon className="h-5 w-5" />; })()}
-                        {steps[currentStep].label}
+                        {(() => { const step = steps[currentStep]; if (!step) return null; const Icon = step.icon; return <Icon className="h-5 w-5" />; })()}
+                        {steps[currentStep]?.label ?? "Configuração"}
                     </CardTitle>
                 </CardHeader>
                 <CardContent>

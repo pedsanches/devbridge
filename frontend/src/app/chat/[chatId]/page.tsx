@@ -14,7 +14,7 @@ export default function ChatIdPage() {
         role: "user" | "assistant";
         content: string;
         timestamp: string;
-        metadata?: Record<string, unknown>;
+        metadata?: Record<string, unknown> | undefined;
     }[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);

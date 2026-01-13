@@ -9,12 +9,14 @@ Read [`AGENTS.md`](AGENTS.md) at the project root — it is your **primary instr
 For deep context:
 - [`docs/system-context.md`](docs/system-context.md) — System map & architecture
 - [`docs/agent-guide.md`](docs/agent-guide.md) — Development protocol
+- [`docs/development/frontend-best-practices.md`](docs/development/frontend-best-practices.md) — **TypeScript/React patterns**
 
 ## ⚡ Quick Reference
 
 ```bash
 poetry run pytest          # Backend tests
 pnpm test                  # Frontend tests
+pnpm typecheck             # TypeScript strict verification
 poetry run ruff check .    # Python lint
 ```
 
@@ -24,5 +26,18 @@ poetry run ruff check .    # Python lint
 - **No hardcoded colors** — use `var(--color-*)`
 - **Privacy-first** — Presidio sanitization for PII
 - **Docs = Code** — update docs when changing logic
+
+## 🔒 TypeScript Strict Mode (CRITICAL)
+
+```typescript
+// Array access - ALWAYS use fallback
+const item = array[0] ?? defaultValue;
+
+// Optional props - ALWAYS include | undefined
+interface Props { onClick?: (() => void) | undefined; }
+
+// Never setState in useEffect directly
+// Use useRef, lazy init, or useSyncExternalStore
+```
 
 Be concise, precise, and secure.

@@ -16,10 +16,10 @@ interface Source {
 interface ChatMessageProps {
     role: "user" | "assistant";
     content: string;
-    timestamp?: string;
-    sources?: Source[];
-    activitiesCount?: number;
-    confidenceScore?: number;
+    timestamp?: string | undefined;
+    sources?: Source[] | undefined;
+    activitiesCount?: number | undefined;
+    confidenceScore?: number | undefined;
 }
 
 const REMARK_PLUGINS = [remarkGfm];

@@ -14,7 +14,7 @@ interface Source {
 interface SourcesIndicatorProps {
     sources: Source[];
     activitiesCount: number;
-    confidenceScore?: number;
+    confidenceScore?: number | undefined;
 }
 
 const TYPE_ICONS: Record<string, React.ReactNode> = {

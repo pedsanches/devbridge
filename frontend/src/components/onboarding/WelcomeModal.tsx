@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useSyncExternalStore } from "react";
 import { X, Github, Users, MessageSquare, CheckCircle } from "lucide-react";
 import { useOnboarding } from "./OnboardingProvider";
 
@@ -9,25 +9,35 @@ interface WelcomeModalProps {
     hasTeams?: boolean;
 }
 
+const STORAGE_KEY = "devbridge_welcome_shown";
+
+// Helper functions for useSyncExternalStore
+function subscribe(callback: () => void) {
+    window.addEventListener("storage", callback);
+    return () => window.removeEventListener("storage", callback);
+}
+
+function getSnapshot(): boolean {
+    if (typeof window === "undefined") return true;
+    return localStorage.getItem(STORAGE_KEY) === "true";
+}
+
+function getServerSnapshot(): boolean {
+    return true; // Assume shown on server to prevent flash
+}
+
 export function WelcomeModal({ isGitHubConnected = false, hasTeams = false }: WelcomeModalProps) {
-    const [isOpen, setIsOpen] = useState(false);
+    const hasShownBefore = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
+
+    // Only use local state for controlling visibility after user interaction
+    const [dismissed, setDismissed] = useState(false);
     const { startOnboarding, isStepCompleted } = useOnboarding();
 
-    const STORAGE_KEY = "devbridge_welcome_shown";
-
-    useEffect(() => {
-        if (typeof window === "undefined") return;
-
-        // Check if welcome has been shown before
-        const hasShown = localStorage.getItem(STORAGE_KEY);
-        if (!hasShown && !isGitHubConnected) {
-            // Show welcome modal for new users
-            setIsOpen(true);
-        }
-    }, [isGitHubConnected]);
+    // Determine if modal should be open based on external state
+    const isOpen = !hasShownBefore && !isGitHubConnected && !dismissed;
 
     const handleClose = () => {
-        setIsOpen(false);
+        setDismissed(true);
         if (typeof window !== "undefined") {
             localStorage.setItem(STORAGE_KEY, "true");
         }

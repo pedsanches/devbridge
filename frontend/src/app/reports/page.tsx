@@ -234,9 +234,9 @@ function ReportPreview({
     isExportingPDF = false,
 }: {
     report: ReportResponse | null;
-    onExport?: () => void;
-    onExportPDF?: () => void;
-    isExportingPDF?: boolean;
+    onExport?: (() => void) | undefined;
+    onExportPDF?: (() => void) | undefined;
+    isExportingPDF?: boolean | undefined;
 }) {
     if (!report) {
         return (

@@ -65,13 +65,13 @@ export function ChatSidebar() {
         convs.forEach((c) => {
             const date = new Date(c.updated_at);
             if (date.toDateString() === today.toDateString()) {
-                groups["Hoje"].push(c);
+                groups["Hoje"]?.push(c);
             } else if (date.toDateString() === yesterday.toDateString()) {
-                groups["Ontem"].push(c);
+                groups["Ontem"]?.push(c);
             } else if (date > lastWeek) {
-                groups["Últimos 7 dias"].push(c);
+                groups["Últimos 7 dias"]?.push(c);
             } else {
-                groups["Mais antigos"].push(c);
+                groups["Mais antigos"]?.push(c);
             }
         });
 

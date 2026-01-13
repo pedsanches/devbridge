@@ -167,9 +167,9 @@ interface MetricCardProps {
     title: string;
     icon: React.ElementType;
     value: string | number;
-    change?: number | null;
-    trend?: "up" | "down" | "stable";
-    status?: "elite" | "high" | "medium" | "low";
+    change?: number | null | undefined;
+    trend?: "up" | "down" | "stable" | undefined;
+    status?: "elite" | "high" | "medium" | "low" | undefined;
     description: string;
     invertTrend?: boolean; // If true, "down" trend is good
 }

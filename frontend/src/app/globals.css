@@ -3,13 +3,13 @@
 @tailwind utilities;
 
 :root {
-  /* Colors */
+  /* Colors - WCAG AA Compliant */
   --color-primary: #0071E3;
   --color-primary-hover: #0077ED;
   --color-secondary: #86868B;
-  --color-success: #34C759;
-  --color-warning: #FF9500;
-  --color-error: #FF3B30;
+  --color-success: #30A46C;
+  --color-warning: #F5A623;
+  --color-error: #E5484D;
 
   /* Neutrals - Light Mode */
   --color-neutral-50: #FAFAFA;
@@ -33,7 +33,8 @@
   --muted-foreground: #6E6E73;
 
   /* Typography */
-  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif;
+  --font-sans: var(--font-sans), 'Inter', -apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif;
+  --font-heading: var(--font-heading), 'Outfit', 'Inter', -apple-system, sans-serif;
   --font-mono: 'SF Mono', 'Fira Code', 'Consolas', monospace;
 
   /* Spacing */
@@ -68,21 +69,28 @@
 }
 
 /* Dark Mode via class */
+/* Dark Mode via class - Rich Slate Palette */
 .dark {
-  --background: #0A0A0A;
-  --foreground: #FAFAFA;
-  --card: #171717;
-  --card-foreground: #FAFAFA;
-  --border: #262626;
-  --muted: #262626;
-  --muted-foreground: #A1A1AA;
-  --color-secondary: #A1A1AA;
+  --background: #0B0E14;
+  /* Deep Slate Black */
+  --foreground: #F1F5F9;
+  --card: #151922;
+  /* Elevated dark slate */
+  --card-foreground: #F1F5F9;
+  --border: #2D3342;
+  /* Subtle blue-grey border */
+  --muted: #1E293B;
+  --muted-foreground: #94A3B8;
+  --color-secondary: #94A3B8;
 
   /* Shadows - Dark Mode */
-  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.2);
-  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.3);
-  --shadow-lg: 0 12px 40px rgba(0, 0, 0, 0.4);
-  --shadow-xl: 0 24px 80px rgba(0, 0, 0, 0.5);
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.5);
+  --shadow-lg: 0 12px 40px rgba(0, 0, 0, 0.6);
+  --shadow-xl: 0 24px 80px rgba(0, 0, 0, 0.7);
+
+  /* Glow effects */
+  --glow-primary: 0 0 20px rgba(99, 102, 241, 0.2);
 }
 
 .glass {
@@ -121,6 +129,44 @@ body {
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-family: var(--font-heading);
+  font-weight: 600;
+  letter-spacing: -0.025em;
+}
+
+/* Glass Utilities - Refined for "Liquid Glass" */
+.glass {
+  background: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+}
+
+.glass-panel {
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+}
+
+:is(.dark .glass) {
+  background: rgba(11, 14, 20, 0.4);
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
+:is(.dark .glass-panel) {
+  background: rgba(11, 14, 20, 0.6);
+  border-color: rgba(255, 255, 255, 0.1);
 }
 
 /* Sidebar Layout */
@@ -183,4 +229,88 @@ body {
   50% {
     box-shadow: 0 0 0 6px var(--color-primary), 0 0 30px rgba(0, 113, 227, 0.6);
   }
+}
+
+/* Animation utilities */
+@keyframes fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slide-in-right {
+  from {
+    opacity: 0;
+    transform: translateX(-16px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes scale-in {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.animate-fade-in {
+  animation: fade-in 200ms ease-out forwards;
+}
+
+.animate-slide-in {
+  animation: slide-in-right 300ms ease-out forwards;
+}
+
+.animate-scale-in {
+  animation: scale-in 200ms ease-out forwards;
+}
+
+/* Stagger children animations */
+.animate-stagger>* {
+  opacity: 0;
+  animation: fade-in 200ms ease-out forwards;
+}
+
+.animate-stagger>*:nth-child(1) {
+  animation-delay: 0ms;
+}
+
+.animate-stagger>*:nth-child(2) {
+  animation-delay: 50ms;
+}
+
+.animate-stagger>*:nth-child(3) {
+  animation-delay: 100ms;
+}
+
+.animate-stagger>*:nth-child(4) {
+  animation-delay: 150ms;
+}
+
+.animate-stagger>*:nth-child(5) {
+  animation-delay: 200ms;
+}
+
+.animate-stagger>*:nth-child(n+6) {
+  animation-delay: 250ms;
+}
+
+/* Heading font class */
+.font-heading {
+  font-family: var(--font-heading);
 }

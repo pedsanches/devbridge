@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useCallback, useSyncExternalStore } from "react";
 import { X, ArrowRight, SkipForward } from "lucide-react";
 import { useOnboarding } from "./OnboardingProvider";
 
@@ -10,75 +10,116 @@ interface TooltipPosition {
     arrowPosition: "top" | "bottom" | "left" | "right";
 }
 
+// Custom hook to subscribe to window resize
+function useWindowSize() {
+    const subscribe = useCallback((callback: () => void) => {
+        window.addEventListener("resize", callback);
+        return () => window.removeEventListener("resize", callback);
+    }, []);
+
+    const getSnapshot = useCallback(() => {
+        return `${window.innerWidth}x${window.innerHeight}`;
+    }, []);
+
+    const getServerSnapshot = useCallback(() => "0x0", []);
+
+    return useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
+}
+
 export function OnboardingTooltip() {
     const { currentStep, completeStep, skipOnboarding, isOnboardingActive } = useOnboarding();
-    const [position, setPosition] = useState<TooltipPosition | null>(null);
     const tooltipRef = useRef<HTMLDivElement>(null);
+    const [position, setPosition] = useState<TooltipPosition | null>(null);
+    const windowSize = useWindowSize();
 
+    const calculatePosition = useCallback(() => {
+        if (!currentStep || !tooltipRef.current) {
+            return null;
+        }
+
+        const target = document.querySelector(currentStep.targetSelector);
+        if (!target) return null;
+
+        const targetRect = target.getBoundingClientRect();
+        const tooltipRect = tooltipRef.current.getBoundingClientRect();
+        const padding = 12;
+
+        let top = 0;
+        let left = 0;
+        let arrowPosition: "top" | "bottom" | "left" | "right" = "top";
+
+        switch (currentStep.position || "bottom") {
+            case "top":
+                top = targetRect.top - tooltipRect.height - padding;
+                left = targetRect.left + (targetRect.width - tooltipRect.width) / 2;
+                arrowPosition = "bottom";
+                break;
+            case "bottom":
+                top = targetRect.bottom + padding;
+                left = targetRect.left + (targetRect.width - tooltipRect.width) / 2;
+                arrowPosition = "top";
+                break;
+            case "left":
+                top = targetRect.top + (targetRect.height - tooltipRect.height) / 2;
+                left = targetRect.left - tooltipRect.width - padding;
+                arrowPosition = "right";
+                break;
+            case "right":
+                top = targetRect.top + (targetRect.height - tooltipRect.height) / 2;
+                left = targetRect.right + padding;
+                arrowPosition = "left";
+                break;
+        }
+
+        // Keep tooltip within viewport
+        const viewportPadding = 16;
+        left = Math.max(viewportPadding, Math.min(left, window.innerWidth - tooltipRect.width - viewportPadding));
+        top = Math.max(viewportPadding, Math.min(top, window.innerHeight - tooltipRect.height - viewportPadding));
+
+        return { top, left, arrowPosition };
+    }, [currentStep]);
+
+    // This effect syncs with external DOM state, which is allowed
     useEffect(() => {
         if (!currentStep || !isOnboardingActive) {
-            setPosition(null);
+            if (position !== null) {
+                setPosition(null);
+            }
             return;
         }
 
-        const calculatePosition = () => {
-            const target = document.querySelector(currentStep.targetSelector);
-            if (!target || !tooltipRef.current) return;
-
-            const targetRect = target.getBoundingClientRect();
-            const tooltipRect = tooltipRef.current.getBoundingClientRect();
-            const padding = 12;
-
-            let top = 0;
-            let left = 0;
-            let arrowPosition: "top" | "bottom" | "left" | "right" = "top";
-
-            switch (currentStep.position || "bottom") {
-                case "top":
-                    top = targetRect.top - tooltipRect.height - padding;
-                    left = targetRect.left + (targetRect.width - tooltipRect.width) / 2;
-                    arrowPosition = "bottom";
-                    break;
-                case "bottom":
-                    top = targetRect.bottom + padding;
-                    left = targetRect.left + (targetRect.width - tooltipRect.width) / 2;
-                    arrowPosition = "top";
-                    break;
-                case "left":
-                    top = targetRect.top + (targetRect.height - tooltipRect.height) / 2;
-                    left = targetRect.left - tooltipRect.width - padding;
-                    arrowPosition = "right";
-                    break;
-                case "right":
-                    top = targetRect.top + (targetRect.height - tooltipRect.height) / 2;
-                    left = targetRect.right + padding;
-                    arrowPosition = "left";
-                    break;
+        // Delay to ensure tooltip is rendered
+        const timeoutId = setTimeout(() => {
+            const newPosition = calculatePosition();
+            if (newPosition) {
+                setPosition(newPosition);
+                // Highlight target element
+                const target = document.querySelector(currentStep.targetSelector);
+                target?.classList.add("onboarding-highlight");
             }
+        }, 100);
 
-            // Keep tooltip within viewport
-            const viewportPadding = 16;
-            left = Math.max(viewportPadding, Math.min(left, window.innerWidth - tooltipRect.width - viewportPadding));
-            top = Math.max(viewportPadding, Math.min(top, window.innerHeight - tooltipRect.height - viewportPadding));
-
-            setPosition({ top, left, arrowPosition });
-
-            // Highlight target element
-            target.classList.add("onboarding-highlight");
-        };
-
-        // Initial calculation
-        setTimeout(calculatePosition, 100);
-
-        // Recalculate on resize
-        window.addEventListener("resize", calculatePosition);
         return () => {
-            window.removeEventListener("resize", calculatePosition);
+            clearTimeout(timeoutId);
             // Remove highlight from previous target
             const target = document.querySelector(currentStep.targetSelector);
             target?.classList.remove("onboarding-highlight");
         };
-    }, [currentStep, isOnboardingActive]);
+        // position is intentionally not in deps to avoid infinite loop
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [currentStep, isOnboardingActive, calculatePosition]);
+
+    // Recalculate on window resize
+    useEffect(() => {
+        if (currentStep && isOnboardingActive) {
+            const newPosition = calculatePosition();
+            if (newPosition) {
+                setPosition(newPosition);
+            }
+        }
+        // Only recalculate when window size changes
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [windowSize]);
 
     if (!currentStep || !isOnboardingActive) return null;
 

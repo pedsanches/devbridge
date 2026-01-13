@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
 import {
     MessageSquare,
@@ -37,26 +38,37 @@ const settingsNavItems: NavItem[] = [
     { href: "/settings/data-sources", label: "Configurações", icon: Settings },
 ];
 
+// Custom hook to track pathname changes and auto-close sidebar
+function useAutoCloseSidebar(pathname: string) {
+    const [isMobileOpen, setIsMobileOpen] = useState(false);
+    const [lastPathname, setLastPathname] = useState(pathname);
+
+    // When pathname changes, close the sidebar
+    if (pathname !== lastPathname) {
+        setLastPathname(pathname);
+        if (isMobileOpen) {
+            setIsMobileOpen(false);
+        }
+    }
+
+    return [isMobileOpen, setIsMobileOpen] as const;
+}
+
 export function Sidebar() {
     const pathname = usePathname();
     const router = useRouter();
     const { user, isAuthenticated, logout } = useAuth();
     const { isCollapsed, toggle } = useSidebar();
-    const [isMobileOpen, setIsMobileOpen] = useState(false);
+    const [isMobileOpen, setIsMobileOpen] = useAutoCloseSidebar(pathname);
 
-    // Close mobile sidebar on route change
-    useEffect(() => {
-        setIsMobileOpen(false);
-    }, [pathname]);
-
-    // Close mobile sidebar on escape key
+    // Close mobile sidebar on escape key - this is a proper external subscription pattern
     useEffect(() => {
         const handleEscape = (e: KeyboardEvent) => {
             if (e.key === "Escape") setIsMobileOpen(false);
         };
         document.addEventListener("keydown", handleEscape);
         return () => document.removeEventListener("keydown", handleEscape);
-    }, []);
+    }, [setIsMobileOpen]);
 
     const handleLogout = async () => {
         await logout();
@@ -96,40 +108,63 @@ export function Sidebar() {
             )}
 
             {/* Sidebar */}
+            {/* Sidebar */}
             <aside
                 className={`
-                    fixed left-0 top-0 z-50 flex h-full flex-col border-r border-[var(--border)] bg-[var(--card)]
-                    transition-all duration-300 ease-out
+                    fixed left-0 top-0 z-50 flex h-full flex-col
+                    glass transition-all duration-300 ease-out
                     ${isCollapsed ? "w-16" : "w-64"}
                     ${isMobileOpen ? "translate-x-0" : "-translate-x-full"}
                     lg:translate-x-0
                 `}
             >
-                {/* Header */}
-                <div className="flex h-16 items-center justify-between border-b border-[var(--border)] px-4">
-                    {!isCollapsed && (
-                        <Link href="/dashboard" className="flex items-center gap-2">
-                            <span className="text-xl font-semibold text-primary">DevBridge</span>
-                        </Link>
+                {/* Collapse/Expand Toggle (Desktop) - Floating */}
+                <button
+                    onClick={toggle}
+                    className="hidden lg:flex absolute -right-3 top-6 z-50 h-6 w-6 items-center justify-center rounded-full border border-border bg-card shadow-md transition-colors hover:bg-accent hover:text-accent-foreground"
+                    aria-label={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+                >
+                    {isCollapsed ? (
+                        <ChevronRight className="h-3 w-3" />
+                    ) : (
+                        <ChevronLeft className="h-3 w-3" />
                     )}
+                </button>
 
-                    {/* Collapse/Expand Toggle (Desktop) */}
-                    <button
-                        onClick={toggle}
-                        className="hidden rounded-lg p-1.5 text-[var(--muted-foreground)] transition-colors hover:bg-[var(--muted)] hover:text-[var(--foreground)] lg:flex"
-                        aria-label={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+                {/* Header */}
+                <div className="flex h-16 items-center px-4 border-b border-white/10 dark:border-white/5">
+                    <Link
+                        href="/dashboard"
+                        className={`
+                            flex items-center gap-3 transition-all duration-300
+                            ${isCollapsed ? "justify-center w-full px-0" : ""}
+                        `}
                     >
-                        {isCollapsed ? (
-                            <ChevronRight className="h-4 w-4" />
-                        ) : (
-                            <ChevronLeft className="h-4 w-4" />
-                        )}
-                    </button>
+                        <div className={`
+                            relative flex items-center justify-center rounded-xl overflow-hidden shadow-sm
+                            ${isCollapsed ? "h-8 w-8" : "h-9 w-9"}
+                            bg-white/90 ring-1 ring-white/20
+                        `}>
+                            <Image
+                                src="/logo.png"
+                                alt="DevBridge"
+                                fill
+                                className="object-cover object-top scale-125 translate-y-1"
+                                priority
+                            />
+                        </div>
 
-                    {/* Close button (Mobile) */}
+                        {!isCollapsed && (
+                            <span className="font-heading text-[1.1rem] font-bold text-foreground tracking-tight whitespace-nowrap overflow-hidden animate-fade-in pl-1">
+                                DevBridge
+                            </span>
+                        )}
+                    </Link>
+
+                    {/* Close button (Mobile) - Keep inline for mobile */}
                     <button
                         onClick={() => setIsMobileOpen(false)}
-                        className="rounded-lg p-1.5 text-[var(--muted-foreground)] transition-colors hover:bg-[var(--muted)] hover:text-[var(--foreground)] lg:hidden"
+                        className="ml-auto rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground lg:hidden"
                         aria-label="Close menu"
                     >
                         <X className="h-4 w-4" />
