@@ -150,16 +150,34 @@ export function ChatSidebar() {
                                             <Link
                                                 href={`/chat/${c.id}`}
                                                 className={cn(
-                                                    "flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-neutral-600 transition-colors hover:bg-neutral-200 dark:text-neutral-300 dark:hover:bg-neutral-800",
-                                                    activeId === c.id && "bg-neutral-200 font-medium text-primary dark:bg-neutral-800"
+                                                    "flex items-start gap-3 rounded-lg px-3 py-2.5 text-sm transition-colors hover:bg-neutral-200 dark:hover:bg-neutral-800",
+                                                    activeId === c.id
+                                                        ? "bg-neutral-200 dark:bg-neutral-800"
+                                                        : "text-neutral-600 dark:text-neutral-300"
                                                 )}
                                             >
-                                                <MessageSquare className="h-4 w-4 shrink-0" />
-                                                <span className="truncate">{c.title || "Nova conversa"}</span>
+                                                <MessageSquare className={cn(
+                                                    "h-4 w-4 shrink-0 mt-0.5",
+                                                    activeId === c.id && "text-primary"
+                                                )} />
+                                                <div className="flex-1 min-w-0">
+                                                    <span className={cn(
+                                                        "block truncate",
+                                                        activeId === c.id && "font-medium text-primary"
+                                                    )}>
+                                                        {c.title || "Nova conversa"}
+                                                    </span>
+                                                    {c.preview && (
+                                                        <span className="block truncate text-xs text-neutral-400 dark:text-neutral-500 mt-0.5">
+                                                            {c.preview}
+                                                        </span>
+                                                    )}
+                                                </div>
                                             </Link>
                                             <button
                                                 onClick={(e) => handleDelete(e, c.id)}
-                                                className="absolute right-2 top-2 hidden rounded-md p-1 hover:bg-neutral-300 group-hover:block dark:hover:bg-neutral-700"
+                                                className="absolute right-2 top-2.5 hidden rounded-md p-1 hover:bg-neutral-300 group-hover:block dark:hover:bg-neutral-700"
+                                                aria-label="Apagar conversa"
                                             >
                                                 <Trash className="h-3 w-3 text-neutral-500" />
                                             </button>

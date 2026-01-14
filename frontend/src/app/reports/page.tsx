@@ -23,6 +23,7 @@ import {
 import ReportBuilder, { ReportBuilderConfig } from "@/components/reports/ReportBuilder";
 import TemplatesManager, { FullTemplate } from "@/components/reports/TemplatesManager";
 import { TeamSelector } from "@/components/teams";
+import { PageLayout } from "@/components/layout/PageLayout";
 
 import { useAuth } from "@/hooks/use-auth";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -742,339 +743,340 @@ export default function ReportsPage() {
     }
 
     return (
-        <div className="flex min-h-screen flex-col bg-[var(--background)]">
-            <main className="flex-1 py-8">
-                <div className="container mx-auto max-w-6xl px-4">
-                    {/* Header */}
-                    <div className="mb-6">
-                        <h1 className="flex items-center gap-3 text-2xl font-semibold tracking-tight text-[var(--foreground)]">
-                            <FileText className="h-6 w-6" />
-                            Relatórios
-                        </h1>
-                        <p className="mt-1 text-sm text-[var(--muted-foreground)]">
-                            Gere relatórios estruturados ou acesse o histórico de relatórios salvos
-                        </p>
-                    </div>
+        <PageLayout
+            title="Relatórios"
+            subtitle="Gere relatórios estruturados ou acesse o histórico de relatórios salvos"
+            icon={FileText}
+            showHeader={false}
+        >
+            {/* Custom Header with Tabs */}
+            <div className="mb-6">
+                <h1 className="flex items-center gap-3 text-2xl font-semibold tracking-tight text-[var(--foreground)]">
+                    <FileText className="h-6 w-6" />
+                    Relatórios
+                </h1>
+                <p className="mt-1 text-sm text-[var(--muted-foreground)]">
+                    Gere relatórios estruturados ou acesse o histórico de relatórios salvos
+                </p>
+            </div>
 
-                    {/* Tabs */}
-                    <div className="flex gap-2 mb-6 p-1 bg-[var(--muted)] rounded-xl w-fit">
-                        <TabButton
-                            active={activeTab === "generate"}
-                            onClick={() => setActiveTab("generate")}
-                            icon={Plus}
-                            label="Gerar Novo"
-                        />
-                        <TabButton
-                            active={activeTab === "history"}
-                            onClick={() => setActiveTab("history")}
-                            icon={History}
-                            label="Histórico"
-                        />
-                        <TabButton
-                            active={activeTab === "templates"}
-                            onClick={() => setActiveTab("templates")}
-                            icon={FolderOpen}
-                            label="Templates"
-                        />
-                        <TabButton
-                            active={activeTab === "custom"}
-                            onClick={() => setActiveTab("custom")}
-                            icon={Sparkles}
-                            label="Builder (Beta)"
-                        />
-                    </div>
+            {/* Tabs */}
+            <div className="flex gap-2 mb-6 p-1 bg-[var(--muted)] rounded-xl w-fit">
+                <TabButton
+                    active={activeTab === "generate"}
+                    onClick={() => setActiveTab("generate")}
+                    icon={Plus}
+                    label="Gerar Novo"
+                />
+                <TabButton
+                    active={activeTab === "history"}
+                    onClick={() => setActiveTab("history")}
+                    icon={History}
+                    label="Histórico"
+                />
+                <TabButton
+                    active={activeTab === "templates"}
+                    onClick={() => setActiveTab("templates")}
+                    icon={FolderOpen}
+                    label="Templates"
+                />
+                <TabButton
+                    active={activeTab === "custom"}
+                    onClick={() => setActiveTab("custom")}
+                    icon={Sparkles}
+                    label="Builder (Beta)"
+                />
+            </div>
 
-                    {/* Generate Tab Content */}
-                    {activeTab === "generate" && (
-                        <div className="space-y-6">
-                            {/* Configuration Bar */}
-                            <Card className="glass-panel">
-                                <CardContent className="p-4">
-                                    <div className="flex flex-wrap items-end gap-4">
-                                        {/* Report Type */}
-                                        <div className="flex-1 min-w-[200px]">
-                                            <label className="text-sm font-medium text-[var(--foreground)] mb-2 block">
-                                                Tipo de Relatório
-                                            </label>
-                                            <div className="flex gap-2">
-                                                {REPORT_TYPES.map((type) => (
-                                                    <button
-                                                        key={type.id}
-                                                        onClick={() => setSelectedType(type.id)}
-                                                        className={`flex items-center gap-2 px-3 py-2 rounded-lg border text-sm transition-all ${selectedType === type.id
-                                                            ? "border-primary bg-primary/10 text-primary"
-                                                            : "border-[var(--border)] hover:border-primary/50"
-                                                            }`}
-                                                    >
-                                                        <span>{type.icon}</span>
-                                                        <span className="hidden sm:inline">{type.name}</span>
-                                                    </button>
-                                                ))}
-                                            </div>
-                                        </div>
+            {/* Generate Tab Content */}
+            {activeTab === "generate" && (
+                <div className="space-y-6">
+                    {/* Configuration Bar */}
+                    <Card className="glass-panel">
+                        <CardContent className="p-4">
+                            <div className="flex flex-wrap items-end gap-4">
+                                {/* Report Type */}
+                                <div className="flex-1 min-w-[200px]">
+                                    <label className="text-sm font-medium text-[var(--foreground)] mb-2 block">
+                                        Tipo de Relatório
+                                    </label>
+                                    <div className="flex gap-2">
+                                        {REPORT_TYPES.map((type) => (
+                                            <button
+                                                key={type.id}
+                                                onClick={() => setSelectedType(type.id)}
+                                                className={`flex items-center gap-2 px-3 py-2 rounded-lg border text-sm transition-all ${selectedType === type.id
+                                                    ? "border-primary bg-primary/10 text-primary"
+                                                    : "border-[var(--border)] hover:border-primary/50"
+                                                    }`}
+                                            >
+                                                <span>{type.icon}</span>
+                                                <span className="hidden sm:inline">{type.name}</span>
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
 
-                                        {/* Team Selector - REQUIRED */}
-                                        <div className="min-w-[200px]">
-                                            <label className="text-sm font-medium text-[var(--foreground)] mb-2 block">
-                                                Time <span className="text-red-500">*</span>
-                                            </label>
-                                            <TeamSelector
-                                                selectedTeamId={selectedTeamId}
-                                                onTeamChange={handleTeamChange}
-                                                disabled={isGenerating}
-                                                allowAll={false}
-                                            />
-                                        </div>
+                                {/* Team Selector - REQUIRED */}
+                                <div className="min-w-[200px]">
+                                    <label className="text-sm font-medium text-[var(--foreground)] mb-2 block">
+                                        Time <span className="text-red-500">*</span>
+                                    </label>
+                                    <TeamSelector
+                                        selectedTeamId={selectedTeamId}
+                                        onTeamChange={handleTeamChange}
+                                        disabled={isGenerating}
+                                        allowAll={false}
+                                    />
+                                </div>
 
-                                        {/* Period Selector */}
-                                        <div className="w-[180px]">
-                                            <label className="text-sm font-medium text-[var(--foreground)] mb-2 block">
-                                                Período
-                                            </label>
-                                            <div className="relative">
-                                                <Calendar className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--muted-foreground)]" />
-                                                <select
-                                                    value={periodDays}
-                                                    onChange={(e) => setPeriodDays(Number(e.target.value))}
-                                                    className="w-full appearance-none rounded-lg border border-[var(--border)] bg-[var(--background)] py-2 pl-10 pr-10 text-sm text-[var(--foreground)] transition-colors hover:border-primary/50 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
-                                                >
-                                                    <option value={7}>Últimos 7 dias</option>
-                                                    <option value={14}>Últimas 2 semanas</option>
-                                                    <option value={30}>Último mês</option>
-                                                    <option value={90}>Último trimestre</option>
-                                                </select>
-                                                <ChevronDown className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--muted-foreground)]" />
-                                            </div>
-                                        </div>
-
-                                        {/* Generate Button */}
-                                        <Button
-                                            onClick={handleGenerateReport}
-                                            disabled={isGenerating}
-                                            className="min-w-[140px]"
+                                {/* Period Selector */}
+                                <div className="w-[180px]">
+                                    <label className="text-sm font-medium text-[var(--foreground)] mb-2 block">
+                                        Período
+                                    </label>
+                                    <div className="relative">
+                                        <Calendar className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--muted-foreground)]" />
+                                        <select
+                                            value={periodDays}
+                                            onChange={(e) => setPeriodDays(Number(e.target.value))}
+                                            className="w-full appearance-none rounded-lg border border-[var(--border)] bg-[var(--background)] py-2 pl-10 pr-10 text-sm text-[var(--foreground)] transition-colors hover:border-primary/50 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
                                         >
-                                            {isGenerating ? (
-                                                <span className="flex items-center gap-2">
-                                                    <Loader2 className="h-4 w-4 animate-spin" />
-                                                    Gerando...
-                                                </span>
-                                            ) : (
-                                                <span className="flex items-center gap-2">
-                                                    <RefreshCw className="h-4 w-4" />
-                                                    Gerar Relatório
-                                                </span>
-                                            )}
-                                        </Button>
+                                            <option value={7}>Últimos 7 dias</option>
+                                            <option value={14}>Últimas 2 semanas</option>
+                                            <option value={30}>Último mês</option>
+                                            <option value={90}>Último trimestre</option>
+                                        </select>
+                                        <ChevronDown className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--muted-foreground)]" />
                                     </div>
-                                </CardContent>
-                            </Card>
-
-                            {/* Error */}
-                            {error && (
-                                <div className="rounded-lg bg-red-50 p-4 text-red-600 dark:bg-red-900/10 dark:text-red-400">
-                                    {error}
                                 </div>
-                            )}
 
-                            {/* Report Preview */}
-                            <Card className="min-h-[500px]">
-                                <CardHeader className="flex flex-row items-center justify-between">
-                                    <div>
-                                        <CardTitle className="text-lg">Preview</CardTitle>
-                                        <CardDescription>
-                                            {generatedReport
-                                                ? generatedReport.period_description
-                                                : "Selecione as opções e gere o relatório"}
-                                        </CardDescription>
-                                    </div>
-                                    {generatedReport && (
-                                        <div className="flex gap-2">
-                                            <Button
-                                                variant="outline"
-                                                size="sm"
-                                                onClick={() => handleExportMarkdown(generatedReport)}
-                                            >
-                                                <Download className="h-4 w-4 mr-2" />
-                                                Exportar MD
-                                            </Button>
-                                            <Button
-                                                size="sm"
-                                                onClick={handleSaveReport}
-                                                disabled={isSaving || saveSuccess}
-                                            >
-                                                {isSaving ? (
-                                                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                                                ) : saveSuccess ? (
-                                                    <CheckCircle className="h-4 w-4 mr-2" />
-                                                ) : (
-                                                    <Save className="h-4 w-4 mr-2" />
-                                                )}
-                                                {saveSuccess ? "Salvo!" : "Salvar"}
-                                            </Button>
-                                        </div>
-                                    )}
-                                </CardHeader>
-                                <CardContent>
+                                {/* Generate Button */}
+                                <Button
+                                    onClick={handleGenerateReport}
+                                    disabled={isGenerating}
+                                    className="min-w-[140px]"
+                                >
                                     {isGenerating ? (
-                                        <div className="flex h-[400px] flex-col items-center justify-center">
-                                            <Loader2 className="mb-4 h-8 w-8 animate-spin text-primary" />
-                                            <p className="text-[var(--muted-foreground)]">
-                                                Analisando atividades...
-                                            </p>
-                                        </div>
-                                    ) : generatedReport ? (
-                                        <ReportPreview report={generatedReport} />
+                                        <span className="flex items-center gap-2">
+                                            <Loader2 className="h-4 w-4 animate-spin" />
+                                            Gerando...
+                                        </span>
                                     ) : (
-                                        <div className="flex h-[400px] flex-col items-center justify-center text-center text-[var(--muted-foreground)]">
-                                            <Building2 className="mb-4 h-12 w-12 opacity-30" />
-                                            <p>Nenhum relatório gerado ainda.</p>
-                                            <p className="text-sm">
-                                                Configure as opções acima e clique em &quot;Gerar Relatório&quot;.
-                                            </p>
-                                        </div>
+                                        <span className="flex items-center gap-2">
+                                            <RefreshCw className="h-4 w-4" />
+                                            Gerar Relatório
+                                        </span>
                                     )}
-                                </CardContent>
-                            </Card>
+                                </Button>
+                            </div>
+                        </CardContent>
+                    </Card>
+
+                    {/* Error */}
+                    {error && (
+                        <div className="rounded-lg bg-red-50 p-4 text-red-600 dark:bg-red-900/10 dark:text-red-400">
+                            {error}
                         </div>
                     )}
 
-                    {/* Custom Builder Tab Content */}
-                    {activeTab === "custom" && (
-                        <div className="max-w-4xl mx-auto space-y-4">
-                            {templateSuccess && (
-                                <div className="rounded-lg bg-green-50 p-4 text-green-600 dark:bg-green-900/10 dark:text-green-400 flex items-center gap-2 animate-in fade-in slide-in-from-top-2">
-                                    <CheckCircle className="h-5 w-5" />
-                                    {templateSuccess}
-                                </div>
-                            )}
-
-                            <ReportBuilder
-                                onGenerate={handleGenerateCustom}
-                                onSaveTemplate={handleSaveTemplate}
-                                isGenerating={isGenerating}
-                                initialTemplate={loadedTemplate}
-                            />
-                        </div>
-                    )}
-
-                    {/* Templates Tab Content */}
-                    {activeTab === "templates" && (
-                        <div className="max-w-4xl mx-auto">
-                            <TemplatesManager
-                                onLoadTemplate={(template) => {
-                                    setLoadedTemplate(template);
-                                    setActiveTab("custom");
-                                }}
-                            />
-                        </div>
-                    )}
-
-                    {/* History Tab Content */}
-                    {activeTab === "history" && (
-                        <div className="grid gap-6 lg:grid-cols-3">
-                            {/* History List */}
-                            <div className="space-y-3 lg:col-span-1">
-                                <div className="flex items-center justify-between">
-                                    <h3 className="font-medium text-[var(--foreground)]">
-                                        Relatórios Salvos
-                                    </h3>
+                    {/* Report Preview */}
+                    <Card className="min-h-[500px]">
+                        <CardHeader className="flex flex-row items-center justify-between">
+                            <div>
+                                <CardTitle className="text-lg">Preview</CardTitle>
+                                <CardDescription>
+                                    {generatedReport
+                                        ? generatedReport.period_description
+                                        : "Selecione as opções e gere o relatório"}
+                                </CardDescription>
+                            </div>
+                            {generatedReport && (
+                                <div className="flex gap-2">
                                     <Button
-                                        variant="ghost"
+                                        variant="outline"
                                         size="sm"
-                                        onClick={() => {
-                                            setHistoryReports([]);
-                                            fetchHistory(1);
-                                        }}
-                                        disabled={isLoadingHistory}
+                                        onClick={() => handleExportMarkdown(generatedReport)}
                                     >
-                                        <RefreshCw className={`h-4 w-4 ${isLoadingHistory ? "animate-spin" : ""}`} />
+                                        <Download className="h-4 w-4 mr-2" />
+                                        Exportar MD
+                                    </Button>
+                                    <Button
+                                        size="sm"
+                                        onClick={handleSaveReport}
+                                        disabled={isSaving || saveSuccess}
+                                    >
+                                        {isSaving ? (
+                                            <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                                        ) : saveSuccess ? (
+                                            <CheckCircle className="h-4 w-4 mr-2" />
+                                        ) : (
+                                            <Save className="h-4 w-4 mr-2" />
+                                        )}
+                                        {saveSuccess ? "Salvo!" : "Salvar"}
                                     </Button>
                                 </div>
+                            )}
+                        </CardHeader>
+                        <CardContent>
+                            {isGenerating ? (
+                                <div className="flex h-[400px] flex-col items-center justify-center">
+                                    <Loader2 className="mb-4 h-8 w-8 animate-spin text-primary" />
+                                    <p className="text-[var(--muted-foreground)]">
+                                        Analisando atividades...
+                                    </p>
+                                </div>
+                            ) : generatedReport ? (
+                                <ReportPreview report={generatedReport} />
+                            ) : (
+                                <div className="flex h-[400px] flex-col items-center justify-center text-center text-[var(--muted-foreground)]">
+                                    <Building2 className="mb-4 h-12 w-12 opacity-30" />
+                                    <p>Nenhum relatório gerado ainda.</p>
+                                    <p className="text-sm">
+                                        Configure as opções acima e clique em &quot;Gerar Relatório&quot;.
+                                    </p>
+                                </div>
+                            )}
+                        </CardContent>
+                    </Card>
+                </div>
+            )}
 
-                                {isLoadingHistory && historyReports.length === 0 ? (
-                                    <div className="flex justify-center py-8">
-                                        <Loader2 className="h-6 w-6 animate-spin text-primary" />
-                                    </div>
-                                ) : historyReports.length === 0 ? (
-                                    <Card className="glass">
-                                        <CardContent className="flex flex-col items-center justify-center py-8 text-center">
-                                            <History className="h-10 w-10 mb-3 opacity-30" />
-                                            <p className="text-[var(--muted-foreground)]">
-                                                Nenhum relatório salvo ainda.
-                                            </p>
-                                            <Button
-                                                variant="link"
-                                                onClick={() => setActiveTab("generate")}
-                                                className="mt-2"
-                                            >
-                                                Gerar seu primeiro relatório
-                                            </Button>
-                                        </CardContent>
-                                    </Card>
-                                ) : (
-                                    <>
-                                        <div className="space-y-3">
-                                            {historyReports.map((report) => (
-                                                <ReportHistoryCard
-                                                    key={report.id}
-                                                    report={report}
-                                                    isSelected={selectedHistoryReport?.id === report.id}
-                                                    onSelect={() => setSelectedHistoryReport(report)}
-                                                    onDelete={() => handleDeleteReport(report.id)}
-                                                />
-                                            ))}
-                                        </div>
-                                        {hasMoreHistory && (
-                                            <Button
-                                                variant="outline"
-                                                className="w-full mt-3"
-                                                onClick={() => fetchHistory(historyPage + 1)}
-                                                disabled={isLoadingHistory}
-                                            >
-                                                {isLoadingHistory ? (
-                                                    <Loader2 className="h-4 w-4 animate-spin" />
-                                                ) : (
-                                                    "Carregar mais"
-                                                )}
-                                            </Button>
-                                        )}
-                                    </>
-                                )}
-                            </div>
-
-                            {/* Report Detail */}
-                            <div className="lg:col-span-2">
-                                <Card className="min-h-[500px]">
-                                    <CardHeader>
-                                        <CardTitle className="text-lg">Detalhes do Relatório</CardTitle>
-                                        <CardDescription>
-                                            {selectedHistoryReport
-                                                ? selectedHistoryReport.period_description
-                                                : "Selecione um relatório para visualizar"}
-                                        </CardDescription>
-                                    </CardHeader>
-                                    <CardContent>
-                                        <ReportPreview
-                                            report={selectedReportDetails}
-                                            onExport={
-                                                selectedReportDetails
-                                                    ? () => handleExportMarkdown(selectedReportDetails)
-                                                    : undefined
-                                            }
-                                            onExportPDF={
-                                                selectedHistoryReport && selectedReportDetails
-                                                    ? () => handleExportPDF(selectedHistoryReport.id, selectedReportDetails.title)
-                                                    : undefined
-                                            }
-                                            isExportingPDF={isExportingPDF}
-                                        />
-                                    </CardContent>
-                                </Card>
-                            </div>
+            {/* Custom Builder Tab Content */}
+            {activeTab === "custom" && (
+                <div className="max-w-4xl mx-auto space-y-4">
+                    {templateSuccess && (
+                        <div className="rounded-lg bg-green-50 p-4 text-green-600 dark:bg-green-900/10 dark:text-green-400 flex items-center gap-2 animate-in fade-in slide-in-from-top-2">
+                            <CheckCircle className="h-5 w-5" />
+                            {templateSuccess}
                         </div>
                     )}
+
+                    <ReportBuilder
+                        onGenerate={handleGenerateCustom}
+                        onSaveTemplate={handleSaveTemplate}
+                        isGenerating={isGenerating}
+                        initialTemplate={loadedTemplate}
+                    />
                 </div>
-            </main>
-        </div>
+            )}
+
+            {/* Templates Tab Content */}
+            {activeTab === "templates" && (
+                <div className="max-w-4xl mx-auto">
+                    <TemplatesManager
+                        onLoadTemplate={(template) => {
+                            setLoadedTemplate(template);
+                            setActiveTab("custom");
+                        }}
+                    />
+                </div>
+            )}
+
+            {/* History Tab Content */}
+            {activeTab === "history" && (
+                <div className="grid gap-6 lg:grid-cols-3">
+                    {/* History List */}
+                    <div className="space-y-3 lg:col-span-1">
+                        <div className="flex items-center justify-between">
+                            <h3 className="font-medium text-[var(--foreground)]">
+                                Relatórios Salvos
+                            </h3>
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => {
+                                    setHistoryReports([]);
+                                    fetchHistory(1);
+                                }}
+                                disabled={isLoadingHistory}
+                            >
+                                <RefreshCw className={`h-4 w-4 ${isLoadingHistory ? "animate-spin" : ""}`} />
+                            </Button>
+                        </div>
+
+                        {isLoadingHistory && historyReports.length === 0 ? (
+                            <div className="flex justify-center py-8">
+                                <Loader2 className="h-6 w-6 animate-spin text-primary" />
+                            </div>
+                        ) : historyReports.length === 0 ? (
+                            <Card className="glass">
+                                <CardContent className="flex flex-col items-center justify-center py-8 text-center">
+                                    <History className="h-10 w-10 mb-3 opacity-30" />
+                                    <p className="text-[var(--muted-foreground)]">
+                                        Nenhum relatório salvo ainda.
+                                    </p>
+                                    <Button
+                                        variant="link"
+                                        onClick={() => setActiveTab("generate")}
+                                        className="mt-2"
+                                    >
+                                        Gerar seu primeiro relatório
+                                    </Button>
+                                </CardContent>
+                            </Card>
+                        ) : (
+                            <>
+                                <div className="space-y-3">
+                                    {historyReports.map((report) => (
+                                        <ReportHistoryCard
+                                            key={report.id}
+                                            report={report}
+                                            isSelected={selectedHistoryReport?.id === report.id}
+                                            onSelect={() => setSelectedHistoryReport(report)}
+                                            onDelete={() => handleDeleteReport(report.id)}
+                                        />
+                                    ))}
+                                </div>
+                                {hasMoreHistory && (
+                                    <Button
+                                        variant="outline"
+                                        className="w-full mt-3"
+                                        onClick={() => fetchHistory(historyPage + 1)}
+                                        disabled={isLoadingHistory}
+                                    >
+                                        {isLoadingHistory ? (
+                                            <Loader2 className="h-4 w-4 animate-spin" />
+                                        ) : (
+                                            "Carregar mais"
+                                        )}
+                                    </Button>
+                                )}
+                            </>
+                        )}
+                    </div>
+
+                    {/* Report Detail */}
+                    <div className="lg:col-span-2">
+                        <Card className="min-h-[500px]">
+                            <CardHeader>
+                                <CardTitle className="text-lg">Detalhes do Relatório</CardTitle>
+                                <CardDescription>
+                                    {selectedHistoryReport
+                                        ? selectedHistoryReport.period_description
+                                        : "Selecione um relatório para visualizar"}
+                                </CardDescription>
+                            </CardHeader>
+                            <CardContent>
+                                <ReportPreview
+                                    report={selectedReportDetails}
+                                    onExport={
+                                        selectedReportDetails
+                                            ? () => handleExportMarkdown(selectedReportDetails)
+                                            : undefined
+                                    }
+                                    onExportPDF={
+                                        selectedHistoryReport && selectedReportDetails
+                                            ? () => handleExportPDF(selectedHistoryReport.id, selectedReportDetails.title)
+                                            : undefined
+                                    }
+                                    isExportingPDF={isExportingPDF}
+                                />
+                            </CardContent>
+                        </Card>
+                    </div>
+                </div>
+            )}
+        </PageLayout>
     );
 }

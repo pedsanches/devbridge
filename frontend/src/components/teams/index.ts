@@ -1,2 +1,2 @@
-export { TeamSelector } from "./TeamSelector";
+export { TeamSelector, TeamSelectorContent } from "./TeamSelector";
 export { TeamsManager } from "./TeamsManager";

@@ -1,14 +1,18 @@
 "use client";
 
 import { MessageSquare, Sparkles, Search, Zap, ChevronDown } from "lucide-react";
-import { useState, useRef, useEffect, useCallback, useOptimistic } from "react";
+import { useState, useRef, useEffect, useCallback, useOptimistic, startTransition } from "react";
 import { useRouter } from "next/navigation";
 import { ChatMessage } from "@/components/chat/ChatMessage";
-import { ChatInput } from "@/components/chat/ChatInput";
+import { ChatInput, ChatInputHandle } from "@/components/chat/ChatInput";
 import { PersonaSelector } from "@/components/chat/PersonaSelector";
-import { RepositorySelector } from "@/components/chat/RepositorySelector";
-import { TeamSelector } from "@/components/teams";
+import { RepositorySelectorContent } from "@/components/chat/RepositorySelector";
+import { TeamSelectorContent } from "@/components/teams";
+import { ChatToolbar } from "@/components/chat/ChatToolbar";
+import { PeriodSelectorContent } from "@/components/chat/PeriodSelector";
+import { ChatContextHeader } from "@/components/chat/ChatContextHeader";
 import { sendChatMessageStream, Persona, Team, getTeam } from "@/services/api";
+import { useKeyboardShortcuts, KeyboardShortcutsHint } from "@/hooks/useKeyboardShortcuts";
 
 interface Source {
     title: string;
@@ -52,7 +56,24 @@ export function ChatInterface({ conversationId, initialMessages }: ChatInterface
     const [days, setDays] = useState<number>(30);
     const [currentConversationId, setCurrentConversationId] = useState<string | undefined>(conversationId);
     const messagesEndRef = useRef<HTMLDivElement>(null);
+    const chatInputRef = useRef<ChatInputHandle>(null);
     const router = useRouter();
+
+    const [activeSelector, setActiveSelector] = useState<"persona" | "team" | "repo" | "period" | null>(null);
+    const [teamName, setTeamName] = useState<string>();
+
+    // Keyboard shortcuts
+    useKeyboardShortcuts({
+        onFocusInput: () => chatInputRef.current?.focus(),
+        onClearInput: () => chatInputRef.current?.clear(),
+        onToggleSidebar: () => {
+            // Optional: toggle sidebar via layout/context
+        },
+    });
+
+    const toggleSelector = (selector: "persona" | "team" | "repo" | "period") => {
+        setActiveSelector(prev => prev === selector ? null : selector);
+    };
 
     const scrollToBottom = () => {
         messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -76,22 +97,29 @@ export function ChatInterface({ conversationId, initialMessages }: ChatInterface
 
     // Handle team selection - load team repos
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const handleTeamChange = useCallback(async (teamId: string | null, _team: Team | null) => {
+    const handleTeamChange = (teamId: string | null, team: Team | null) => {
         setSelectedTeamId(teamId);
-
-        // If team selected, load its repositories as default filter
-        if (teamId) {
-            try {
-                const teamDetail = await getTeam(teamId);
-                const repoNames = teamDetail.repositories.map(r => r.name);
-                setSelectedRepos(repoNames);
-            } catch (err) {
-                console.error("Failed to load team repos:", err);
+        setTeamName(team?.name);
+        setActiveSelector(null); // Close on selection
+    };
+    // If team selected, load its repositories as default filter
+    useEffect(() => {
+        const loadTeamRepos = async () => {
+            if (selectedTeamId) {
+                try {
+                    const teamDetail = await getTeam(selectedTeamId);
+                    const repoNames = teamDetail.repositories.map(r => r.name);
+                    setSelectedRepos(repoNames);
+                } catch (err) {
+                    console.error("Failed to load team repos:", err);
+                }
+            } else {
+                setSelectedRepos([]);
             }
-        } else {
-            setSelectedRepos([]);
-        }
-    }, []);
+        };
+        loadTeamRepos();
+    }, [selectedTeamId]);
+
 
     const handleSendMessage = useCallback(async (content: string) => {
         setError(null);
@@ -121,7 +149,9 @@ export function ChatInterface({ conversationId, initialMessages }: ChatInterface
             }),
             confidenceScore: 1, // Optimistic
         };
-        addOptimisticMessage(userMessage);
+        startTransition(() => {
+            addOptimisticMessage(userMessage);
+        });
         setIsLoading(true);
 
         // Prepare permanent state update (will happen when stream starts)
@@ -243,9 +273,16 @@ export function ChatInterface({ conversationId, initialMessages }: ChatInterface
     }, [persona, currentConversationId, conversationId, selectedRepos, router, days]);
 
     return (
-        <div className="flex h-full flex-col bg-neutral-50 dark:bg-neutral-900">
+        <div className="flex h-full flex-col bg-[var(--background)]">
             {/* Messages Area */}
-            <main className="flex-1 overflow-y-auto">
+            <main
+                className="flex-1 overflow-y-auto"
+                role="log"
+                aria-live="polite"
+                aria-busy={isLoading}
+                aria-label="Histórico de mensagens"
+            >
+                <ChatContextHeader teamName={teamName} days={days} />
                 <div className="container mx-auto max-w-3xl px-4 py-6">
                     {messages.length === 0 && optimisticMessages.length === 0 ? (
                         <div className="flex flex-col items-center justify-center py-16 text-center">
@@ -275,7 +312,7 @@ export function ChatInterface({ conversationId, initialMessages }: ChatInterface
                                     <button
                                         key={suggestion}
                                         onClick={() => handleSendMessage(suggestion)}
-                                        className="rounded-full border border-neutral-200 bg-white px-4 py-2 text-sm transition-colors hover:border-primary hover:text-primary dark:border-neutral-700 dark:bg-neutral-800"
+                                        className="rounded-full border border-[var(--border)] bg-[var(--card)] px-4 py-2 text-sm transition-colors hover:border-primary hover:text-primary"
                                     >
                                         {suggestion}
                                     </button>
@@ -283,7 +320,7 @@ export function ChatInterface({ conversationId, initialMessages }: ChatInterface
                             </div>
                         </div>
                     ) : (
-                        <div className="space-y-4 animate-stagger">
+                        <div className="space-y-4 animate-stagger" role="list">
                             {optimisticMessages.map((message) => (
                                 <div key={message.id}>
                                     <ChatMessage
@@ -293,10 +330,11 @@ export function ChatInterface({ conversationId, initialMessages }: ChatInterface
                                         sources={message.sources}
                                         activitiesCount={message.activitiesCount}
                                         confidenceScore={message.confidenceScore}
+                                        isStreaming={!!message.isStreaming}
                                     />
                                     {/* Streaming indicator */}
                                     {message.isStreaming && (
-                                        <div className="ml-11 mt-1 flex items-center gap-1 text-xs text-neutral-400">
+                                        <div className="ml-11 mt-1 flex items-center gap-1 text-xs text-[var(--muted-foreground)]">
                                             <Sparkles className="h-3 w-3 animate-pulse" />
                                             <span>Gerando resposta...</span>
                                         </div>
@@ -316,60 +354,64 @@ export function ChatInterface({ conversationId, initialMessages }: ChatInterface
             </main>
 
             {/* Input Area */}
-            <footer className="sticky bottom-0 border-t border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-900">
-                <div className="container mx-auto max-w-3xl">
-                    {/* Controls Row */}
-                    <div className="mb-3 flex flex-wrap items-center justify-between">
-                        <div className="flex w-full items-center gap-2 border-b border-[var(--border)] bg-[var(--app-bg)] p-4 flex-wrap">
-                            <PersonaSelector selected={persona} onChange={setPersona} />
-                            <div className="h-6 w-px bg-[var(--border)] hidden sm:block" />
-                            <div className="w-[200px]">
-                                <TeamSelector
+            <footer className="sticky bottom-0 border-t border-[var(--border)] bg-[var(--card)]/80 backdrop-blur pb-6 pt-2">
+                <div className="container mx-auto max-w-3xl relative">
+                    {/* Popover Selection Area */}
+                    {activeSelector && (
+                        <div className="absolute bottom-full left-4 mb-2 z-20 w-72 rounded-xl border border-[var(--border)] bg-[var(--card)] shadow-xl animate-in fade-in slide-in-from-bottom-2">
+                            {activeSelector === "persona" && (
+                                <div className="p-2">
+                                    <PersonaSelector
+                                        selected={persona}
+                                        onChange={(p) => { setPersona(p); setActiveSelector(null); }}
+                                    />
+                                </div>
+                            )}
+                            {activeSelector === "team" && (
+                                <TeamSelectorContent
                                     selectedTeamId={selectedTeamId}
                                     onTeamChange={handleTeamChange}
                                     allowAll
-                                    className="w-full"
                                 />
-                            </div>
-                            <div className="h-6 w-px bg-[var(--border)] hidden sm:block" />
-                            <div className="w-[300px]">
-                                <RepositorySelector
+                            )}
+                            {activeSelector === "repo" && (
+                                <RepositorySelectorContent
                                     selectedRepos={selectedRepos}
-                                    onChange={setSelectedRepos}
+                                    onChange={(repos) => { setSelectedRepos(repos); setActiveSelector(null); }}
                                 />
-                            </div>
-                            <div className="h-6 w-px bg-[var(--border)] hidden sm:block" />
-                            <PeriodSelector days={days} onChange={setDays} />
+                            )}
+                            {activeSelector === "period" && (
+                                <PeriodSelectorContent
+                                    days={days}
+                                    onChange={(d) => { setDays(d); setActiveSelector(null); }}
+                                />
+                            )}
                         </div>
-                        <div className="flex items-center gap-1 text-xs text-neutral-400">
-                            <Search className="h-3 w-3" />
-                            <span>RAG ativo</span>
+                    )}
+
+                    {/* Controls Row */}
+                    <div className="mb-2">
+                        <ChatToolbar
+                            persona={persona}
+                            selectedRepos={selectedRepos}
+                            days={days}
+                            selectedTeamId={selectedTeamId}
+                            teamName={teamName}
+                            onOpenPersonaSelector={() => toggleSelector("persona")}
+                            onOpenRepoSelector={() => toggleSelector("repo")}
+                            onOpenTeamSelector={() => toggleSelector("team")}
+                            onOpenPeriodSelector={() => toggleSelector("period")}
+                        />
+                    </div>
+
+                    <div className="px-4">
+                        <ChatInput ref={chatInputRef} onSend={handleSendMessage} disabled={isLoading} />
+                        <div className="mt-2 flex justify-end">
+                            <KeyboardShortcutsHint />
                         </div>
                     </div>
-                    <ChatInput onSend={handleSendMessage} disabled={isLoading} />
                 </div>
             </footer>
-        </div>
-    );
-}
-
-function PeriodSelector({ days, onChange }: { days: number; onChange: (d: number) => void }) {
-    return (
-        <div className="relative">
-            <select
-                value={days}
-                onChange={(e) => onChange(Number(e.target.value))}
-                className="h-9 w-[140px] appearance-none rounded-md border border-neutral-200 bg-white px-3 py-2 text-sm text-[var(--foreground)] shadow-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary dark:border-neutral-800 dark:bg-neutral-950"
-            >
-                <option value={1}>Últimas 24h</option>
-                <option value={7}>Últimos 7 dias</option>
-                <option value={30}>Últimos 30 dias</option>
-                <option value={90}>Últimos 3 meses</option>
-                <option value={365}>Último ano</option>
-            </select>
-            <div className="pointer-events-none absolute right-2 top-2.5 text-neutral-400">
-                <ChevronDown className="h-4 w-4" />
-            </div>
         </div>
     );
 }
