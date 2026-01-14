@@ -92,8 +92,30 @@ class ConversationService:
         if has_more:
             conversations = conversations[:limit]
 
+        summaries = []
+        for c in conversations:
+            summary = ConversationSummary.model_validate(c)
+
+            # Fetch last message for preview
+            last_msg_query = (
+                select(ChatMessage)
+                .where(ChatMessage.conversation_id == c.id)
+                .order_by(ChatMessage.created_at.desc())
+                .limit(1)
+            )
+            last_msg_result = await self.db.execute(last_msg_query)
+            last_msg = last_msg_result.scalar_one_or_none()
+
+            if last_msg:
+                # Truncate content for preview (limit to 60 chars)
+                content = last_msg.content.replace("\n", " ")
+                preview_text = content[:60] + "..." if len(content) > 60 else content
+                summary.preview = preview_text
+
+            summaries.append(summary)
+
         return ConversationsListResponse(
-            conversations=[ConversationSummary.model_validate(c) for c in conversations],
+            conversations=summaries,
             total=total,
             has_more=has_more,
         )

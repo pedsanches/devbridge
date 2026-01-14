@@ -240,6 +240,7 @@ export interface ConversationSummary {
     title: string;
     updated_at: string;
     message_count: number;
+    preview?: string; // Preview of last assistant message
 }
 
 export interface ConversationsListResponse {

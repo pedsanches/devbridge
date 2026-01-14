@@ -62,6 +62,7 @@ class ConversationSummary(BaseModel):
     title: str | None = None
     status: ConversationStatus
     message_count: int
+    preview: str | None = None
     created_at: datetime
     updated_at: datetime
 

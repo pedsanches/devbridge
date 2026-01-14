@@ -130,7 +130,7 @@ export default function DashboardPage() {
                     {/* Metrics Bar */}
                     <div className="mb-8">
                         <h2 className="mb-4 text-sm font-medium text-[var(--muted-foreground)] uppercase tracking-wide">
-                            Métricas DORA
+                            Performance de Engenharia
                         </h2>
                         <MetricsBar teamId={selectedTeamId} />
                     </div>

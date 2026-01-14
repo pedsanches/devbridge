@@ -76,11 +76,11 @@ def format_duration(hours: float | None) -> str:
     if hours is None or hours == 0:
         return "—"
     if hours < 1:
-        return f"{int(hours * 60)}m"
+        return f"{int(hours * 60)} min"
     if hours < 24:
         return f"{hours:.1f}h"
     days = hours / 24
-    return f"{days:.1f}d"
+    return f"{days:.1f} dias"
 
 
 def format_frequency(per_day: float | None) -> str:
@@ -88,11 +88,11 @@ def format_frequency(per_day: float | None) -> str:
     if per_day is None or per_day == 0:
         return "—"
     if per_day >= 1:
-        return f"{per_day:.1f}/day"
+        return f"{per_day:.1f}/dia"
     per_week = per_day * 7
     if per_week >= 1:
-        return f"{per_week:.1f}/week"
-    return f"{per_day * 30:.1f}/month"
+        return f"{per_week:.1f}/sem"
+    return f"{per_day * 30:.1f}/mês"
 
 
 def format_percentage(value: float | None) -> str:
