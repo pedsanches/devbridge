@@ -149,9 +149,9 @@ setup_docker() {
 
     if [[ -f docker-compose.yml ]]; then
         if command -v docker-compose >/dev/null 2>&1; then
-            docker-compose up -d
+            docker-compose --profile ai up -d
         else
-            docker compose up -d
+            docker compose --profile ai up -d
         fi
         log_success "Docker services started"
     else

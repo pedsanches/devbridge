@@ -16,11 +16,11 @@ sources:
   # Uses dedicated user with SELECT-only permissions
   postgres-readonly:
     kind: postgres
-    host: "127.0.0.1"
-    port: 5432
-    database: "devbridge"
-    user: "mcp_readonly"
-    password: "mcp_readonly_secure"
+    host: "${POSTGRES_HOST}"
+    port: ${POSTGRES_PORT}
+    database: "${POSTGRES_DB}"
+    user: "${POSTGRES_USER}"
+    password: "${POSTGRES_PASSWORD}"
 
 tools:
   # ============================================
