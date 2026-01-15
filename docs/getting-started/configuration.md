@@ -11,6 +11,9 @@ Todas as opções de configuração disponíveis via variáveis de ambiente.
 | `DATABASE_URL` | URL de conexão PostgreSQL | `postgresql://user:pass@host:5432/db` |
 | `REDIS_URL` | URL de conexão Redis | `redis://localhost:6379/0` |
 
+> Em produção, o backend valida `SECRET_KEY`, `JWT_SECRET_KEY`, `OPENAI_API_KEY` e `GITHUB_WEBHOOK_SECRET` na inicialização.
+> O frontend valida `NEXT_PUBLIC_API_URL` durante o build.
+
 ## Variáveis Opcionais
 
 ### AI & LLM
@@ -59,7 +62,19 @@ Todas as opções de configuração disponíveis via variáveis de ambiente.
 | `SECRET_KEY` | - | Chave para JWT |
 | `ACCESS_TOKEN_EXPIRE_MINUTES` | `30` | Expiração do access token |
 | `REFRESH_TOKEN_EXPIRE_DAYS` | `7` | Expiração do refresh token |
-| `CORS_ORIGINS` | `["http://localhost:3000"]` | Origens permitidas (JSON array) |
+| `CORS_ORIGINS` | `["http://localhost:3001"]` | Origens permitidas (JSON array) |
+| `RATE_LIMIT_PER_MINUTE` | `100` | Limite global por IP (req/min) |
+| `WEBHOOK_RATE_LIMIT_PER_HOUR` | `100` | Limite de webhooks por repo/hora |
+
+### Privacidade (Presidio)
+
+Obrigatório para sanitização de PII antes de chamadas à IA.
+
+| Variável | Padrão | Descrição |
+|----------|--------|-----------|
+| `PRESIDIO_ANALYZER_URL` | `http://localhost:5001` | Endpoint do Analyzer |
+| `PRESIDIO_ANONYMIZER_URL` | `http://localhost:5002` | Endpoint do Anonymizer |
+| `PRESIDIO_LANGUAGES` | `["pt", "en"]` | Idiomas de detecção |
 
 ### Observabilidade
 
@@ -68,6 +83,12 @@ Todas as opções de configuração disponíveis via variáveis de ambiente.
 | `LOG_LEVEL` | `INFO` | Nível de log |
 | `PHOENIX_ENABLED` | `true` | Habilitar Arize Phoenix |
 | `PHOENIX_ENDPOINT` | `http://localhost:6006` | Endpoint do Phoenix |
+
+### Frontend
+
+| Variável | Padrão | Descrição |
+|----------|--------|-----------|
+| `NEXT_PUBLIC_API_URL` | `http://localhost:8001/api/v1` | URL base da API (obrigatória em produção) |
 
 ## Arquivo `.devbridge.yaml`
 
@@ -141,7 +162,7 @@ QDRANT_URL=http://localhost:6333
 # Security
 # ===================
 SECRET_KEY=minha-chave-secreta-muito-longa-e-aleatoria
-CORS_ORIGINS=["http://localhost:3000"]
+CORS_ORIGINS=["http://localhost:3001"]
 
 # ===================
 # Observability

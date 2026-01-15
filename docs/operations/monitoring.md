@@ -287,5 +287,5 @@ curl "http://phoenix:6006/v1/traces?filter=request_id=uuid"
 ### Métricas em tempo real
 
 ```bash
-curl http://localhost:8000/metrics | grep devbridge
+curl http://localhost:8001/metrics | grep devbridge
 ```

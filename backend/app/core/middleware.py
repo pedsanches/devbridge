@@ -6,22 +6,28 @@ Request tracing and metrics middleware for FastAPI.
 
 import time
 import uuid
-from collections.abc import Callable
 
-from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
 from starlette.requests import Request
-from starlette.responses import Response
+from starlette.responses import JSONResponse, Response
+from starlette.types import ASGIApp
 
+from app.core.config import settings
 from app.core.logging import bind_request_context, clear_context, get_logger
 from app.core.observability import REQUEST_COUNT, REQUEST_LATENCY
+from app.core.rate_limit import RateLimitResult, build_rate_limit_headers, rate_limiter
 
 logger = get_logger(__name__)
 
 
-class ObservabilityMiddleware(BaseHTTPMiddleware):
+class ObservabilityMiddleware(BaseHTTPMiddleware):  # type: ignore[misc]
     """Middleware that adds request tracing and metrics."""
 
-    async def dispatch(self, request: Request, call_next: Callable) -> Response:
+    async def dispatch(
+        self,
+        request: Request,
+        call_next: RequestResponseEndpoint,
+    ) -> Response:
         """Process request with tracing and metrics."""
         # Generate or extract request ID
         request_id = request.headers.get("X-Request-ID", str(uuid.uuid4()))
@@ -124,3 +130,69 @@ class ObservabilityMiddleware(BaseHTTPMiddleware):
         # Replace numeric IDs
         path = re.sub(r"/\d+", "/{id}", path)
         return path
+
+
+class RateLimitMiddleware(BaseHTTPMiddleware):  # type: ignore[misc]
+    """Middleware that enforces API rate limiting."""
+
+    def __init__(self, app: ASGIApp) -> None:
+        super().__init__(app)
+        api_prefix = settings.API_PREFIX
+        self._exempt_prefixes = (
+            "/metrics",
+            "/health",
+            "/ready",
+            "/live",
+            f"{api_prefix}/health",
+            f"{api_prefix}/health/ready",
+            f"{api_prefix}/health/live",
+            f"{api_prefix}/docs",
+            f"{api_prefix}/redoc",
+            f"{api_prefix}/openapi.json",
+        )
+
+    async def dispatch(
+        self,
+        request: Request,
+        call_next: RequestResponseEndpoint,
+    ) -> Response:
+        """Apply rate limiting before processing the request."""
+        if request.method == "OPTIONS" or self._is_exempt(request.url.path):
+            return await call_next(request)
+
+        if settings.RATE_LIMIT_PER_MINUTE <= 0:
+            return await call_next(request)
+
+        client_id = self._get_client_id(request)
+        key = f"rate_limit:global:{client_id}"
+        result = await rate_limiter.check(key, settings.RATE_LIMIT_PER_MINUTE, 60)
+
+        if not result.allowed:
+            logger.warning("Rate limit exceeded", client_id=client_id, path=request.url.path)
+            response = JSONResponse(
+                status_code=429,
+                content={"detail": "Rate limit exceeded"},
+            )
+            self._apply_headers(response, result)
+            retry_after = max(result.reset_at - int(time.time()), 0)
+            response.headers["Retry-After"] = str(retry_after)
+            return response
+
+        response = await call_next(request)
+        self._apply_headers(response, result)
+        return response
+
+    def _apply_headers(self, response: Response, result: RateLimitResult) -> None:
+        response.headers.update(build_rate_limit_headers(result))
+
+    def _is_exempt(self, path: str) -> bool:
+        return any(path.startswith(prefix) for prefix in self._exempt_prefixes)
+
+    @staticmethod
+    def _get_client_id(request: Request) -> str:
+        forwarded_for = request.headers.get("X-Forwarded-For")
+        if forwarded_for:
+            return str(forwarded_for.split(",")[0].strip())
+        if request.client:
+            return str(request.client.host)
+        return "unknown"

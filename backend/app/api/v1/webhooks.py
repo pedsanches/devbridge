@@ -1,19 +1,18 @@
 """
 GitHub Webhook Endpoints.
 
-Handles incoming webhooks from GitHub for real-time event processing.
+Handles incoming webhooks from GitHub and queues them for processing.
 """
 
 import hashlib
 import hmac
-from typing import Any
+import time
+from typing import Any, cast
 
 from fastapi import APIRouter, Header, HTTPException, Request
 
-from app.api.deps import DbSession
 from app.core.config import settings
-from app.schemas.webhook import GitHubPRPayload, GitHubPushPayload
-from app.services import webhook_service
+from app.core.rate_limit import build_rate_limit_headers, rate_limiter
 
 router = APIRouter()
 
@@ -35,7 +34,7 @@ async def verify_github_signature(
     Raises:
         HTTPException: If signature is invalid.
     """
-    body = await request.body()
+    body = cast(bytes, await request.body())
 
     if not settings.GITHUB_WEBHOOK_SECRET:
         # Skip verification in development if no secret configured
@@ -56,10 +55,43 @@ async def verify_github_signature(
     return body
 
 
-@router.post("/github")
+async def enforce_webhook_rate_limit(repository_full_name: str) -> None:
+    """
+    Enforce per-repository webhook rate limiting.
+
+    Args:
+        repository_full_name: GitHub repository full name.
+    """
+    limit = settings.WEBHOOK_RATE_LIMIT_PER_HOUR
+    if limit <= 0:
+        return
+
+    key = f"rate_limit:webhook:{repository_full_name}"
+    result = await rate_limiter.check(key, limit, 3600)
+    if not result.allowed:
+        headers = build_rate_limit_headers(result)
+        retry_after = max(result.reset_at - int(time.time()), 0)
+        headers["Retry-After"] = str(retry_after)
+        raise HTTPException(
+            status_code=429,
+            detail="Webhook rate limit exceeded",
+            headers=headers,
+        )
+
+
+def extract_repository_full_name(payload: dict[str, Any]) -> str | None:
+    """Extract repository full name from webhook payload."""
+    repository = payload.get("repository")
+    if isinstance(repository, dict):
+        full_name = repository.get("full_name")
+        if isinstance(full_name, str):
+            return full_name
+    return None
+
+
+@router.post("/github")  # type: ignore[untyped-decorator]
 async def github_webhook(
     request: Request,
-    db: DbSession,
     x_github_event: str = Header(...),
     x_hub_signature_256: str | None = Header(None),
 ) -> dict[str, Any]:
@@ -68,38 +100,30 @@ async def github_webhook(
 
     Args:
         request: Incoming webhook request.
-        db: Database session.
         x_github_event: GitHub event type header.
         x_hub_signature_256: GitHub signature header.
 
     Returns:
-        Processing status.
+        Queue status.
     """
     _ = await verify_github_signature(request, x_hub_signature_256)
     payload = await request.json()
 
+    repository_full_name = extract_repository_full_name(payload)
+    if repository_full_name:
+        await enforce_webhook_rate_limit(repository_full_name)
+
     # Route based on event type
     match x_github_event:
-        case "push":
-            push_payload = GitHubPushPayload.model_validate(payload)
-            activities = await webhook_service.process_push_event(db, push_payload)
-            return {
-                "status": "processed",
-                "event": "push",
-                "activities_created": len(activities),
-                "repository": push_payload.repository.full_name,
-                "branch": push_payload.branch,
-            }
+        case "push" | "pull_request":
+            from app.worker import process_webhook
 
-        case "pull_request":
-            pr_payload = GitHubPRPayload.model_validate(payload)
-            activity = await webhook_service.process_pr_event(db, pr_payload)
+            task = cast(Any, process_webhook).delay(x_github_event, payload)
             return {
-                "status": "processed" if activity else "skipped",
-                "event": "pull_request",
-                "action": pr_payload.action,
-                "activity_created": activity is not None,
-                "repository": pr_payload.repository.full_name,
+                "status": "queued",
+                "event": x_github_event,
+                "task_id": task.id,
+                "repository": repository_full_name,
             }
 
         case "ping":

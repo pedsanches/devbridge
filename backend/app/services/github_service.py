@@ -135,7 +135,7 @@ class GitHubService:
         async with httpx.AsyncClient() as client:
             for page in range(1, max_pages + 1):
                 url = f"{self.BASE_URL}/user/repos"
-                params = {
+                params: dict[str, str | int] = {
                     "per_page": per_page,
                     "sort": "updated",
                     "type": "all",  # owner, collaborator, organization_member
@@ -175,7 +175,7 @@ class GitHubService:
             List of issue dicts with number, title, body, state, etc.
         """
         url = f"{self.BASE_URL}/repos/{owner}/{repo}/issues"
-        params = {"state": state, "per_page": per_page, "filter": "all"}
+        params: dict[str, str | int] = {"state": state, "per_page": per_page, "filter": "all"}
 
         async with httpx.AsyncClient() as client:
             response = await client.get(url, headers=self.headers, params=params, timeout=30)
@@ -201,7 +201,7 @@ class GitHubService:
                         else None,
                     }
                     for i in issues
-                    if "pull_request" not in i  # Filter out PRs
+                    if not i.get("pull_request")  # Filter out PRs
                 ]
             return []
 

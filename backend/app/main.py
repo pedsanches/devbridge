@@ -14,7 +14,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.api.v1.router import api_router
 from app.core.config import settings
 from app.core.logging import get_logger, setup_logging
-from app.core.middleware import ObservabilityMiddleware
+from app.core.middleware import ObservabilityMiddleware, RateLimitMiddleware
 from app.core.observability import (
     instrument_app,
     metrics_endpoint,
@@ -71,6 +71,9 @@ def create_app() -> FastAPI:
 
     # Observability Middleware (first in chain for accurate timing)
     app.add_middleware(ObservabilityMiddleware)
+
+    # Rate Limiting Middleware
+    app.add_middleware(RateLimitMiddleware)
 
     # CORS Middleware
     app.add_middleware(

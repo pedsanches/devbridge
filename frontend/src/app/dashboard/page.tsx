@@ -11,6 +11,7 @@ import { RepoStatusWidget } from "@/components/dashboard/RepoStatusWidget";
 import { MetricsBar } from "@/components/dashboard/MetricsBar";
 import { QuickChatInput } from "@/components/dashboard/QuickChatInput";
 import { TeamSelector } from "@/components/teams/TeamSelector";
+import { frontendEnv } from "@/config/env";
 
 // Copied interface to match ActivityFeed expectation
 interface ActivityItem {
@@ -40,7 +41,7 @@ interface PaginatedResponse {
     total_pages: number;
 }
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
+const API_BASE_URL = frontendEnv.apiBaseUrl;
 
 export default function DashboardPage() {
     const { isAuthenticated, isLoading: authLoading, user } = useAuth();

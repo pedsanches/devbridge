@@ -325,7 +325,7 @@ Ou para mockar o despacho da tarefa:
 
 ```python
 def test_webhook_triggers_processing(mocker, client):
-    mock_task = mocker.patch("app.worker.tasks.process_webhook.delay")
+    mock_task = mocker.patch("app.worker.process_webhook.delay")
 
     client.post("/webhooks/github", ...)
 

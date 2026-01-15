@@ -33,7 +33,7 @@ cp .env.example .env
 # 2. Edite .env com suas credenciais
 
 # 3. Suba todos os serviços
-docker-compose up -d
+docker-compose --profile ai up -d
 
 # 4. Verifique status
 docker-compose ps
@@ -46,12 +46,14 @@ docker-compose logs -f
 
 | Serviço | Porta | Descrição |
 |---------|-------|-----------|
-| api | 8000 | FastAPI Backend |
+| api | 8001 | FastAPI Backend |
 | worker | - | Celery Worker |
 | postgres | 5432 | Database |
 | redis | 6379 | Cache e Queue |
 | qdrant | 6333 | Vector DB |
-| frontend | 3000 | Next.js |
+| presidio-analyzer | 5001 | PII Analyzer |
+| presidio-anonymizer | 5002 | PII Anonymizer |
+| frontend | 3001 | Next.js |
 
 ---
 
@@ -298,6 +300,6 @@ kubectl run psql-test --rm -it --image=postgres:15 -- \
 
 ```bash
 # Verificar endpoint diretamente
-kubectl port-forward svc/devbridge-api 8000:8000
-curl http://localhost:8000/health
+kubectl port-forward svc/devbridge-api 8001:8000
+curl http://localhost:8001/health
 ```

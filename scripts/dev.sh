@@ -27,9 +27,9 @@ check_docker() {
     if ! (command -v docker-compose >/dev/null 2>&1 && docker-compose ps | grep -q "Up") && ! (docker compose ps | grep -q "Up"); then
         log_info "Starting Docker services..."
         if command -v docker-compose >/dev/null 2>&1; then
-            docker-compose up -d
+            docker-compose --profile ai up -d
         else
-            docker compose up -d
+            docker compose --profile ai up -d
         fi
         sleep 3
     fi

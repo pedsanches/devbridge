@@ -1,508 +1,4577 @@
 openapi: 3.1.0
 info:
-  title: DevBridge API
-  version: 1.0.0
-  description: |
-    API for DevBridge - Making Technical Work Visible to Non-Technical Stakeholders.
-
-    ## Authentication
-    All endpoints except `/health` require a Bearer token obtained via GitHub OAuth.
-
-    ## Rate Limiting
-    - 100 requests per minute per API key
-    - 1000 requests per hour per API key
-  contact:
-    name: DevBridge Team
-    email: api@devbridge.io
-  license:
-    name: MIT
-    url: https://opensource.org/licenses/MIT
-
-servers:
-  - url: http://localhost:8000/api/v1
-    description: Development server
-  - url: https://api.devbridge.io/v1
-    description: Production server
-
-tags:
-  - name: Health
-    description: Health check endpoints
-  - name: Repositories
-    description: Repository management
-  - name: Commits
-    description: Commit analysis
-  - name: Translations
-    description: Business translations
-  - name: Chat
-    description: RAG chat interface
-
+  title: DevBridge
+  description: Making Technical Work Visible to Non-Technical Stakeholders via AI
+    Translation
+  version: 0.1.0
 paths:
+  /api/v1/health:
+    get:
+      tags:
+      - Health
+      summary: Health Check
+      description: "Health check endpoint.\n\nReturns:\n    HealthResponse: Current\
+        \ health status of the application."
+      operationId: health_check_api_v1_health_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+  /api/v1/health/ready:
+    get:
+      tags:
+      - Health
+      summary: Readiness Check
+      description: "Kubernetes readiness probe.\n\nReturns:\n    dict: Ready status\
+        \ for k8s."
+      operationId: readiness_check_api_v1_health_ready_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                additionalProperties: true
+                type: object
+                title: Response Readiness Check Api V1 Health Ready Get
+  /api/v1/health/live:
+    get:
+      tags:
+      - Health
+      summary: Liveness Check
+      description: "Kubernetes liveness probe.\n\nReturns:\n    dict: Alive status\
+        \ for k8s."
+      operationId: liveness_check_api_v1_health_live_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                additionalProperties: true
+                type: object
+                title: Response Liveness Check Api V1 Health Live Get
+  /api/v1/auth/magic:
+    post:
+      tags:
+      - Auth
+      summary: Request Magic Link
+      description: 'Request a magic link for passwordless authentication.
+
+
+        A magic link will be sent to the provided email address.
+
+        The link expires in 15 minutes.'
+      operationId: request_magic_link_api_v1_auth_magic_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MagicLinkRequest'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MagicLinkResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/auth/verify:
+    post:
+      tags:
+      - Auth
+      summary: Verify Magic Link
+      description: 'Verify a magic link token and set httpOnly cookie.
+
+
+        If the user doesn''t exist, a new account and personal organization
+
+        will be created automatically.'
+      operationId: verify_magic_link_api_v1_auth_verify_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VerifyRequest'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/auth/me:
+    get:
+      tags:
+      - Auth
+      summary: Get Current User
+      description: Get the current authenticated user.
+      operationId: get_current_user_api_v1_auth_me_get
+      parameters:
+      - name: session
+        in: cookie
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Session
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/auth/logout:
+    post:
+      tags:
+      - Auth
+      summary: Logout
+      description: Logout by clearing the session cookie.
+      operationId: logout_api_v1_auth_logout_post
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                additionalProperties: true
+                type: object
+                title: Response Logout Api V1 Auth Logout Post
+  /api/v1/auth/dev-login:
+    post:
+      tags:
+      - Auth
+      summary: Dev Login
+      description: 'Development-only login endpoint.
+
+
+        Bypasses magic link email for faster testing.
+
+        Only works when ENVIRONMENT=development.
+
+
+        Default test email: test@devbridge.local'
+      operationId: dev_login_api_v1_auth_dev_login_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DevLoginRequest'
+              default:
+                email: test@example.com
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/settings/integrations:
+    get:
+      tags:
+      - Settings
+      summary: Get Integrations
+      description: "Get status of all integrations for the current organization.\n\
+        \nShows connection status for GitHub, Slack, and other data sources.\n\nArgs:\n\
+        \    db: Database session.\n    org_id: Current organization context.\n  \
+        \  _current_user: Authenticated user.\n\nReturns:\n    Integration statuses."
+      operationId: get_integrations_api_v1_settings_integrations_get
+      parameters:
+      - name: session
+        in: cookie
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Session
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IntegrationsResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/settings/github/connect:
+    post:
+      tags:
+      - Settings
+      summary: Connect Github
+      description: "Connect GitHub integration using a Personal Access Token.\n\n\
+        The token is encrypted before storage. After connecting,\nrepositories can\
+        \ be synced to populate data sources.\n\nArgs:\n    db: Database session.\n\
+        \    request: GitHub PAT.\n    org_id: Current organization context.\n   \
+        \ _current_user: Authenticated user.\n\nReturns:\n    Connection result with\
+        \ status."
+      operationId: connect_github_api_v1_settings_github_connect_post
+      parameters:
+      - name: session
+        in: cookie
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Session
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ConnectGitHubRequest'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConnectGitHubResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/settings/github/disconnect:
+    post:
+      tags:
+      - Settings
+      summary: Disconnect Github
+      description: "Disconnect GitHub integration.\n\nRemoves the stored token but\
+        \ keeps existing repositories and activities.\n\nArgs:\n    db: Database session.\n\
+        \    org_id: Current organization context.\n    _current_user: Authenticated\
+        \ user."
+      operationId: disconnect_github_api_v1_settings_github_disconnect_post
+      parameters:
+      - name: session
+        in: cookie
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Session
+      responses:
+        '204':
+          description: Successful Response
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/settings/github/refresh:
+    post:
+      tags:
+      - Settings
+      summary: Refresh Repositories
+      description: "Refresh/rediscover GitHub repositories.\n\nUses the existing stored\
+        \ token to fetch all accessible repositories\nand adds any new ones that weren't\
+        \ previously discovered.\nExisting repositories and their activities are not\
+        \ affected.\n\nArgs:\n    db: Database session.\n    org_id: Current organization\
+        \ context.\n    _current_user: Authenticated user.\n\nReturns:\n    Number\
+        \ of new repositories discovered."
+      operationId: refresh_repositories_api_v1_settings_github_refresh_post
+      parameters:
+      - name: session
+        in: cookie
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Session
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RefreshRepositoriesResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/settings/data-sources:
+    get:
+      tags:
+      - Settings
+      summary: Get Data Sources
+      description: "Get all data sources (repositories) for the organization.\n\n\
+        Returns a list of connected repositories with their indexing status,\nactivity\
+        \ counts, and sync information.\n\nArgs:\n    db: Database session.\n    org_id:\
+        \ Current organization context.\n    _current_user: Authenticated user.\n\n\
+        Returns:\n    List of data sources with metadata."
+      operationId: get_data_sources_api_v1_settings_data_sources_get
+      parameters:
+      - name: session
+        in: cookie
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Session
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DataSourcesResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/repos:
+    get:
+      tags:
+      - Repositories
+      summary: List Repos
+      description: "List all monitored repositories for the current organization.\n\
+        \nArgs:\n    db: Database session.\n    page: Page number (1-indexed).\n \
+        \   page_size: Number of items per page.\n    is_active: Filter by active\
+        \ status.\n\nReturns:\n    Paginated list of repositories."
+      operationId: list_repos_api_v1_repos_get
+      parameters:
+      - name: page
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          description: Page number
+          default: 1
+          title: Page
+        description: Page number
+      - name: page_size
+        in: query
+        required: false
+        schema:
+          type: integer
+          maximum: 100
+          minimum: 1
+          description: Items per page
+          default: 20
+          title: Page Size
+        description: Items per page
+      - name: is_active
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: boolean
+          - type: 'null'
+          description: Filter by active status
+          title: Is Active
+        description: Filter by active status
+      - name: session
+        in: cookie
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Session
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+    post:
+      tags:
+      - Repositories
+      summary: Create Repo
+      description: "Add a new repository to monitor.\n\nArgs:\n    db: Database session.\n\
+        \    repo: Repository creation data.\n    org_id: Current organization context.\n\
+        \nReturns:\n    Created repository."
+      operationId: create_repo_api_v1_repos_post
+      parameters:
+      - name: session
+        in: cookie
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Session
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RepositoryCreate'
+      responses:
+        '201':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RepositoryResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/repos/{repo_id}:
+    get:
+      tags:
+      - Repositories
+      summary: Get Repo
+      description: "Get a specific repository by ID.\n\nArgs:\n    db: Database session.\n\
+        \    repo_id: Repository ID.\n    org_id: Current organization context.\n\n\
+        Returns:\n    Repository details."
+      operationId: get_repo_api_v1_repos__repo_id__get
+      parameters:
+      - name: repo_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Repo Id
+      - name: session
+        in: cookie
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Session
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RepositoryResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+    patch:
+      tags:
+      - Repositories
+      summary: Update Repo
+      description: "Update a repository.\n\nArgs:\n    db: Database session.\n   \
+        \ repo_id: Repository ID.\n    repo_in: Update data.\n    org_id: Current\
+        \ organization context.\n\nReturns:\n    Updated repository."
+      operationId: update_repo_api_v1_repos__repo_id__patch
+      parameters:
+      - name: repo_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Repo Id
+      - name: session
+        in: cookie
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Session
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RepositoryUpdate'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RepositoryResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+    delete:
+      tags:
+      - Repositories
+      summary: Delete Repo
+      description: "Remove a repository from monitoring.\n\nArgs:\n    db: Database\
+        \ session.\n    repo_id: Repository ID.\n    org_id: Current organization\
+        \ context."
+      operationId: delete_repo_api_v1_repos__repo_id__delete
+      parameters:
+      - name: repo_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Repo Id
+      - name: session
+        in: cookie
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Session
+      responses:
+        '204':
+          description: Successful Response
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/activities:
+    get:
+      tags:
+      - Activities
+      summary: List Activities
+      description: "List all activities with optional filtering.\n\nArgs:\n    db:\
+        \ Database session.\n    org_id: Current organization ID (from session).\n\
+        \    repository_id: Filter by repository ID.\n    team_id: Filter by team\
+        \ ID.\n    page: Page number (1-indexed).\n    page_size: Number of items\
+        \ per page.\n\nReturns:\n    Paginated list of activities."
+      operationId: list_activities_api_v1_activities_get
+      parameters:
+      - name: repository_id
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          description: Filter by repository
+          title: Repository Id
+        description: Filter by repository
+      - name: team_id
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          description: Filter by team
+          title: Team Id
+        description: Filter by team
+      - name: page
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          description: Page number
+          default: 1
+          title: Page
+        description: Page number
+      - name: page_size
+        in: query
+        required: false
+        schema:
+          type: integer
+          maximum: 100
+          minimum: 1
+          description: Items per page
+          default: 20
+          title: Page Size
+        description: Items per page
+      - name: session
+        in: cookie
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Session
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/activities/{activity_id}:
+    get:
+      tags:
+      - Activities
+      summary: Get Activity
+      description: "Get a specific activity by ID.\n\nArgs:\n    db: Database session.\n\
+        \    activity_id: Activity ID.\n\nReturns:\n    Activity with business update\
+        \ if available."
+      operationId: get_activity_api_v1_activities__activity_id__get
+      parameters:
+      - name: activity_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Activity Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ActivityWithUpdate'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/activities/{activity_id}/generate-update:
+    post:
+      tags:
+      - Activities
+      summary: Regenerate Business Update
+      description: "Regenerate (or generate for the first time) the business update\
+        \ for an activity.\n\nUseful for:\n- Reprocessing activities that failed initial\
+        \ generation\n- Regenerating updates with improved AI models\n- Processing\
+        \ old activities that were synced before this feature\n\nArgs:\n    db: Database\
+        \ session.\n    activity_id: Activity ID.\n\nReturns:\n    Activity with newly\
+        \ generated business update."
+      operationId: regenerate_business_update_api_v1_activities__activity_id__generate_update_post
+      parameters:
+      - name: activity_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Activity Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ActivityWithUpdate'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/activities/batch-generate-updates:
+    post:
+      tags:
+      - Activities
+      summary: Batch Regenerate Business Updates
+      description: "Batch regenerate business updates for all activities without one.\n\
+        \nUse this to backfill existing activities that were synced before\nthe automatic\
+        \ business update generation was implemented.\n\nReturns:\n    Count of processed\
+        \ and failed activities."
+      operationId: batch_regenerate_business_updates_api_v1_activities_batch_generate_updates_post
+      parameters:
+      - name: session
+        in: cookie
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Session
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                title: Response Batch Regenerate Business Updates Api V1 Activities
+                  Batch Generate Updates Post
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/chat:
+    post:
+      tags:
+      - Chat
+      summary: Chat
+      description: "Send a message and get an AI-generated response about activities.\n\
+        \nThe AI will analyze recent development activities and answer\nquestions\
+        \ about what the team has been working on.\n\nThe response is adapted based\
+        \ on the persona:\n- **executive**: Focus on business outcomes, ROI, strategic\
+        \ impact\n- **technical**: Technical details, architecture, code quality\n\
+        - **product**: Features delivered, roadmap progress, blockers\n\nExample questions:\n\
+        - \"O que o time fez essa semana?\"\n- \"Quais PRs foram abertos?\"\n- \"\
+        O que o Pedro commitou?\"\n\nArgs:\n    db: Database session.\n    request:\
+        \ Chat request with message, optional filters, and persona.\n    _current_user:\
+        \ Authenticated user (required).\n    org_id: Current organization context.\n\
+        \nReturns:\n    AI-generated response with activity context and metadata."
+      operationId: chat_api_v1_chat_post
+      parameters:
+      - name: session
+        in: cookie
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Session
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChatRequest'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChatResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/chat/stream:
+    post:
+      tags:
+      - Chat
+      summary: Chat Stream
+      description: "Send a message and get a streaming AI-generated response.\n\n\
+        Uses Server-Sent Events (SSE) to stream the response in real-time.\nCreates\
+        \ or updates conversations and persists messages.\n\nArgs:\n    db: Database\
+        \ session.\n    request: Chat request with message, optional filters, and\
+        \ persona.\n    _current_user: Authenticated user (required).\n    org_id:\
+        \ Current organization context.\n\nReturns:\n    Streaming response with AI-generated\
+        \ text chunks and metadata."
+      operationId: chat_stream_api_v1_chat_stream_post
+      parameters:
+      - name: session
+        in: cookie
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Session
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChatRequest'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/chat/health:
+    get:
+      tags:
+      - Chat
+      summary: Chat Health
+      description: "Check chat service health.\n\nReturns:\n    Health status."
+      operationId: chat_health_api_v1_chat_health_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                additionalProperties:
+                  type: string
+                type: object
+                title: Response Chat Health Api V1 Chat Health Get
+  /api/v1/conversations:
+    post:
+      tags:
+      - Conversations
+      summary: Create Conversation
+      description: Create a new conversation.
+      operationId: create_conversation_api_v1_conversations_post
+      parameters:
+      - name: session
+        in: cookie
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Session
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ConversationCreate'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConversationDetail'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+    get:
+      tags:
+      - Conversations
+      summary: List Conversations
+      description: List conversations.
+      operationId: list_conversations_api_v1_conversations_get
+      parameters:
+      - name: limit
+        in: query
+        required: false
+        schema:
+          type: integer
+          default: 20
+          title: Limit
+      - name: offset
+        in: query
+        required: false
+        schema:
+          type: integer
+          default: 0
+          title: Offset
+      - name: session
+        in: cookie
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Session
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConversationsListResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/conversations/{conversation_id}:
+    get:
+      tags:
+      - Conversations
+      summary: Get Conversation
+      description: Get conversation details with messages.
+      operationId: get_conversation_api_v1_conversations__conversation_id__get
+      parameters:
+      - name: conversation_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+          title: Conversation Id
+      - name: session
+        in: cookie
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Session
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConversationDetail'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+    patch:
+      tags:
+      - Conversations
+      summary: Update Conversation
+      description: Update conversation (title, status).
+      operationId: update_conversation_api_v1_conversations__conversation_id__patch
+      parameters:
+      - name: conversation_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+          title: Conversation Id
+      - name: session
+        in: cookie
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Session
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ConversationUpdate'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConversationSummary'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+    delete:
+      tags:
+      - Conversations
+      summary: Delete Conversation
+      description: Delete conversation (soft delete).
+      operationId: delete_conversation_api_v1_conversations__conversation_id__delete
+      parameters:
+      - name: conversation_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+          title: Conversation Id
+      - name: session
+        in: cookie
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Session
+      responses:
+        '204':
+          description: Successful Response
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/reports:
+    post:
+      tags:
+      - Reports
+      summary: Generate Report
+      description: "Generate a structured report for the specified period.\n\nReports\
+        \ are tailored to different audiences (BR-030):\n- **weekly_summary**: For\
+        \ Product Managers - focus on deliverables, progress\n- **technical_report**:\
+        \ For CTO/Tech Leads - metrics, decisions, tech debt\n- **executive_summary**:\
+        \ For CEO/C-Level - max 5 bullets, zero jargon\n\nArgs:\n    db: Database\
+        \ session.\n    request: Report request with type, period, and optional repository\
+        \ filters.\n    _current_user: Authenticated user (required).\n    org_id:\
+        \ Current organization context.\n\nReturns:\n    ReportResponse with structured\
+        \ sections, metrics, and sources.\n\nExample request:\n```json\n{\n    \"\
+        report_type\": \"weekly_summary\",\n    \"period\": {\n        \"start\":\
+        \ \"2026-01-01T00:00:00Z\",\n        \"end\": \"2026-01-07T23:59:59Z\"\n \
+        \   },\n    \"repositories\": [\"devbridge\"]\n}\n```"
+      operationId: generate_report_api_v1_reports_post
+      parameters:
+      - name: session
+        in: cookie
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Session
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReportRequest'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReportResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/reports/types:
+    get:
+      tags:
+      - Reports
+      summary: List Report Types
+      description: "List available report types and their descriptions.\n\nReturns:\n\
+        \    Dictionary with report types and their intended audiences."
+      operationId: list_report_types_api_v1_reports_types_get
+      parameters:
+      - name: session
+        in: cookie
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Session
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                title: Response List Report Types Api V1 Reports Types Get
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/reports/save:
+    post:
+      tags:
+      - Reports
+      summary: Save Report
+      description: "Save a generated report to history.\n\nArgs:\n    db: Database\
+        \ session.\n    request: Report data to save.\n    current_user: Authenticated\
+        \ user.\n    org_id: Organization context.\n\nReturns:\n    SavedReportResponse\
+        \ with the saved report including ID."
+      operationId: save_report_api_v1_reports_save_post
+      parameters:
+      - name: session
+        in: cookie
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Session
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SaveReportRequest'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SavedReportResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/reports/history:
+    get:
+      tags:
+      - Reports
+      summary: List Reports
+      description: "List saved reports for the organization.\n\nArgs:\n    db: Database\
+        \ session.\n    page: Page number (1-indexed).\n    page_size: Number of items\
+        \ per page (max 50).\n    report_type: Optional filter by report type.\n \
+        \   team_id: Optional filter by team ID.\n\nReturns:\n    ReportListResponse\
+        \ with paginated list of reports."
+      operationId: list_reports_api_v1_reports_history_get
+      parameters:
+      - name: page
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          description: Page number
+          default: 1
+          title: Page
+        description: Page number
+      - name: page_size
+        in: query
+        required: false
+        schema:
+          type: integer
+          maximum: 50
+          minimum: 1
+          description: Items per page
+          default: 10
+          title: Page Size
+        description: Items per page
+      - name: report_type
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - $ref: '#/components/schemas/ReportType'
+          - type: 'null'
+          description: Filter by report type
+          title: Report Type
+        description: Filter by report type
+      - name: team_id
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          description: Filter by team ID
+          title: Team Id
+        description: Filter by team ID
+      - name: session
+        in: cookie
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Session
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReportListResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/reports/{report_id}:
+    get:
+      tags:
+      - Reports
+      summary: Get Report
+      description: "Get a specific saved report by ID.\n\nArgs:\n    db: Database\
+        \ session.\n    report_id: Report UUID.\n\nReturns:\n    SavedReportResponse\
+        \ with full report details.\n\nRaises:\n    HTTPException 404: If report not\
+        \ found."
+      operationId: get_report_api_v1_reports__report_id__get
+      parameters:
+      - name: report_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Report Id
+      - name: session
+        in: cookie
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Session
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SavedReportResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+    delete:
+      tags:
+      - Reports
+      summary: Delete Report
+      description: "Delete a saved report from history.\n\nArgs:\n    db: Database\
+        \ session.\n    report_id: Report UUID.\n\nReturns:\n    Success message.\n\
+        \nRaises:\n    HTTPException 404: If report not found."
+      operationId: delete_report_api_v1_reports__report_id__delete
+      parameters:
+      - name: report_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Report Id
+      - name: session
+        in: cookie
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Session
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                title: Response Delete Report Api V1 Reports  Report Id  Delete
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/reports/custom:
+    post:
+      tags:
+      - Reports
+      summary: Generate Custom Report
+      description: 'Generate a new custom report from template configuration.
+
+
+        1. Fetches data based on filters.
+
+        2. Uses LLM to generate content based on sections config.
+
+        3. Saves report to database (history).'
+      operationId: generate_custom_report_api_v1_reports_custom_post
+      parameters:
+      - name: session
+        in: cookie
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Session
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GenerateReportWithTemplate'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SavedReportResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/reports/export/pdf:
+    post:
+      tags:
+      - Reports
+      summary: Export Report To Pdf
+      description: "Export a saved report to PDF.\n\nArgs:\n    report_id: ID of saved\
+        \ report to export.\n\nReturns:\n    PDF file as binary response.\n\nRaises:\n\
+        \    HTTPException 404: If report not found."
+      operationId: export_report_to_pdf_api_v1_reports_export_pdf_post
+      parameters:
+      - name: report_id
+        in: query
+        required: true
+        schema:
+          type: string
+          title: Report Id
+      - name: session
+        in: cookie
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Session
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/report-templates:
+    post:
+      tags:
+      - Report Templates
+      summary: Create Template
+      description: "Create a new report template.\n\nArgs:\n    request: Template\
+        \ configuration.\n\nReturns:\n    Created template with ID."
+      operationId: create_template_api_v1_report_templates_post
+      parameters:
+      - name: session
+        in: cookie
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Session
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReportTemplateCreate'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReportTemplateResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+    get:
+      tags:
+      - Report Templates
+      summary: List Templates
+      description: 'List report templates for the organization.
+
+
+        Returns both user-specific and organization-wide templates.'
+      operationId: list_templates_api_v1_report_templates_get
+      parameters:
+      - name: page
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          default: 1
+          title: Page
+      - name: page_size
+        in: query
+        required: false
+        schema:
+          type: integer
+          maximum: 50
+          minimum: 1
+          default: 20
+          title: Page Size
+      - name: session
+        in: cookie
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Session
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReportTemplateListResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/report-templates/{template_id}:
+    get:
+      tags:
+      - Report Templates
+      summary: Get Template
+      description: Get a specific template by ID.
+      operationId: get_template_api_v1_report_templates__template_id__get
+      parameters:
+      - name: template_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Template Id
+      - name: session
+        in: cookie
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Session
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReportTemplateResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+    put:
+      tags:
+      - Report Templates
+      summary: Update Template
+      description: Update a template.
+      operationId: update_template_api_v1_report_templates__template_id__put
+      parameters:
+      - name: template_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Template Id
+      - name: session
+        in: cookie
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Session
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReportTemplateUpdate'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReportTemplateResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+    delete:
+      tags:
+      - Report Templates
+      summary: Delete Template
+      description: Delete a template.
+      operationId: delete_template_api_v1_report_templates__template_id__delete
+      parameters:
+      - name: template_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Template Id
+      - name: session
+        in: cookie
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Session
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                title: Response Delete Template Api V1 Report Templates  Template
+                  Id  Delete
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/metrics/dora:
+    get:
+      tags:
+      - Metrics
+      - Metrics
+      summary: Get Dora Metrics
+      description: 'Get DORA metrics for the organization.
+
+
+        Returns deployment frequency, lead time, change failure rate, and MTTR.'
+      operationId: get_dora_metrics_api_v1_metrics_dora_get
+      parameters:
+      - name: days
+        in: query
+        required: false
+        schema:
+          type: integer
+          maximum: 365
+          minimum: 7
+          description: Period in days
+          default: 30
+          title: Days
+        description: Period in days
+      - name: team_id
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          description: Filter metrics by Team ID
+          title: Team Id
+        description: Filter metrics by Team ID
+      - name: session
+        in: cookie
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Session
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DoraMetricsResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/metrics/developers:
+    get:
+      tags:
+      - Metrics
+      - Metrics
+      summary: Get Developer Leaderboard
+      description: 'Get developer leaderboard for the organization.
+
+
+        Returns top developers by contributions with their metrics.'
+      operationId: get_developer_leaderboard_api_v1_metrics_developers_get
+      parameters:
+      - name: limit
+        in: query
+        required: false
+        schema:
+          type: integer
+          maximum: 50
+          minimum: 1
+          description: Number of developers to return
+          default: 10
+          title: Limit
+        description: Number of developers to return
+      - name: days
+        in: query
+        required: false
+        schema:
+          type: integer
+          maximum: 365
+          minimum: 7
+          description: Period in days
+          default: 30
+          title: Days
+        description: Period in days
+      - name: session
+        in: cookie
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Session
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeveloperLeaderboardResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/sync:
+    post:
+      tags:
+      - Sync
+      summary: Sync Repository
+      description: "Sync a GitHub repository to the local database.\n\nFetches recent\
+        \ commits and PRs from GitHub API and creates\nActivity records for each.\n\
+        \nArgs:\n    db: Database session.\n    request: Sync request with repo name\
+        \ and limits.\n    org_id: Current organization context.\n    _current_user:\
+        \ Authenticated user.\n\nReturns:\n    Sync results with counts."
+      operationId: sync_repository_api_v1_sync_post
+      parameters:
+      - name: session
+        in: cookie
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Session
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SyncRequest'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SyncResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/teams:
+    get:
+      tags:
+      - Teams
+      - teams
+      summary: List Teams
+      description: 'List all teams for the current organization.
+
+
+        Teams are returned ordered by:
+
+        1. Default team first
+
+        2. Alphabetically by name'
+      operationId: list_teams_api_v1_teams_get
+      parameters:
+      - name: page
+        in: query
+        required: false
+        schema:
+          type: integer
+          default: 1
+          title: Page
+      - name: page_size
+        in: query
+        required: false
+        schema:
+          type: integer
+          default: 20
+          title: Page Size
+      - name: session
+        in: cookie
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Session
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TeamListResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+    post:
+      tags:
+      - Teams
+      - teams
+      summary: Create Team
+      description: 'Create a new team.
+
+
+        Optionally include repository_ids to add repositories during creation.'
+      operationId: create_team_api_v1_teams_post
+      parameters:
+      - name: session
+        in: cookie
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Session
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TeamCreate'
+      responses:
+        '201':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TeamResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/teams/default:
+    get:
+      tags:
+      - Teams
+      - teams
+      summary: Get Default Team
+      description: 'Get the default team for the current organization.
+
+
+        Returns null if no default team is set.'
+      operationId: get_default_team_api_v1_teams_default_get
+      parameters:
+      - name: session
+        in: cookie
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Session
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                anyOf:
+                - $ref: '#/components/schemas/TeamResponse'
+                - type: 'null'
+                title: Response Get Default Team Api V1 Teams Default Get
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+    post:
+      tags:
+      - Teams
+      - teams
+      summary: Ensure Default Team
+      description: 'Ensure a default team exists.
+
+
+        If no default team exists, creates one called "Meus Repositórios"
+
+        with all active repositories. This is typically called during onboarding.'
+      operationId: ensure_default_team_api_v1_teams_default_post
+      parameters:
+      - name: session
+        in: cookie
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Session
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TeamResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+    put:
+      tags:
+      - Teams
+      - teams
+      summary: Set Default Team
+      description: 'Set a team as the default.
+
+
+        Only one team can be default per organization.'
+      operationId: set_default_team_api_v1_teams_default_put
+      parameters:
+      - name: session
+        in: cookie
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Session
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SetDefaultTeamRequest'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TeamResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/teams/sync:
+    post:
+      tags:
+      - Teams
+      - teams
+      summary: Sync Github Teams
+      description: 'Synchronize GitHub Teams with DevBridge Teams.
+
+
+        This endpoint fetches the user''s GitHub teams and creates/updates
+
+        corresponding DevBridge teams, linking repositories automatically.
+
+
+        Requires GitHub integration to be connected.'
+      operationId: sync_github_teams_api_v1_teams_sync_post
+      parameters:
+      - name: session
+        in: cookie
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Session
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                title: Response Sync Github Teams Api V1 Teams Sync Post
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/teams/{team_id}:
+    get:
+      tags:
+      - Teams
+      - teams
+      summary: Get Team
+      description: Get a team by ID with full details including repositories.
+      operationId: get_team_api_v1_teams__team_id__get
+      parameters:
+      - name: team_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Team Id
+      - name: session
+        in: cookie
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Session
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TeamDetailResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+    patch:
+      tags:
+      - Teams
+      - teams
+      summary: Update Team
+      description: 'Update a team.
+
+
+        All fields are optional. Only provided fields will be updated.'
+      operationId: update_team_api_v1_teams__team_id__patch
+      parameters:
+      - name: team_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Team Id
+      - name: session
+        in: cookie
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Session
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TeamUpdate'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TeamResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+    delete:
+      tags:
+      - Teams
+      - teams
+      summary: Delete Team
+      description: 'Delete a team.
+
+
+        This removes the team and all its repository associations.
+
+        The repositories themselves are NOT deleted.'
+      operationId: delete_team_api_v1_teams__team_id__delete
+      parameters:
+      - name: team_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Team Id
+      - name: session
+        in: cookie
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Session
+      responses:
+        '204':
+          description: Successful Response
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/teams/{team_id}/repositories:
+    post:
+      tags:
+      - Teams
+      - teams
+      summary: Add Repositories
+      description: 'Add repositories to a team.
+
+
+        A repository can belong to multiple teams (many-to-many).'
+      operationId: add_repositories_api_v1_teams__team_id__repositories_post
+      parameters:
+      - name: team_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Team Id
+      - name: session
+        in: cookie
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Session
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TeamAddRepositories'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                title: Response Add Repositories Api V1 Teams  Team Id  Repositories
+                  Post
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+    delete:
+      tags:
+      - Teams
+      - teams
+      summary: Remove Repositories
+      description: 'Remove repositories from a team.
+
+
+        The repositories themselves are NOT deleted, only the association.'
+      operationId: remove_repositories_api_v1_teams__team_id__repositories_delete
+      parameters:
+      - name: team_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Team Id
+      - name: session
+        in: cookie
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Session
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TeamRemoveRepositories'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                title: Response Remove Repositories Api V1 Teams  Team Id  Repositories
+                  Delete
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/webhooks/github:
+    post:
+      tags:
+      - Webhooks
+      summary: Github Webhook
+      description: "Handle GitHub webhook events.\n\nArgs:\n    request: Incoming\
+        \ webhook request.\n    x_github_event: GitHub event type header.\n    x_hub_signature_256:\
+        \ GitHub signature header.\n\nReturns:\n    Queue status."
+      operationId: github_webhook_api_v1_webhooks_github_post
+      parameters:
+      - name: x-github-event
+        in: header
+        required: true
+        schema:
+          type: string
+          title: X-Github-Event
+      - name: x-hub-signature-256
+        in: header
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: X-Hub-Signature-256
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                title: Response Github Webhook Api V1 Webhooks Github Post
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
   /health:
     get:
-      tags: [Health]
-      summary: Health check
-      operationId: getHealth
+      summary: Health Check
+      description: Basic health check endpoint.
+      operationId: health_check_health_get
       responses:
-        "200":
-          description: Service is healthy
+        '200':
+          description: Successful Response
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/HealthStatus"
-
+                additionalProperties: true
+                type: object
+                title: Response Health Check Health Get
   /ready:
     get:
-      tags: [Health]
-      summary: Readiness check
-      operationId: getReady
+      summary: Readiness Check
+      description: Readiness check endpoint.
+      operationId: readiness_check_ready_get
       responses:
-        "200":
-          description: All services ready
+        '200':
+          description: Successful Response
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/HealthStatus"
-        "503":
-          description: Service unavailable
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ApiError"
-
-  /repos:
-    get:
-      tags: [Repositories]
-      summary: List repositories
-      operationId: listRepositories
-      security:
-        - bearerAuth: []
-      parameters:
-        - $ref: "#/components/parameters/PageParam"
-        - $ref: "#/components/parameters/PerPageParam"
-      responses:
-        "200":
-          description: List of repositories
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/RepositoryListResponse"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-
-    post:
-      tags: [Repositories]
-      summary: Add a repository
-      operationId: createRepository
-      security:
-        - bearerAuth: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/RepositoryCreate"
-      responses:
-        "201":
-          description: Repository created
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Repository"
-        "400":
-          $ref: "#/components/responses/BadRequest"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-
-  /repos/{repoId}:
-    get:
-      tags: [Repositories]
-      summary: Get repository details
-      operationId: getRepository
-      security:
-        - bearerAuth: []
-      parameters:
-        - $ref: "#/components/parameters/RepoIdParam"
-      responses:
-        "200":
-          description: Repository details
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Repository"
-        "404":
-          $ref: "#/components/responses/NotFound"
-
-  /repos/{repoId}/commits:
-    get:
-      tags: [Commits]
-      summary: List commits for a repository
-      operationId: listCommits
-      security:
-        - bearerAuth: []
-      parameters:
-        - $ref: "#/components/parameters/RepoIdParam"
-        - $ref: "#/components/parameters/PageParam"
-        - $ref: "#/components/parameters/PerPageParam"
-        - name: since
-          in: query
-          schema:
-            type: string
-            format: date-time
-          description: Filter commits after this date
-        - name: author
-          in: query
-          schema:
-            type: string
-          description: Filter by author
-      responses:
-        "200":
-          description: List of commits
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/CommitListResponse"
-
-  /translations:
-    get:
-      tags: [Translations]
-      summary: List business translations
-      operationId: listTranslations
-      security:
-        - bearerAuth: []
-      parameters:
-        - $ref: "#/components/parameters/PageParam"
-        - $ref: "#/components/parameters/PerPageParam"
-        - name: minConfidence
-          in: query
-          schema:
-            type: integer
-            minimum: 0
-            maximum: 100
-          description: Minimum confidence score
-      responses:
-        "200":
-          description: List of translations
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/TranslationListResponse"
-
-  /chat:
-    post:
-      tags: [Chat]
-      summary: Send chat message
-      operationId: sendChatMessage
-      security:
-        - bearerAuth: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/ChatRequest"
-      responses:
-        "200":
-          description: Chat response
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ChatResponse"
-        "400":
-          $ref: "#/components/responses/BadRequest"
-
-  /webhooks/github:
-    post:
-      tags: [Webhooks]
-      summary: GitHub webhook endpoint
-      operationId: handleGitHubWebhook
-      parameters:
-        - name: X-GitHub-Event
-          in: header
-          required: true
-          schema:
-            type: string
-        - name: X-Hub-Signature-256
-          in: header
-          required: true
-          schema:
-            type: string
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-      responses:
-        "200":
-          description: Webhook processed
-        "400":
-          description: Invalid signature
-
+                additionalProperties: true
+                type: object
+                title: Response Readiness Check Ready Get
 components:
-  securitySchemes:
-    bearerAuth:
-      type: http
-      scheme: bearer
-      bearerFormat: JWT
-
-  parameters:
-    PageParam:
-      name: page
-      in: query
-      schema:
-        type: integer
-        minimum: 1
-        default: 1
-    PerPageParam:
-      name: perPage
-      in: query
-      schema:
-        type: integer
-        minimum: 1
-        maximum: 100
-        default: 20
-    RepoIdParam:
-      name: repoId
-      in: path
-      required: true
-      schema:
-        type: string
-        format: uuid
-
-  responses:
-    BadRequest:
-      description: Bad request
-      content:
-        application/json:
-          schema:
-            $ref: "#/components/schemas/ApiError"
-    Unauthorized:
-      description: Unauthorized
-      content:
-        application/json:
-          schema:
-            $ref: "#/components/schemas/ApiError"
-    NotFound:
-      description: Resource not found
-      content:
-        application/json:
-          schema:
-            $ref: "#/components/schemas/ApiError"
-
   schemas:
-    HealthStatus:
-      type: object
-      required: [status, version, timestamp]
+    ActivityType:
+      type: string
+      enum:
+      - COMMIT
+      - PULL_REQUEST
+      title: ActivityType
+      description: Type of activity from GitHub.
+    ActivityWithUpdate:
       properties:
-        status:
-          type: string
-          enum: [healthy, degraded, unhealthy]
-        version:
-          type: string
-        timestamp:
+        created_at:
           type: string
           format: date-time
-        services:
-          type: array
-          items:
-            $ref: "#/components/schemas/ServiceHealth"
-
-    ServiceHealth:
-      type: object
-      required: [name, status]
-      properties:
-        name:
+          title: Created At
+        updated_at:
           type: string
-        status:
-          type: string
-          enum: [up, down, degraded]
-        latencyMs:
-          type: integer
-        message:
-          type: string
-
-    Repository:
-      type: object
-      required: [id, url, name, owner, createdAt]
-      properties:
+          format: date-time
+          title: Updated At
         id:
           type: string
           format: uuid
-        url:
-          type: string
-          format: uri
-        name:
-          type: string
-        owner:
-          type: string
-        description:
-          type: string
-        defaultBranch:
-          type: string
-          default: main
-        createdAt:
-          type: string
-          format: date-time
-        updatedAt:
-          type: string
-          format: date-time
-
-    RepositoryCreate:
-      type: object
-      required: [url]
-      properties:
-        url:
-          type: string
-          format: uri
-          example: "https://github.com/owner/repo"
-        description:
-          type: string
-
-    RepositoryListResponse:
-      type: object
-      required: [items, total, page, perPage]
-      properties:
-        items:
-          type: array
-          items:
-            $ref: "#/components/schemas/Repository"
-        total:
-          type: integer
-        page:
-          type: integer
-        perPage:
-          type: integer
-
-    Commit:
-      type: object
-      required: [sha, message, author, timestamp]
-      properties:
-        sha:
-          type: string
-        message:
-          type: string
-        author:
-          type: string
-        authorEmail:
-          type: string
-          format: email
-        timestamp:
-          type: string
-          format: date-time
-        filesChanged:
-          type: integer
-        additions:
-          type: integer
-        deletions:
-          type: integer
-
-    CommitListResponse:
-      type: object
-      required: [items, total, page, perPage]
-      properties:
-        items:
-          type: array
-          items:
-            $ref: "#/components/schemas/Commit"
-        total:
-          type: integer
-        page:
-          type: integer
-        perPage:
-          type: integer
-
-    BusinessTranslation:
-      type: object
-      required: [id, commitSha, title, technicalSummary, businessValue, confidenceScore]
-      properties:
-        id:
+          title: Id
+        repository_id:
           type: string
           format: uuid
-        commitSha:
+          title: Repository Id
+        external_id:
           type: string
+          title: External Id
+        type:
+          $ref: '#/components/schemas/ActivityType'
         title:
           type: string
-        technicalSummary:
+          title: Title
+        content:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Content
+        author:
           type: string
-        businessValue:
-          type: string
-        risksMitigated:
-          type: array
-          items:
-            type: string
-        alignedPillars:
-          type: array
-          items:
-            type: string
-        confidenceScore:
+          title: Author
+        occurred_at:
+          anyOf:
+          - type: string
+            format: date-time
+          - type: 'null'
+          title: Occurred At
+        files_touched:
+          anyOf:
+          - items:
+              type: string
+            type: array
+          - type: 'null'
+          title: Files Touched
+        labels:
+          anyOf:
+          - items:
+              type: string
+            type: array
+          - type: 'null'
+          title: Labels
+        linked_issues:
+          anyOf:
+          - items:
+              type: string
+            type: array
+          - type: 'null'
+          title: Linked Issues
+        value_tags:
+          anyOf:
+          - items:
+              type: string
+            type: array
+          - type: 'null'
+          title: Value Tags
+        lines_added:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: Lines Added
+        lines_deleted:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: Lines Deleted
+        files_changed_count:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: Files Changed Count
+        first_review_at:
+          anyOf:
+          - type: string
+            format: date-time
+          - type: 'null'
+          title: First Review At
+        approved_at:
+          anyOf:
+          - type: string
+            format: date-time
+          - type: 'null'
+          title: Approved At
+        merged_at:
+          anyOf:
+          - type: string
+            format: date-time
+          - type: 'null'
+          title: Merged At
+        pickup_time_hours:
+          anyOf:
+          - type: number
+          - type: 'null'
+          title: Pickup Time Hours
+        review_time_hours:
+          anyOf:
+          - type: number
+          - type: 'null'
+          title: Review Time Hours
+        merge_time_hours:
+          anyOf:
+          - type: number
+          - type: 'null'
+          title: Merge Time Hours
+        cycle_time_hours:
+          anyOf:
+          - type: number
+          - type: 'null'
+          title: Cycle Time Hours
+        review_count:
           type: integer
-          minimum: 0
-          maximum: 100
-        createdAt:
+          title: Review Count
+          default: 0
+        rework_iterations:
+          type: integer
+          title: Rework Iterations
+          default: 0
+        comments_received:
+          type: integer
+          title: Comments Received
+          default: 0
+        is_reverted:
+          type: boolean
+          title: Is Reverted
+          default: false
+        business_update:
+          anyOf:
+          - $ref: '#/components/schemas/BusinessUpdateResponse'
+          - type: 'null'
+      type: object
+      required:
+      - created_at
+      - updated_at
+      - id
+      - repository_id
+      - external_id
+      - type
+      - title
+      - content
+      - author
+      - occurred_at
+      title: ActivityWithUpdate
+      description: Activity response including business update if available.
+    BusinessUpdateResponse:
+      properties:
+        created_at:
           type: string
           format: date-time
-
-    TranslationListResponse:
-      type: object
-      required: [items, total, page, perPage]
-      properties:
-        items:
-          type: array
-          items:
-            $ref: "#/components/schemas/BusinessTranslation"
-        total:
-          type: integer
-        page:
-          type: integer
-        perPage:
-          type: integer
-
-    ChatRequest:
-      type: object
-      required: [message]
-      properties:
-        message:
+          title: Created At
+        updated_at:
           type: string
-          example: "O que o time fez essa semana?"
-        repositoryId:
+          format: date-time
+          title: Updated At
+        id:
           type: string
           format: uuid
-        conversationId:
+          title: Id
+        activity_id:
           type: string
-
-    ChatResponse:
+          format: uuid
+          title: Activity Id
+        summary:
+          type: string
+          title: Summary
+        impact_level:
+          $ref: '#/components/schemas/ImpactLevel'
+        category:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Category
       type: object
-      required: [message, conversationId]
+      required:
+      - created_at
+      - updated_at
+      - id
+      - activity_id
+      - summary
+      - impact_level
+      - category
+      title: BusinessUpdateResponse
+      description: Schema for business update response.
+    ChatMetadata:
+      properties:
+        activities_count:
+          type: integer
+          title: Activities Count
+          description: Number of activities used as context
+        search_method:
+          type: string
+          title: Search Method
+          description: 'Method used: ''semantic'' or ''sql'''
+          default: sql
+        confidence_score:
+          type: number
+          maximum: 1.0
+          minimum: 0.0
+          title: Confidence Score
+          description: AI confidence in response
+          default: 0.8
+        persona_used:
+          $ref: '#/components/schemas/Persona'
+          description: Persona used for response
+          default: product
+        sources:
+          items:
+            $ref: '#/components/schemas/SourceItem'
+          type: array
+          title: Sources
+          description: Top sources used to generate response
+      type: object
+      required:
+      - activities_count
+      title: ChatMetadata
+      description: Structured metadata about the chat response (BR-011).
+    ChatRequest:
       properties:
         message:
-          $ref: "#/components/schemas/ChatMessage"
-        conversationId:
           type: string
-
-    ChatMessage:
+          title: Message
+          description: User's question or message
+        repository:
+          anyOf:
+          - type: string
+          - items:
+              type: string
+            type: array
+          - type: 'null'
+          title: Repository
+          description: Filter by repository name(s)
+        author:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Author
+          description: Filter by author
+        persona:
+          $ref: '#/components/schemas/Persona'
+          description: User persona for response adaptation
+          default: product
+        days:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: Days
+          description: Filter activities by last N days (default 30)
+          default: 30
+        conversationId:
+          anyOf:
+          - type: string
+            format: uuid
+          - type: 'null'
+          title: Conversationid
+          description: ID of the active conversation (optional)
       type: object
-      required: [id, role, content, timestamp]
+      required:
+      - message
+      title: ChatRequest
+      description: Schema for chat request.
+    ChatResponse:
+      properties:
+        answer:
+          type: string
+          title: Answer
+          description: AI-generated answer
+        activities_count:
+          type: integer
+          title: Activities Count
+          description: Number of activities used as context
+        filters:
+          additionalProperties:
+            anyOf:
+            - type: string
+            - type: integer
+            - type: 'null'
+          type: object
+          title: Filters
+          description: Applied filters
+        metadata:
+          anyOf:
+          - $ref: '#/components/schemas/ChatMetadata'
+          - type: 'null'
+          description: Structured response metadata
+        conversation_id:
+          anyOf:
+          - type: string
+            format: uuid
+          - type: 'null'
+          title: Conversation Id
+          description: Conversation ID associated with this interaction
+      type: object
+      required:
+      - answer
+      - activities_count
+      title: ChatResponse
+      description: Schema for chat response.
+    ConnectGitHubRequest:
+      properties:
+        token:
+          type: string
+          minLength: 10
+          title: Token
+          description: GitHub Personal Access Token
+      type: object
+      required:
+      - token
+      title: ConnectGitHubRequest
+      description: Request to connect GitHub via PAT.
+    ConnectGitHubResponse:
+      properties:
+        status:
+          $ref: '#/components/schemas/IntegrationStatus'
+        organization_name:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Organization Name
+        message:
+          type: string
+          title: Message
+      type: object
+      required:
+      - status
+      - message
+      title: ConnectGitHubResponse
+      description: Response after connecting GitHub.
+    ContentFormat:
+      type: string
+      enum:
+      - bullets
+      - paragraphs
+      - mixed
+      title: ContentFormat
+      description: Content format options.
+    ConversationCreate:
+      properties:
+        title:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Title
+        message:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Message
+      type: object
+      title: ConversationCreate
+      description: Schema for creating a new conversation.
+    ConversationDetail:
       properties:
         id:
           type: string
-        role:
-          type: string
-          enum: [user, assistant, system]
-        content:
-          type: string
-        timestamp:
+          format: uuid
+          title: Id
+        title:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Title
+        status:
+          $ref: '#/components/schemas/ConversationStatus'
+        message_count:
+          type: integer
+          title: Message Count
+        preview:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Preview
+        created_at:
           type: string
           format: date-time
-
-    ApiError:
-      type: object
-      required: [code, message]
-      properties:
-        code:
+          title: Created At
+        updated_at:
           type: string
-          example: "DVB-001"
+          format: date-time
+          title: Updated At
+        summary:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Summary
+        messages:
+          items:
+            $ref: '#/components/schemas/MessageResponse'
+          type: array
+          title: Messages
+      type: object
+      required:
+      - id
+      - status
+      - message_count
+      - created_at
+      - updated_at
+      title: ConversationDetail
+      description: Schema for conversation detail (with messages).
+    ConversationStatus:
+      type: string
+      enum:
+      - active
+      - archived
+      title: ConversationStatus
+      description: Status of a conversation.
+    ConversationSummary:
+      properties:
+        id:
+          type: string
+          format: uuid
+          title: Id
+        title:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Title
+        status:
+          $ref: '#/components/schemas/ConversationStatus'
+        message_count:
+          type: integer
+          title: Message Count
+        preview:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Preview
+        created_at:
+          type: string
+          format: date-time
+          title: Created At
+        updated_at:
+          type: string
+          format: date-time
+          title: Updated At
+      type: object
+      required:
+      - id
+      - status
+      - message_count
+      - created_at
+      - updated_at
+      title: ConversationSummary
+      description: Schema for conversation list (without messages).
+    ConversationUpdate:
+      properties:
+        title:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Title
+        status:
+          anyOf:
+          - $ref: '#/components/schemas/ConversationStatus'
+          - type: 'null'
+      type: object
+      title: ConversationUpdate
+      description: Schema for updating a conversation.
+    ConversationsListResponse:
+      properties:
+        conversations:
+          items:
+            $ref: '#/components/schemas/ConversationSummary'
+          type: array
+          title: Conversations
+        total:
+          type: integer
+          title: Total
+        has_more:
+          type: boolean
+          title: Has More
+      type: object
+      required:
+      - conversations
+      - total
+      - has_more
+      title: ConversationsListResponse
+      description: Schema for paginated conversation list.
+    DataFilters:
+      properties:
+        repositories:
+          anyOf:
+          - items:
+              type: string
+            type: array
+          - type: 'null'
+          title: Repositories
+          description: Repository IDs or names to include
+        authors:
+          anyOf:
+          - items:
+              type: string
+            type: array
+          - type: 'null'
+          title: Authors
+          description: Author usernames to include
+        activity_types:
+          anyOf:
+          - items:
+              type: string
+              enum:
+              - COMMIT
+              - PULL_REQUEST
+            type: array
+          - type: 'null'
+          title: Activity Types
+          description: Activity types to include
+        impact_levels:
+          anyOf:
+          - items:
+              type: string
+              enum:
+              - LOW
+              - MEDIUM
+              - HIGH
+            type: array
+          - type: 'null'
+          title: Impact Levels
+          description: Impact levels to include
+        value_tags:
+          anyOf:
+          - items:
+              type: string
+            type: array
+          - type: 'null'
+          title: Value Tags
+          description: Value tags to filter by
+        labels:
+          anyOf:
+          - items:
+              type: string
+            type: array
+          - type: 'null'
+          title: Labels
+          description: PR labels to filter by
+      type: object
+      title: DataFilters
+      description: Filters for report data selection.
+    DataSourceSummary:
+      properties:
+        id:
+          type: string
+          title: Id
+        name:
+          type: string
+          title: Name
+        url:
+          type: string
+          title: Url
+        is_active:
+          type: boolean
+          title: Is Active
+        activities_count:
+          type: integer
+          title: Activities Count
+          default: 0
+        last_synced_at:
+          anyOf:
+          - type: string
+            format: date-time
+          - type: 'null'
+          title: Last Synced At
+        indexing_status:
+          type: string
+          title: Indexing Status
+          default: pending
+        vectors_count:
+          type: integer
+          title: Vectors Count
+          default: 0
+      type: object
+      required:
+      - id
+      - name
+      - url
+      - is_active
+      title: DataSourceSummary
+      description: Summary of a data source (repository) for the UI.
+    DataSourcesResponse:
+      properties:
+        sources:
+          items:
+            $ref: '#/components/schemas/DataSourceSummary'
+          type: array
+          title: Sources
+        total:
+          type: integer
+          title: Total
+        github_connected:
+          type: boolean
+          title: Github Connected
+      type: object
+      required:
+      - sources
+      - total
+      - github_connected
+      title: DataSourcesResponse
+      description: List of data sources with metadata.
+    DetailLevel:
+      type: string
+      enum:
+      - minimal
+      - normal
+      - detailed
+      title: DetailLevel
+      description: Detail level for sections.
+    DevLoginRequest:
+      properties:
+        email:
+          type: string
+          format: email
+          title: Email
+          default: test@example.com
+      type: object
+      title: DevLoginRequest
+      description: Request schema for dev login (development only).
+    DeveloperLeaderboardResponse:
+      properties:
+        developers:
+          items:
+            $ref: '#/components/schemas/DeveloperProfileResponse'
+          type: array
+          title: Developers
+        period_start:
+          type: string
+          format: date
+          title: Period Start
+        period_end:
+          type: string
+          format: date
+          title: Period End
+      type: object
+      required:
+      - developers
+      - period_start
+      - period_end
+      title: DeveloperLeaderboardResponse
+      description: Leaderboard response.
+    DeveloperProfileResponse:
+      properties:
+        github_username:
+          type: string
+          title: Github Username
+        total_commits:
+          type: integer
+          title: Total Commits
+        total_prs:
+          type: integer
+          title: Total Prs
+        avg_pr_cycle_time_hours:
+          anyOf:
+          - type: number
+          - type: 'null'
+          title: Avg Pr Cycle Time Hours
+        strength_tags:
+          items:
+            type: string
+          type: array
+          title: Strength Tags
+        collaboration_score:
+          type: number
+          title: Collaboration Score
+      type: object
+      required:
+      - github_username
+      - total_commits
+      - total_prs
+      - avg_pr_cycle_time_hours
+      - strength_tags
+      - collaboration_score
+      title: DeveloperProfileResponse
+      description: Developer profile summary.
+    DoraMetricResponse:
+      properties:
+        value:
+          anyOf:
+          - type: number
+          - type: string
+          title: Value
+        formatted:
+          type: string
+          title: Formatted
+        change:
+          anyOf:
+          - type: number
+          - type: 'null'
+          title: Change
+        trend:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Trend
+        status:
+          type: string
+          title: Status
+      type: object
+      required:
+      - value
+      - formatted
+      - status
+      title: DoraMetricResponse
+      description: Single DORA metric with trend data.
+    DoraMetricsResponse:
+      properties:
+        deployment_frequency:
+          $ref: '#/components/schemas/DoraMetricResponse'
+        lead_time:
+          $ref: '#/components/schemas/DoraMetricResponse'
+        change_failure_rate:
+          $ref: '#/components/schemas/DoraMetricResponse'
+        mttr:
+          $ref: '#/components/schemas/DoraMetricResponse'
+        overall_level:
+          type: string
+          title: Overall Level
+        period_start:
+          type: string
+          format: date
+          title: Period Start
+        period_end:
+          type: string
+          format: date
+          title: Period End
+      type: object
+      required:
+      - deployment_frequency
+      - lead_time
+      - change_failure_rate
+      - mttr
+      - overall_level
+      - period_start
+      - period_end
+      title: DoraMetricsResponse
+      description: Complete DORA metrics response.
+    FontFamily:
+      type: string
+      enum:
+      - Inter
+      - Roboto
+      - Arial
+      title: FontFamily
+      description: Available font families for PDF.
+    GenerateReportWithTemplate:
+      properties:
+        template_id:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Template Id
+          description: Template ID (None for defaults)
+        period_start:
+          type: string
+          format: date-time
+          title: Period Start
+          description: Report period start
+        period_end:
+          type: string
+          format: date-time
+          title: Period End
+          description: Report period end
+        data_filters:
+          anyOf:
+          - $ref: '#/components/schemas/DataFilters'
+          - type: 'null'
+          description: Override data filters
+        sections_config:
+          anyOf:
+          - items:
+              $ref: '#/components/schemas/SectionConfig'
+            type: array
+          - type: 'null'
+          title: Sections Config
+          description: Override sections
+        language_config:
+          anyOf:
+          - $ref: '#/components/schemas/LanguageConfig'
+          - type: 'null'
+          description: Override language config
+        visual_config:
+          anyOf:
+          - $ref: '#/components/schemas/VisualConfig'
+          - type: 'null'
+          description: Override visual config
+      type: object
+      required:
+      - period_start
+      - period_end
+      title: GenerateReportWithTemplate
+      description: Request to generate a report using a template.
+    GitHubIntegration:
+      properties:
+        status:
+          $ref: '#/components/schemas/IntegrationStatus'
+          default: disconnected
+        connected_at:
+          anyOf:
+          - type: string
+            format: date-time
+          - type: 'null'
+          title: Connected At
+          description: When GitHub was connected
+        organization_name:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Organization Name
+          description: GitHub org/user connected
+        repositories_count:
+          type: integer
+          title: Repositories Count
+          description: Number of repositories synced
+          default: 0
+      type: object
+      title: GitHubIntegration
+      description: GitHub integration status.
+    HTTPValidationError:
+      properties:
+        detail:
+          items:
+            $ref: '#/components/schemas/ValidationError'
+          type: array
+          title: Detail
+      type: object
+      title: HTTPValidationError
+    HeaderStyle:
+      type: string
+      enum:
+      - minimal
+      - full
+      title: HeaderStyle
+      description: PDF header style options.
+    HealthResponse:
+      properties:
+        status:
+          type: string
+          title: Status
+        version:
+          type: string
+          title: Version
+        environment:
+          type: string
+          title: Environment
+        timestamp:
+          type: string
+          title: Timestamp
+        services:
+          additionalProperties:
+            type: string
+          type: object
+          title: Services
+      type: object
+      required:
+      - status
+      - version
+      - environment
+      - timestamp
+      - services
+      title: HealthResponse
+      description: Health check response schema.
+    ImpactLevel:
+      type: string
+      enum:
+      - LOW
+      - MEDIUM
+      - HIGH
+      title: ImpactLevel
+      description: Business impact level of an activity.
+    IntegrationStatus:
+      type: string
+      enum:
+      - connected
+      - disconnected
+      - error
+      title: IntegrationStatus
+      description: Status of an integration connection.
+    IntegrationsResponse:
+      properties:
+        github:
+          $ref: '#/components/schemas/GitHubIntegration'
+        slack:
+          $ref: '#/components/schemas/SlackIntegration'
+      type: object
+      required:
+      - github
+      - slack
+      title: IntegrationsResponse
+      description: Response with all integration statuses.
+    Language:
+      type: string
+      enum:
+      - pt-BR
+      - en-US
+      - es
+      title: Language
+      description: Supported languages.
+    LanguageConfig:
+      properties:
+        language:
+          $ref: '#/components/schemas/Language'
+          description: Output language
+          default: pt-BR
+        formality:
+          type: integer
+          maximum: 5.0
+          minimum: 1.0
+          title: Formality
+          description: Formality level (1=casual, 5=formal)
+          default: 3
+        jargon_level:
+          type: integer
+          maximum: 5.0
+          minimum: 1.0
+          title: Jargon Level
+          description: Technical jargon (1=none, 5=full)
+          default: 2
+        verbosity:
+          type: integer
+          maximum: 5.0
+          minimum: 1.0
+          title: Verbosity
+          description: Verbosity (1=concise, 5=detailed)
+          default: 3
+        tone:
+          $ref: '#/components/schemas/Tone'
+          description: Report tone
+          default: neutral
+        format:
+          $ref: '#/components/schemas/ContentFormat'
+          description: Content format
+          default: bullets
+      type: object
+      title: LanguageConfig
+      description: Language and tone configuration.
+    MagicLinkRequest:
+      properties:
+        email:
+          type: string
+          format: email
+          title: Email
+      type: object
+      required:
+      - email
+      title: MagicLinkRequest
+      description: Request schema for magic link.
+    MagicLinkResponse:
+      properties:
         message:
           type: string
-          example: "Invalid request parameters"
-        details:
-          type: object
+          title: Message
+        email:
+          type: string
+          title: Email
+      type: object
+      required:
+      - message
+      - email
+      title: MagicLinkResponse
+      description: Response schema for magic link request.
+    MessageResponse:
+      properties:
+        role:
+          $ref: '#/components/schemas/MessageRole'
+        content:
+          type: string
+          title: Content
+        id:
+          type: string
+          format: uuid
+          title: Id
+        conversation_id:
+          type: string
+          format: uuid
+          title: Conversation Id
+        tokens_used:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: Tokens Used
+        message_metadata:
+          anyOf:
+          - additionalProperties: true
+            type: object
+          - type: 'null'
+          title: Message Metadata
+        created_at:
+          type: string
+          format: date-time
+          title: Created At
+      type: object
+      required:
+      - role
+      - content
+      - id
+      - conversation_id
+      - created_at
+      title: MessageResponse
+      description: Schema for message response.
+    MessageRole:
+      type: string
+      enum:
+      - user
+      - assistant
+      - system
+      title: MessageRole
+      description: Role of a message sender.
+    PaginatedResponse:
+      properties:
+        data:
+          items: {}
+          type: array
+          title: Data
+        total:
+          type: integer
+          title: Total
+        page:
+          type: integer
+          title: Page
+        page_size:
+          type: integer
+          title: Page Size
+        total_pages:
+          type: integer
+          title: Total Pages
+      type: object
+      required:
+      - data
+      - total
+      - page
+      - page_size
+      - total_pages
+      title: PaginatedResponse
+      description: Generic paginated response wrapper.
+    Persona:
+      type: string
+      enum:
+      - executive
+      - technical
+      - product
+      title: Persona
+      description: User persona for adapting AI responses (BR-030).
+    RefreshRepositoriesResponse:
+      properties:
+        status:
+          type: string
+          title: Status
+        repositories_discovered:
+          type: integer
+          title: Repositories Discovered
+        message:
+          type: string
+          title: Message
+      type: object
+      required:
+      - status
+      - repositories_discovered
+      - message
+      title: RefreshRepositoriesResponse
+      description: Response from refresh repositories operation.
+    ReportListItem:
+      properties:
+        id:
+          type: string
+          title: Id
+          description: Report UUID
+        report_type:
+          $ref: '#/components/schemas/ReportType'
+          description: Type of report
+        title:
+          type: string
+          title: Title
+          description: Report title
+        team_id:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Team Id
+          description: Associated team ID
+        team_name:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Team Name
+          description: Associated team name
+        period_description:
+          type: string
+          title: Period Description
+          description: Human-readable period
+        generated_at:
+          type: string
+          format: date-time
+          title: Generated At
+          description: When report was generated
+        sources_count:
+          type: integer
+          title: Sources Count
+          description: Number of sources used
+        confidence_score:
+          type: number
+          title: Confidence Score
+          description: AI confidence score
+      type: object
+      required:
+      - id
+      - report_type
+      - title
+      - period_description
+      - generated_at
+      - sources_count
+      - confidence_score
+      title: ReportListItem
+      description: Compact report item for list display.
+    ReportListResponse:
+      properties:
+        items:
+          items:
+            $ref: '#/components/schemas/ReportListItem'
+          type: array
+          title: Items
+          description: List of reports
+        total:
+          type: integer
+          title: Total
+          description: Total number of reports
+        page:
+          type: integer
+          title: Page
+          description: Current page number
+          default: 1
+        page_size:
+          type: integer
+          title: Page Size
+          description: Items per page
+          default: 10
+        has_more:
+          type: boolean
+          title: Has More
+          description: Whether more pages exist
+      type: object
+      required:
+      - items
+      - total
+      - has_more
+      title: ReportListResponse
+      description: Paginated list of saved reports.
+    ReportMetric:
+      properties:
+        name:
+          type: string
+          title: Name
+          description: Metric name (e.g., 'Commits', 'PRs Merged')
+        value:
+          anyOf:
+          - type: string
+          - type: integer
+          - type: number
+          title: Value
+          description: Metric value
+        change:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Change
+          description: Change vs previous period (e.g., '+15%')
+        trend:
+          anyOf:
+          - type: string
+            enum:
+            - up
+            - down
+            - stable
+          - type: 'null'
+          title: Trend
+          description: Trend direction
+      type: object
+      required:
+      - name
+      - value
+      title: ReportMetric
+      description: A metric to include in the report.
+    ReportPeriod:
+      properties:
+        start:
+          type: string
+          format: date-time
+          title: Start
+          description: Start of the period (inclusive)
+        end:
+          type: string
+          format: date-time
+          title: End
+          description: End of the period (inclusive)
+      type: object
+      required:
+      - start
+      - end
+      title: ReportPeriod
+      description: Time period for report generation.
+    ReportRequest:
+      properties:
+        report_type:
+          $ref: '#/components/schemas/ReportType'
+          description: Type of report to generate
+        period:
+          $ref: '#/components/schemas/ReportPeriod'
+          description: Time period for the report
+        team_id:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Team Id
+          description: Team ID to scope the report
+        repositories:
+          anyOf:
+          - items:
+              type: string
+            type: array
+          - type: 'null'
+          title: Repositories
+          description: Filter by repository names (None = all accessible)
+      type: object
+      required:
+      - report_type
+      - period
+      title: ReportRequest
+      description: Schema for report generation request.
+    ReportResponse:
+      properties:
+        title:
+          type: string
+          title: Title
+          description: Report title
+        subtitle:
+          type: string
+          title: Subtitle
+          description: Brief description or period summary
+        generated_at:
+          type: string
+          format: date-time
+          title: Generated At
+          description: When the report was generated
+        period_description:
+          type: string
+          title: Period Description
+          description: Human-readable period (e.g., '01 Jan - 07 Jan 2026')
+        report_type:
+          $ref: '#/components/schemas/ReportType'
+          description: Type of report generated
+        sections:
+          items:
+            $ref: '#/components/schemas/ReportSection'
+          type: array
+          title: Sections
+          description: Report sections
+        summary_metrics:
+          anyOf:
+          - items:
+              $ref: '#/components/schemas/ReportMetric'
+            type: array
+          - type: 'null'
+          title: Summary Metrics
+          description: Key metrics summary at the top
+        confidence_score:
+          type: number
+          maximum: 1.0
+          minimum: 0.0
+          title: Confidence Score
+          description: AI confidence in report accuracy
+        sources_count:
+          type: integer
+          title: Sources Count
+          description: Number of activities used as source
+        sources:
+          items:
+            $ref: '#/components/schemas/ReportSource'
+          type: array
+          title: Sources
+          description: Top sources used (max 10)
+        format:
+          type: string
+          enum:
+          - markdown
+          - html
+          title: Format
+          description: Output format
+          default: markdown
+      type: object
+      required:
+      - title
+      - subtitle
+      - period_description
+      - report_type
+      - sections
+      - confidence_score
+      - sources_count
+      title: ReportResponse
+      description: Schema for generated report response.
+    ReportSection:
+      properties:
+        title:
+          type: string
+          title: Title
+          description: Section title
+        content:
+          type: string
+          title: Content
+          description: Section content in markdown
+        metrics:
+          anyOf:
+          - items:
+              $ref: '#/components/schemas/ReportMetric'
+            type: array
+          - type: 'null'
+          title: Metrics
+          description: Associated metrics
+      type: object
+      required:
+      - title
+      - content
+      title: ReportSection
+      description: A section within the report.
+    ReportSource:
+      properties:
+        title:
+          type: string
+          title: Title
+          description: Activity title
+        repository:
+          type: string
+          title: Repository
+          description: Repository name
+        type:
+          type: string
+          title: Type
+          description: Activity type (commit, pr, issue)
+        url:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Url
+          description: Link to the activity
+      type: object
+      required:
+      - title
+      - repository
+      - type
+      title: ReportSource
+      description: A source activity used to generate the report.
+    ReportTemplateCreate:
+      properties:
+        name:
+          type: string
+          maxLength: 100
+          minLength: 1
+          title: Name
+          description: Template name
+        description:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Description
+          description: Template description
+        is_default:
+          type: boolean
+          title: Is Default
+          description: Set as default template
+          default: false
+        data_filters:
+          anyOf:
+          - $ref: '#/components/schemas/DataFilters'
+          - type: 'null'
+          description: Data filter configuration
+        sections_config:
+          items:
+            $ref: '#/components/schemas/SectionConfig'
+          type: array
+          title: Sections Config
+          description: Section configurations
+        language_config:
+          anyOf:
+          - $ref: '#/components/schemas/LanguageConfig'
+          - type: 'null'
+          description: Language configuration
+        visual_config:
+          anyOf:
+          - $ref: '#/components/schemas/VisualConfig'
+          - type: 'null'
+          description: Visual configuration
+      type: object
+      required:
+      - name
+      - sections_config
+      title: ReportTemplateCreate
+      description: Schema for creating a new report template.
+    ReportTemplateListItem:
+      properties:
+        id:
+          type: string
+          title: Id
+        name:
+          type: string
+          title: Name
+        description:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Description
+        is_default:
+          type: boolean
+          title: Is Default
+        created_at:
+          type: string
+          format: date-time
+          title: Created At
+      type: object
+      required:
+      - id
+      - name
+      - description
+      - is_default
+      - created_at
+      title: ReportTemplateListItem
+      description: Compact schema for template list.
+    ReportTemplateListResponse:
+      properties:
+        items:
+          items:
+            $ref: '#/components/schemas/ReportTemplateListItem'
+          type: array
+          title: Items
+        total:
+          type: integer
+          title: Total
+        page:
+          type: integer
+          title: Page
+        page_size:
+          type: integer
+          title: Page Size
+      type: object
+      required:
+      - items
+      - total
+      - page
+      - page_size
+      title: ReportTemplateListResponse
+      description: Paginated list of templates.
+    ReportTemplateResponse:
+      properties:
+        id:
+          type: string
+          title: Id
+        name:
+          type: string
+          title: Name
+        description:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Description
+        is_default:
+          type: boolean
+          title: Is Default
+        data_filters:
+          anyOf:
+          - $ref: '#/components/schemas/DataFilters'
+          - type: 'null'
+        sections_config:
+          items:
+            $ref: '#/components/schemas/SectionConfig'
+          type: array
+          title: Sections Config
+        language_config:
+          anyOf:
+          - $ref: '#/components/schemas/LanguageConfig'
+          - type: 'null'
+        visual_config:
+          anyOf:
+          - $ref: '#/components/schemas/VisualConfig'
+          - type: 'null'
+        created_at:
+          type: string
+          format: date-time
+          title: Created At
+        updated_at:
+          type: string
+          format: date-time
+          title: Updated At
+      type: object
+      required:
+      - id
+      - name
+      - description
+      - is_default
+      - data_filters
+      - sections_config
+      - language_config
+      - visual_config
+      - created_at
+      - updated_at
+      title: ReportTemplateResponse
+      description: Full response schema for a report template.
+    ReportTemplateUpdate:
+      properties:
+        name:
+          anyOf:
+          - type: string
+            maxLength: 100
+            minLength: 1
+          - type: 'null'
+          title: Name
+        description:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Description
+        is_default:
+          anyOf:
+          - type: boolean
+          - type: 'null'
+          title: Is Default
+        data_filters:
+          anyOf:
+          - $ref: '#/components/schemas/DataFilters'
+          - type: 'null'
+        sections_config:
+          anyOf:
+          - items:
+              $ref: '#/components/schemas/SectionConfig'
+            type: array
+          - type: 'null'
+          title: Sections Config
+        language_config:
+          anyOf:
+          - $ref: '#/components/schemas/LanguageConfig'
+          - type: 'null'
+        visual_config:
+          anyOf:
+          - $ref: '#/components/schemas/VisualConfig'
+          - type: 'null'
+      type: object
+      title: ReportTemplateUpdate
+      description: Schema for updating a report template.
+    ReportType:
+      type: string
+      enum:
+      - weekly_summary
+      - technical_report
+      - executive_summary
+      - custom
+      title: ReportType
+      description: Type of report to generate, aligned with personas (BR-030).
+    RepositoryCreate:
+      properties:
+        url:
+          anyOf:
+          - type: string
+          - type: string
+            maxLength: 2083
+            minLength: 1
+            format: uri
+          title: Url
+        name:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Name
+        owner:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Owner
+      type: object
+      required:
+      - url
+      title: RepositoryCreate
+      description: Schema for creating a new repository.
+    RepositoryResponse:
+      properties:
+        created_at:
+          type: string
+          format: date-time
+          title: Created At
+        updated_at:
+          type: string
+          format: date-time
+          title: Updated At
+        id:
+          type: string
+          title: Id
+        name:
+          type: string
+          title: Name
+        owner:
+          type: string
+          title: Owner
+        url:
+          type: string
+          title: Url
+        is_active:
+          type: boolean
+          title: Is Active
+        last_synced_at:
+          anyOf:
+          - type: string
+            format: date-time
+          - type: 'null'
+          title: Last Synced At
+          readOnly: true
+      type: object
+      required:
+      - created_at
+      - updated_at
+      - id
+      - name
+      - owner
+      - url
+      - is_active
+      - last_synced_at
+      title: RepositoryResponse
+      description: Schema for repository response.
+    RepositorySummary:
+      properties:
+        id:
+          type: string
+          title: Id
+        name:
+          type: string
+          title: Name
+        url:
+          type: string
+          title: Url
+        is_active:
+          type: boolean
+          title: Is Active
+        activities_count:
+          type: integer
+          title: Activities Count
+          default: 0
+      type: object
+      required:
+      - id
+      - name
+      - url
+      - is_active
+      title: RepositorySummary
+      description: Compact repository info for team responses.
+    RepositoryUpdate:
+      properties:
+        is_active:
+          anyOf:
+          - type: boolean
+          - type: 'null'
+          title: Is Active
+      type: object
+      title: RepositoryUpdate
+      description: Schema for updating a repository.
+    SaveReportRequest:
+      properties:
+        title:
+          type: string
+          title: Title
+          description: Report title
+        subtitle:
+          type: string
+          title: Subtitle
+          description: Brief description
+        report_type:
+          $ref: '#/components/schemas/ReportType'
+          description: Type of report
+        team_id:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Team Id
+          description: Team ID associated with this report
+        period_start:
+          type: string
+          format: date-time
+          title: Period Start
+          description: Period start date
+        period_end:
+          type: string
+          format: date-time
+          title: Period End
+          description: Period end date
+        period_description:
+          type: string
+          title: Period Description
+          description: Human-readable period
+        sections:
+          items:
+            $ref: '#/components/schemas/ReportSection'
+          type: array
+          title: Sections
+          description: Report sections
+        summary_metrics:
+          anyOf:
+          - items:
+              $ref: '#/components/schemas/ReportMetric'
+            type: array
+          - type: 'null'
+          title: Summary Metrics
+          description: Summary metrics
+        sources_count:
+          type: integer
+          title: Sources Count
+          description: Number of sources
+        confidence_score:
+          type: number
+          maximum: 1.0
+          minimum: 0.0
+          title: Confidence Score
+          description: AI confidence
+        generated_at:
+          type: string
+          format: date-time
+          title: Generated At
+          description: When report was generated
+      type: object
+      required:
+      - title
+      - subtitle
+      - report_type
+      - period_start
+      - period_end
+      - period_description
+      - sections
+      - sources_count
+      - confidence_score
+      - generated_at
+      title: SaveReportRequest
+      description: Request to save a generated report to history.
+    SavedReportResponse:
+      properties:
+        id:
+          type: string
+          title: Id
+          description: Report UUID
+        title:
+          type: string
+          title: Title
+          description: Report title
+        subtitle:
+          type: string
+          title: Subtitle
+          description: Brief description
+        report_type:
+          $ref: '#/components/schemas/ReportType'
+          description: Type of report
+        period_start:
+          type: string
+          format: date-time
+          title: Period Start
+          description: Period start
+        period_end:
+          type: string
+          format: date-time
+          title: Period End
+          description: Period end
+        period_description:
+          type: string
+          title: Period Description
+          description: Human-readable period
+        sections:
+          items:
+            $ref: '#/components/schemas/ReportSection'
+          type: array
+          title: Sections
+          description: Report sections
+        summary_metrics:
+          anyOf:
+          - items:
+              $ref: '#/components/schemas/ReportMetric'
+            type: array
+          - type: 'null'
+          title: Summary Metrics
+          description: Summary metrics
+        sources_count:
+          type: integer
+          title: Sources Count
+          description: Number of sources
+        confidence_score:
+          type: number
+          title: Confidence Score
+          description: AI confidence
+        generated_at:
+          type: string
+          format: date-time
+          title: Generated At
+          description: When report was generated
+        created_at:
+          type: string
+          format: date-time
+          title: Created At
+          description: When saved to database
+      type: object
+      required:
+      - id
+      - title
+      - subtitle
+      - report_type
+      - period_start
+      - period_end
+      - period_description
+      - sections
+      - sources_count
+      - confidence_score
+      - generated_at
+      - created_at
+      title: SavedReportResponse
+      description: Full saved report with all details.
+    SectionConfig:
+      properties:
+        type:
+          $ref: '#/components/schemas/SectionType'
+          description: Section type
+        title:
+          type: string
+          title: Title
+          description: Custom section title
+        enabled:
+          type: boolean
+          title: Enabled
+          description: Whether this section is enabled
+          default: true
+        order:
+          type: integer
+          title: Order
+          description: Display order (0-based)
+        detail_level:
+          $ref: '#/components/schemas/DetailLevel'
+          description: Level of detail
+          default: normal
+        custom_prompt:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Custom Prompt
+          description: Custom AI prompt for this section
+      type: object
+      required:
+      - type
+      - title
+      - order
+      title: SectionConfig
+      description: Configuration for a single report section.
+    SectionType:
+      type: string
+      enum:
+      - summary
+      - metrics
+      - highlights
+      - risks
+      - technical
+      - timeline
+      - contributors
+      - custom
+      title: SectionType
+      description: Available section types for reports.
+    SetDefaultTeamRequest:
+      properties:
+        team_id:
+          type: string
+          title: Team Id
+          description: Team ID to set as default
+      type: object
+      required:
+      - team_id
+      title: SetDefaultTeamRequest
+      description: Schema for setting a team as default.
+    SlackIntegration:
+      properties:
+        status:
+          $ref: '#/components/schemas/IntegrationStatus'
+          default: disconnected
+        connected_at:
+          anyOf:
+          - type: string
+            format: date-time
+          - type: 'null'
+          title: Connected At
+        channel_name:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Channel Name
+      type: object
+      title: SlackIntegration
+      description: Slack integration status (future).
+    SourceItem:
+      properties:
+        title:
+          type: string
+          title: Title
+          description: Activity title
+        repository:
+          type: string
+          title: Repository
+          description: Repository name
+        type:
+          type: string
+          title: Type
+          description: Activity type (commit, pr, issue)
+        author:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Author
+          description: Activity author
+        url:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Url
+          description: Link to the activity
+      type: object
+      required:
+      - title
+      - repository
+      - type
+      title: SourceItem
+      description: A source activity used to generate the response.
+    SyncRequest:
+      properties:
+        repo_name:
+          type: string
+          title: Repo Name
+          description: Repository name in 'owner/repo' format
+        max_commits:
+          type: integer
+          maximum: 100.0
+          minimum: 1.0
+          title: Max Commits
+          description: Max commits to sync
+          default: 50
+        max_prs:
+          type: integer
+          maximum: 50.0
+          minimum: 1.0
+          title: Max Prs
+          description: Max PRs to sync
+          default: 20
+      type: object
+      required:
+      - repo_name
+      title: SyncRequest
+      description: Request to sync a repository.
+    SyncResponse:
+      properties:
+        status:
+          type: string
+          title: Status
+        repo_name:
+          type: string
+          title: Repo Name
+        commits_synced:
+          type: integer
+          title: Commits Synced
+        prs_synced:
+          type: integer
+          title: Prs Synced
+      type: object
+      required:
+      - status
+      - repo_name
+      - commits_synced
+      - prs_synced
+      title: SyncResponse
+      description: Response from sync operation.
+    TeamAddRepositories:
+      properties:
+        repository_ids:
+          items:
+            type: string
+          type: array
+          minItems: 1
+          title: Repository Ids
+          description: Repository IDs to add
+      type: object
+      required:
+      - repository_ids
+      title: TeamAddRepositories
+      description: Schema for adding repositories to a team.
+    TeamCreate:
+      properties:
+        name:
+          type: string
+          maxLength: 255
+          minLength: 1
+          title: Name
+          description: Team display name
+        description:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Description
+          description: Team description
+        color:
+          anyOf:
+          - type: string
+            pattern: ^#[0-9A-Fa-f]{6}$
+          - type: 'null'
+          title: Color
+          description: Hex color for UI (e.g., '#4F46E5')
+        repository_ids:
+          anyOf:
+          - items:
+              type: string
+            type: array
+          - type: 'null'
+          title: Repository Ids
+          description: Repository IDs to add to this team
+        github_team_slug:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Github Team Slug
+          description: GitHub Team slug for sync (e.g., 'engineering')
+      type: object
+      required:
+      - name
+      title: TeamCreate
+      description: Schema for creating a new team.
+    TeamDetailResponse:
+      properties:
+        id:
+          type: string
+          title: Id
+        name:
+          type: string
+          title: Name
+        slug:
+          type: string
+          title: Slug
+        description:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Description
+        color:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Color
+        is_default:
+          type: boolean
+          title: Is Default
+        github_team_slug:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Github Team Slug
+        repositories_count:
+          type: integer
+          title: Repositories Count
+          description: Number of repositories in this team
+        created_at:
+          type: string
+          format: date-time
+          title: Created At
+        updated_at:
+          type: string
+          format: date-time
+          title: Updated At
+        repositories:
+          items:
+            $ref: '#/components/schemas/RepositorySummary'
+          type: array
+          title: Repositories
+          description: Repositories in this team
+      type: object
+      required:
+      - id
+      - name
+      - slug
+      - description
+      - color
+      - is_default
+      - github_team_slug
+      - repositories_count
+      - created_at
+      - updated_at
+      title: TeamDetailResponse
+      description: Schema for detailed team response with repositories.
+    TeamListResponse:
+      properties:
+        items:
+          items:
+            $ref: '#/components/schemas/TeamResponse'
+          type: array
+          title: Items
+        total:
+          type: integer
+          title: Total
+        page:
+          type: integer
+          title: Page
+          default: 1
+        page_size:
+          type: integer
+          title: Page Size
+          default: 20
+        has_more:
+          type: boolean
+          title: Has More
+      type: object
+      required:
+      - items
+      - total
+      - has_more
+      title: TeamListResponse
+      description: Schema for paginated team list.
+    TeamRemoveRepositories:
+      properties:
+        repository_ids:
+          items:
+            type: string
+          type: array
+          minItems: 1
+          title: Repository Ids
+          description: Repository IDs to remove
+      type: object
+      required:
+      - repository_ids
+      title: TeamRemoveRepositories
+      description: Schema for removing repositories from a team.
+    TeamResponse:
+      properties:
+        id:
+          type: string
+          title: Id
+        name:
+          type: string
+          title: Name
+        slug:
+          type: string
+          title: Slug
+        description:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Description
+        color:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Color
+        is_default:
+          type: boolean
+          title: Is Default
+        github_team_slug:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Github Team Slug
+        repositories_count:
+          type: integer
+          title: Repositories Count
+          description: Number of repositories in this team
+        created_at:
+          type: string
+          format: date-time
+          title: Created At
+        updated_at:
+          type: string
+          format: date-time
+          title: Updated At
+      type: object
+      required:
+      - id
+      - name
+      - slug
+      - description
+      - color
+      - is_default
+      - github_team_slug
+      - repositories_count
+      - created_at
+      - updated_at
+      title: TeamResponse
+      description: Schema for team response.
+    TeamUpdate:
+      properties:
+        name:
+          anyOf:
+          - type: string
+            maxLength: 255
+            minLength: 1
+          - type: 'null'
+          title: Name
+        description:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Description
+        color:
+          anyOf:
+          - type: string
+            pattern: ^#[0-9A-Fa-f]{6}$
+          - type: 'null'
+          title: Color
+        is_default:
+          anyOf:
+          - type: boolean
+          - type: 'null'
+          title: Is Default
+        github_team_slug:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Github Team Slug
+      type: object
+      title: TeamUpdate
+      description: Schema for updating a team.
+    Tone:
+      type: string
+      enum:
+      - neutral
+      - optimistic
+      - cautious
+      title: Tone
+      description: Report tone options.
+    UserResponse:
+      properties:
+        id:
+          type: string
+          title: Id
+        email:
+          type: string
+          title: Email
+        name:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Name
+        organization_id:
+          type: string
+          title: Organization Id
+      type: object
+      required:
+      - id
+      - email
+      - name
+      - organization_id
+      title: UserResponse
+      description: Response schema for current user.
+    ValidationError:
+      properties:
+        loc:
+          items:
+            anyOf:
+            - type: string
+            - type: integer
+          type: array
+          title: Location
+        msg:
+          type: string
+          title: Message
+        type:
+          type: string
+          title: Error Type
+      type: object
+      required:
+      - loc
+      - msg
+      - type
+      title: ValidationError
+    VerifyRequest:
+      properties:
+        token:
+          type: string
+          title: Token
+      type: object
+      required:
+      - token
+      title: VerifyRequest
+      description: Request schema for token verification.
+    VisualConfig:
+      properties:
+        primary_color:
+          type: string
+          title: Primary Color
+          description: Primary color (hex)
+          default: '#3B82F6'
+        secondary_color:
+          type: string
+          title: Secondary Color
+          description: Secondary color (hex)
+          default: '#1E40AF'
+        font_family:
+          $ref: '#/components/schemas/FontFamily'
+          description: Font family
+          default: Inter
+        logo_url:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Logo Url
+          description: Custom logo URL
+        show_charts:
+          type: boolean
+          title: Show Charts
+          description: Include metric charts
+          default: true
+        watermark:
+          anyOf:
+          - $ref: '#/components/schemas/Watermark'
+          - type: 'null'
+          description: Optional watermark
+        header_style:
+          $ref: '#/components/schemas/HeaderStyle'
+          description: PDF header style
+          default: full
+      type: object
+      title: VisualConfig
+      description: Visual/styling configuration for PDF export.
+    Watermark:
+      type: string
+      enum:
+      - CONFIDENTIAL
+      - DRAFT
+      title: Watermark
+      description: Watermark options.

@@ -30,11 +30,6 @@ const nextConfig: NextConfig = {
         formats: ["image/avif", "image/webp"],
     },
 
-    // Environment variables exposed to the browser
-    env: {
-        NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000",
-    },
-
     // Redirects
     async redirects() {
         return [];

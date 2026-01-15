@@ -25,11 +25,12 @@ cd devbridge
 # Copie as variáveis de ambiente
 cp .env.example .env
 
-# Inicie a infraestrutura
-docker-compose up -d
+# Inicie a infraestrutura (inclui AI stack)
+ docker-compose --profile ai up -d
+
 
 # Configure o repositório a monitorar
-curl -X POST http://localhost:8001/api/repos \
+curl -X POST http://localhost:8001/api/v1/repos \
   -H "Content-Type: application/json" \
   -d '{"url": "https://github.com/seu-usuario/seu-repo"}'
 ```

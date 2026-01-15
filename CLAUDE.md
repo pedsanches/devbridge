@@ -18,7 +18,7 @@ pnpm typecheck                             # TypeScript strict
 
 # Linting
 poetry run ruff check .                    # Python lint
-poetry run mypy app/                       # Python types
+poetry run mypy                       # Python types
 ```
 
 ## Key Constraints

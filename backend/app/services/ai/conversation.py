@@ -118,12 +118,17 @@ Contexto das atividades recentes:
         """
         system_prompt, messages = self._build_messages(user_message, context, persona, chat_history)
 
-        # Prepare messages including system prompt
-        full_messages = [{"role": "system", "content": system_prompt}] + messages
-
         try:
+            sanitized_system_prompt = await self._sanitize_text(system_prompt)
+            sanitized_messages = await self._sanitize_messages(messages)
+            model = self.model or "gpt-4o-mini"
+            full_messages = [
+                {"role": "system", "content": sanitized_system_prompt},
+                *sanitized_messages,
+            ]
+
             stream = self.client.chat.completions.create(
-                model=self.model,
+                model=model,
                 max_tokens=max_tokens,
                 messages=full_messages,
                 stream=True,

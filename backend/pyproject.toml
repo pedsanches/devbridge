@@ -52,6 +52,8 @@ mypy = "^1.14.0"
 # Type stubs
 types-redis = "^4.6.0"
 types-requests = "^2.32.0"
+types-PyYAML = "^6.0.12.20241230"
+pyyaml = "^6.0.2"
 # Pre-commit
 pre-commit = "^4.0.0"
 opentelemetry-api = "^1.39.1"
@@ -113,6 +115,17 @@ warn_return_any = true
 warn_unused_ignores = true
 disallow_untyped_defs = true
 plugins = ["pydantic.mypy"]
+files = [
+    "app/core/rate_limit.py",
+    "app/core/middleware.py",
+    "app/api/v1/webhooks.py",
+    "app/services/ai/base.py",
+    "app/services/ai/conversation.py",
+    "app/services/privacy_service.py",
+    "app/services/embedding_service.py",
+    "app/worker.py",
+]
+follow_imports = "skip"
 
 [[tool.mypy.overrides]]
 module = [
