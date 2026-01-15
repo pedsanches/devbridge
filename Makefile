@@ -39,6 +39,9 @@ dev-backend: ## Start only backend
 dev-frontend: ## Start only frontend
 	@./scripts/dev.sh frontend
 
+dev-worker: ## Start only worker
+	@./scripts/dev.sh worker
+
 storybook: ## Start Storybook
 	@cd frontend && pnpm storybook
 
@@ -75,10 +78,16 @@ test-e2e-ui: ## Run E2E tests with UI
 lint: ## Run linters
 	@echo "$(BLUE)[LINT]$(NC) Checking Python..."
 	@cd backend && poetry run ruff check .
-	@cd backend && poetry run mypy app/
+	@cd backend && poetry run mypy
 	@echo "$(BLUE)[LINT]$(NC) Checking TypeScript..."
 	@cd frontend && pnpm lint
 	@echo "$(GREEN)[OK]$(NC) All checks passed"
+
+openapi-check: ## Validate OpenAPI spec
+	@cd backend && poetry run python scripts/check_openapi.py
+
+openapi-sync: ## Regenerate OpenAPI spec
+	@cd backend && poetry run python scripts/check_openapi.py --write
 
 complexity: ## Check code complexity
 	@echo "$(BLUE)[COMPLEXITY]$(NC) Checking complexity (Radon)..."

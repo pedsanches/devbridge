@@ -1,0 +1,8 @@
+# Default owners
+* @devbridge/maintainers
+
+# Area owners
+/backend/ @devbridge/backend
+/frontend/ @devbridge/frontend
+/docs/ @devbridge/docs
+/mcp-toolbox/ @devbridge/platform

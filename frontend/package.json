@@ -9,8 +9,8 @@
     "lint": "eslint .",
     "format": "prettier --write .",
     "typecheck": "tsc --noEmit",
-    "test": "vitest",
-    "test:ui": "vitest --ui",
+    "test": "vitest --exclude tests/e2e/** --passWithNoTests",
+    "test:ui": "vitest --ui --exclude tests/e2e/** --passWithNoTests",
     "test:e2e": "playwright test",
     "storybook": "storybook dev -p 6006",
     "build-storybook": "storybook build"

@@ -28,7 +28,7 @@ pnpm test                  # Frontend
 **Verification commands:**
 ```bash
 poetry run ruff check .    # Lint Python
-poetry run mypy app/       # Type check Python
+poetry run mypy       # Type check Python
 pnpm lint                  # Lint TypeScript
 pnpm typecheck             # TypeScript strict verification
 ```
@@ -99,7 +99,7 @@ if (item) { array[index] = { ...item, newProp: value }; }
 | Unit (backend) | `poetry run pytest` | Required for new logic |
 | Unit (frontend) | `pnpm test` | Vitest |
 | Lint | `poetry run ruff check .` | Auto-fix: `ruff check . --fix` |
-| Type check (Python) | `poetry run mypy app/` | Strict mode enabled |
+| Type check (Python) | `poetry run mypy` | Strict mode enabled |
 | Type check (TS) | `pnpm typecheck` | Strict mode + extra checks |
 | Pre-commit | `poetry run pre-commit run --all-files` | Runs all checks |
 
