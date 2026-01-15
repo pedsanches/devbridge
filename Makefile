@@ -14,6 +14,7 @@
 BLUE := \033[0;34m
 GREEN := \033[0;32m
 YELLOW := \033[1;33m
+RED := \033[0;31m
 NC := \033[0m
 
 ## ============================================================
@@ -51,18 +52,18 @@ storybook: ## Start Storybook
 
 test: ## Run all tests
 	@echo "$(BLUE)[TEST]$(NC) Running backend tests..."
-	@cd backend && poetry run pytest
+	@cd backend && uv run pytest
 	@echo "$(BLUE)[TEST]$(NC) Running frontend tests..."
 	@cd frontend && pnpm test
 
 test-backend: ## Run backend tests
-	@cd backend && poetry run pytest -v
+	@cd backend && uv run pytest -v
 
 test-frontend: ## Run frontend tests
 	@cd frontend && pnpm test
 
 test-cov: ## Run tests with coverage
-	@cd backend && poetry run pytest --cov=app --cov-report=html
+	@cd backend && uv run pytest --cov=app --cov-report=html
 	@echo "$(GREEN)[OK]$(NC) Coverage report: backend/htmlcov/index.html"
 
 test-e2e: ## Run E2E tests (headless)
@@ -77,40 +78,40 @@ test-e2e-ui: ## Run E2E tests with UI
 
 lint: ## Run linters
 	@echo "$(BLUE)[LINT]$(NC) Checking Python..."
-	@cd backend && poetry run ruff check .
-	@cd backend && poetry run mypy
+	@cd backend && uv run ruff check .
+	@cd backend && uv run mypy
 	@echo "$(BLUE)[LINT]$(NC) Checking TypeScript..."
 	@cd frontend && pnpm lint
 	@echo "$(GREEN)[OK]$(NC) All checks passed"
 
 openapi-check: ## Validate OpenAPI spec
-	@cd backend && poetry run python scripts/check_openapi.py
+	@cd backend && uv run python scripts/check_openapi.py
 
 openapi-sync: ## Regenerate OpenAPI spec
-	@cd backend && poetry run python scripts/check_openapi.py --write
+	@cd backend && uv run python scripts/check_openapi.py --write
 
 complexity: ## Check code complexity
 	@echo "$(BLUE)[COMPLEXITY]$(NC) Checking complexity (Radon)..."
-	@cd backend && poetry run radon cc app/ -a -s
+	@cd backend && uv run radon cc app/ -a -s
 
 security: ## Check for security vulnerabilities
 	@echo "$(BLUE)[SECURITY]$(NC) Checking security (Bandit)..."
-	@cd backend && poetry run bandit -r app/ -c pyproject.toml
+	@cd backend && uv run bandit -r app/ -c pyproject.toml
 
 check-docs: ## Check documentation coverage
 	@echo "$(BLUE)[DOCS]$(NC) Checking documentation (Interrogate)..."
-	@cd backend && poetry run interrogate -v app/
+	@cd backend && uv run interrogate -v app/
 
 
 format: ## Format code
 	@echo "$(BLUE)[FORMAT]$(NC) Formatting Python..."
-	@cd backend && poetry run ruff format .
+	@cd backend && uv run ruff format .
 	@echo "$(BLUE)[FORMAT]$(NC) Formatting TypeScript..."
 	@cd frontend && pnpm format
 	@echo "$(GREEN)[OK]$(NC) Code formatted"
 
 precommit: ## Run pre-commit on all files
-	@cd backend && poetry run pre-commit run --all-files
+	@cd backend && uv run pre-commit run --all-files
 
 ## ============================================================
 ## BUILD & DEPLOY
@@ -147,17 +148,39 @@ docker-ps: ## Show Docker status
 	@if command -v docker-compose >/dev/null 2>&1; then docker-compose ps; else docker compose ps; fi
 
 ## ============================================================
+## OBSERVABILITY (Grafana + Loki + Jaeger)
+## ============================================================
+
+obs-up: ## Start observability stack (Grafana, Loki, Jaeger)
+	@echo "$(BLUE)[OBS]$(NC) Starting observability stack..."
+	@docker compose --profile observability up -d
+	@echo "$(GREEN)[OK]$(NC) Observability stack started"
+	@echo ""
+	@echo "  $(YELLOW)Grafana:$(NC)  http://localhost:3000 (admin/devbridge)"
+	@echo "  $(YELLOW)Jaeger:$(NC)   http://localhost:16686"
+	@echo "  $(YELLOW)Loki:$(NC)     http://localhost:3100"
+	@echo ""
+
+obs-down: ## Stop observability stack
+	@echo "$(BLUE)[OBS]$(NC) Stopping observability stack..."
+	@docker compose --profile observability down
+	@echo "$(GREEN)[OK]$(NC) Observability stack stopped"
+
+obs-logs: ## Show observability logs
+	@docker compose --profile observability logs -f
+
+## ============================================================
 ## DATABASE
 ## ============================================================
 
 db-migrate: ## Run database migrations
-	@cd backend && poetry run alembic upgrade head
+	@cd backend && uv run alembic upgrade head
 
 db-rollback: ## Rollback last migration
-	@cd backend && poetry run alembic downgrade -1
+	@cd backend && uv run alembic downgrade -1
 
 db-seed: ## Seed database with test data
-	@cd backend && poetry run python -m app.db.seed
+	@cd backend && uv run python -m app.db.seed
 
 reset-db: ## Reset database (drop volumes and re-migrate)
 	@echo "$(BLUE)[RESET]$(NC) Resetting database..."
@@ -167,6 +190,60 @@ reset-db: ## Reset database (drop volumes and re-migrate)
 	@sleep 10
 	@make db-migrate
 	@echo "$(GREEN)[OK]$(NC) Database reset complete"
+
+## ============================================================
+## DIAGNOSTICS
+## ============================================================
+
+health: ## Check all services health
+	@echo "$(BLUE)[HEALTH]$(NC) Checking services..."
+	@echo ""
+	@echo "$(YELLOW)Backend API:$(NC)"
+	@curl -sf http://localhost:8001/health 2>/dev/null && echo "  $(GREEN)✓ Running$(NC)" || echo "  $(RED)✗ Not running$(NC)"
+	@echo ""
+	@echo "$(YELLOW)Frontend:$(NC)"
+	@curl -sf http://localhost:3001 2>/dev/null && echo "  $(GREEN)✓ Running$(NC)" || echo "  $(RED)✗ Not running$(NC)"
+	@echo ""
+	@echo "$(YELLOW)PostgreSQL:$(NC)"
+	@docker exec devbridge-postgres pg_isready -U devbridge 2>/dev/null && echo "  $(GREEN)✓ Running$(NC)" || echo "  $(RED)✗ Not running$(NC)"
+	@echo ""
+	@echo "$(YELLOW)Redis:$(NC)"
+	@docker exec devbridge-redis redis-cli ping 2>/dev/null | grep -q PONG && echo "  $(GREEN)✓ Running$(NC)" || echo "  $(RED)✗ Not running$(NC)"
+	@echo ""
+	@echo "$(YELLOW)Grafana:$(NC)"
+	@curl -sf http://localhost:3000/api/health 2>/dev/null | grep -q 'database' && echo "  $(GREEN)✓ Running$(NC)" || echo "  $(RED)✗ Not running$(NC)"
+	@echo ""
+	@echo "$(YELLOW)Loki:$(NC)"
+	@curl -sf http://localhost:3100/ready 2>/dev/null | grep -q "ready" && echo "  $(GREEN)✓ Running$(NC)" || echo "  $(RED)✗ Not running$(NC)"
+	@echo ""
+	@echo "$(YELLOW)Jaeger:$(NC)"
+	@curl -sf http://localhost:16686 2>/dev/null | grep -q "Jaeger" && echo "  $(GREEN)✓ Running$(NC)" || echo "  $(RED)✗ Not running$(NC)"
+	@echo ""
+
+logs-backend: ## Stream backend logs only
+	@docker logs -f devbridge-backend-1 2>/dev/null || echo "Backend container not running"
+
+logs-worker: ## Stream worker logs only
+	@docker logs -f devbridge-worker-1 2>/dev/null || echo "Worker container not running"
+
+test-parallel: ## Run backend tests in parallel (faster)
+	@echo "$(BLUE)[TEST]$(NC) Running backend tests in parallel..."
+	@cd backend && uv run pytest -n auto -v
+
+diagnose: ## Full diagnostic of all services and config
+	@./scripts/diagnose.sh all
+
+diagnose-env: ## Validate .env configuration
+	@./scripts/diagnose.sh env
+
+diagnose-logs: ## Show recent errors from all services
+	@./scripts/diagnose.sh logs
+
+diagnose-ports: ## Check port availability
+	@./scripts/diagnose.sh ports
+
+diagnose-db: ## Database diagnostics
+	@./scripts/diagnose.sh db
 
 ## ============================================================
 ## CLEANUP

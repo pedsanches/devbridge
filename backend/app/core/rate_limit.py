@@ -43,7 +43,7 @@ class RateLimiter:
     """Rate limiter with Redis backend and local fallback."""
 
     def __init__(self) -> None:
-        self._redis: Redis[str] | None = None
+        self._redis_by_loop: dict[int, Redis[str]] = {}
         self._local_counters: dict[str, deque[float]] = {}
         self._local_lock = asyncio.Lock()
 
@@ -86,13 +86,16 @@ class RateLimiter:
         return await self._increment_local(key, window_seconds)
 
     async def _get_redis(self) -> Redis[str]:
-        if self._redis is None:
-            self._redis = Redis.from_url(
+        loop_id = id(asyncio.get_running_loop())
+        redis = self._redis_by_loop.get(loop_id)
+        if redis is None:
+            redis = Redis.from_url(
                 settings.REDIS_URL,
                 encoding="utf-8",
                 decode_responses=True,
             )
-        return self._redis
+            self._redis_by_loop[loop_id] = redis
+        return redis
 
     @staticmethod
     async def _increment_redis(

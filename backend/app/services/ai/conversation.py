@@ -127,6 +127,10 @@ Contexto das atividades recentes:
                 *sanitized_messages,
             ]
 
+            if not self.client:
+                yield "Erro: Cliente OpenAI não configurado."
+                return
+
             stream = self.client.chat.completions.create(
                 model=model,
                 max_tokens=max_tokens,
