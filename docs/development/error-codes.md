@@ -84,6 +84,83 @@ Todos os erros seguem o padrão:
 
 ---
 
+## Códigos Semânticos (Novo Sistema)
+
+O novo sistema de erros usa códigos semânticos por categoria. Estes são usados na resposta padronizada:
+
+```json
+{
+  "error_id": "uuid-único",
+  "trace_id": "trace-para-logs",
+  "error_code": "AUTH_001",
+  "message": "Mensagem amigável",
+  "path": "/api/v1/endpoint"
+}
+```
+
+### Autenticação (AUTH_xxx)
+
+| Código | HTTP | Descrição | Ação |
+|--------|------|-----------|------|
+| `AUTH_001` | 401 | Token inválido | Fazer novo login |
+| `AUTH_002` | 401 | Token expirado | Fazer novo login |
+| `AUTH_003` | 401 | Não autenticado | Incluir token na request |
+| `AUTH_004` | 403 | Sem permissão | Verificar role do usuário |
+
+### Validação (VAL_xxx)
+
+| Código | HTTP | Descrição | Ação |
+|--------|------|-----------|------|
+| `VAL_001` | 422 | Validação falhou | Ver campo `details.validation_errors` |
+| `VAL_002` | 422 | Campo obrigatório faltando | Adicionar campo |
+| `VAL_003` | 422 | Formato inválido | Verificar formato esperado |
+
+### Recursos (RES_xxx)
+
+| Código | HTTP | Descrição | Ação |
+|--------|------|-----------|------|
+| `RES_001` | 404 | Recurso não encontrado | Verificar ID do recurso |
+| `RES_002` | 409 | Recurso já existe | Usar recurso existente |
+| `RES_003` | 409 | Conflito de recurso | Resolver conflito |
+
+### Serviços Externos (EXT_xxx)
+
+| Código | HTTP | Descrição | Ação |
+|--------|------|-----------|------|
+| `EXT_001` | 502 | Erro GitHub API | Verificar `GITHUB_TOKEN` |
+| `EXT_002` | 502 | Erro OpenAI/LLM | Verificar `OPENAI_API_KEY` |
+| `EXT_003` | 502 | Erro Database | Verificar conexão PostgreSQL |
+| `EXT_004` | 502 | Erro Redis | Verificar conexão Redis |
+
+### Rate Limiting (RATE_xxx)
+
+| Código | HTTP | Descrição | Ação |
+|--------|------|-----------|------|
+| `RATE_001` | 429 | Rate limit excedido | Aguardar `Retry-After` header |
+
+### Interno (INT_xxx)
+
+| Código | HTTP | Descrição | Ação |
+|--------|------|-----------|------|
+| `INT_001` | 500 | Erro interno | Coletar `trace_id` e reportar |
+| `INT_002` | 504 | Timeout | Verificar logs e retry |
+
+---
+
+## Mapeamento DVB ↔ Semântico
+
+| Código DVB | Código Semântico |
+|------------|------------------|
+| DVB-001 | AUTH_001 |
+| DVB-002 | AUTH_003 |
+| DVB-003 | AUTH_004 |
+| DVB-100 | RES_001 |
+| DVB-200 | VAL_001 |
+| DVB-500 | RATE_001 |
+| DVB-900 | INT_001 |
+
+---
+
 ## Implementação
 
 ### Python (Backend)

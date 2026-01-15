@@ -29,8 +29,15 @@ class ObservabilityMiddleware(BaseHTTPMiddleware):  # type: ignore[misc]
         call_next: RequestResponseEndpoint,
     ) -> Response:
         """Process request with tracing and metrics."""
-        # Generate or extract request ID
+        # Generate or extract request ID (also used as trace_id)
         request_id = request.headers.get("X-Request-ID", str(uuid.uuid4()))
+
+        # Also check for X-Trace-ID header (for distributed tracing)
+        trace_id = request.headers.get("X-Trace-ID", request_id)
+
+        # Store trace_id in request state for exception handlers
+        request.state.trace_id = trace_id
+        request.state.request_id = request_id
 
         # Extract user/org context from request state if available
         user_id = getattr(request.state, "user_id", None) if hasattr(request, "state") else None
@@ -44,6 +51,11 @@ class ObservabilityMiddleware(BaseHTTPMiddleware):  # type: ignore[misc]
             user_id=user_id,
             org_id=org_id,
         )
+
+        # Also bind trace_id to logging context
+        from app.core.logging import bind_context
+
+        bind_context(trace_id=trace_id)
 
         # Start timing
         start_time = time.perf_counter()
@@ -67,8 +79,9 @@ class ObservabilityMiddleware(BaseHTTPMiddleware):  # type: ignore[misc]
                 endpoint=endpoint,
             ).observe(duration)
 
-            # Add request ID to response headers
+            # Add request ID and trace ID to response headers
             response.headers["X-Request-ID"] = request_id
+            response.headers["X-Trace-ID"] = trace_id
 
             # Log request completion
             if response.status_code >= 400:

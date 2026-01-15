@@ -74,7 +74,7 @@ Obrigatório para sanitização de PII antes de chamadas à IA.
 |----------|--------|-----------|
 | `PRESIDIO_ANALYZER_URL` | `http://localhost:5001` | Endpoint do Analyzer |
 | `PRESIDIO_ANONYMIZER_URL` | `http://localhost:5002` | Endpoint do Anonymizer |
-| `PRESIDIO_LANGUAGES` | `["pt", "en"]` | Idiomas de detecção |
+| `PRESIDIO_LANGUAGES` | `["en"]` | Idiomas de detecção (adicione `pt` apenas se você configurar recognizers) |
 
 ### Observabilidade
 

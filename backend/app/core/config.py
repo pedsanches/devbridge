@@ -114,7 +114,7 @@ class Settings(BaseSettings):
     # ============================================================
     PRESIDIO_ANALYZER_URL: str = "http://localhost:5001"
     PRESIDIO_ANONYMIZER_URL: str = "http://localhost:5002"
-    PRESIDIO_LANGUAGES: list[str] = Field(default=["pt", "en"])
+    PRESIDIO_LANGUAGES: list[str] = Field(default=["en", "pt"])
 
     # ============================================================
     # Feature Flags

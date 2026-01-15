@@ -22,7 +22,7 @@ services:
       - postgres_data:/var/lib/postgresql/data
       - ./scripts/init-db.sql:/docker-entrypoint-initdb.d/init-db.sql:ro
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U devbridge -d devbridge"]
+      test: [ "CMD-SHELL", "pg_isready -U devbridge -d devbridge" ]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -50,7 +50,7 @@ services:
   # ============================================================
   qdrant:
     image: qdrant/qdrant:latest
-    profiles: ["ai"]
+    profiles: [ "ai" ]
     container_name: devbridge-qdrant
     restart: unless-stopped
     ports:
@@ -71,32 +71,103 @@ services:
   # ============================================================
   presidio-analyzer:
     image: mcr.microsoft.com/presidio-analyzer:latest
-    profiles: ["ai"]
+    profiles: [ "ai" ]
     container_name: devbridge-presidio-analyzer
     restart: unless-stopped
     ports:
-      - "5001:5001"
-    environment:
-      # Support Portuguese and English
-      - ANALYZER_CONF_FILE=/app/analyzer-config.yml
+      - "5001:3000"
     healthcheck:
-      test: [ "CMD", "curl", "-f", "http://localhost:5001/health" ]
+      test: [ "CMD", "curl", "-f", "http://localhost:3000/health" ]
       interval: 30s
       timeout: 10s
       retries: 3
 
   presidio-anonymizer:
     image: mcr.microsoft.com/presidio-anonymizer:latest
-    profiles: ["ai"]
+    profiles: [ "ai" ]
     container_name: devbridge-presidio-anonymizer
     restart: unless-stopped
     ports:
-      - "5002:5002"
+      - "5002:3000"
     healthcheck:
-      test: [ "CMD", "curl", "-f", "http://localhost:5002/health" ]
+      test: [ "CMD", "curl", "-f", "http://localhost:3000/health" ]
       interval: 30s
       timeout: 10s
       retries: 3
+
+  # ============================================================
+  # Observability Stack (Grafana + Loki + Jaeger)
+  # Start with: docker-compose --profile observability up -d
+  # ============================================================
+  grafana:
+    image: grafana/grafana:latest
+    profiles: [ "observability" ]
+    container_name: devbridge-grafana
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=devbridge
+      - GF_USERS_ALLOW_SIGN_UP=false
+      - GF_INSTALL_PLUGINS=grafana-clock-panel
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./observability/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./observability/grafana/dashboards:/var/lib/grafana/dashboards:ro
+    depends_on:
+      - loki
+    healthcheck:
+      test: [ "CMD-SHELL", "curl -f http://localhost:3000/api/health || exit 1" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  loki:
+    image: grafana/loki:latest
+    profiles: [ "observability" ]
+    container_name: devbridge-loki
+    restart: unless-stopped
+    ports:
+      - "3100:3100"
+    volumes:
+      - loki_data:/loki
+      - ./observability/loki/loki-config.yaml:/etc/loki/local-config.yaml:ro
+    command: -config.file=/etc/loki/local-config.yaml
+    healthcheck:
+      test: [ "CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:3100/ready || exit 1" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  promtail:
+    image: grafana/promtail:latest
+    profiles: [ "observability" ]
+    container_name: devbridge-promtail
+    restart: unless-stopped
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./observability/promtail/promtail-config.yaml:/etc/promtail/config.yml:ro
+    command: -config.file=/etc/promtail/config.yml
+    depends_on:
+      - loki
+
+  jaeger:
+    image: jaegertracing/all-in-one:latest
+    profiles: [ "observability" ]
+    container_name: devbridge-jaeger
+    restart: unless-stopped
+    ports:
+      - "16686:16686" # Jaeger UI
+      - "4317:4317" # OTLP gRPC
+      - "4318:4318" # OTLP HTTP
+    environment:
+      - COLLECTOR_OTLP_ENABLED=true
+    healthcheck:
+      test: [ "CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:16686/ || exit 1" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
 # ============================================================
 # Volumes
@@ -107,6 +178,12 @@ volumes:
   redis_data:
     driver: local
   qdrant_data:
+    driver: local
+  grafana_data:
+    driver: local
+  loki_data:
+    driver: local
+  promtail_data:
     driver: local
 
 # ============================================================

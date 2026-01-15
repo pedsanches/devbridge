@@ -9,10 +9,16 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_asyn
 from app.api.deps import get_db
 from app.core.config import settings
 from app.core.security import create_access_token
-from app.main import app
-from app.models.organization import Organization, PlanType
-from app.models.organization_settings import OrganizationSettings
-from app.models.user import User
+
+# Test isolation: avoid calling external services
+settings.OPENAI_API_KEY = ""
+settings.RATE_LIMIT_PER_MINUTE = 0
+settings.WEBHOOK_RATE_LIMIT_PER_HOUR = 0
+
+from app.main import app  # noqa: E402
+from app.models.organization import Organization, PlanType  # noqa: E402
+from app.models.organization_settings import OrganizationSettings  # noqa: E402
+from app.models.user import User  # noqa: E402
 
 # Test database URL (use a separate DB in production)
 # For now used local dev DB but with transaction rollback

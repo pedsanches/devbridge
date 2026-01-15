@@ -112,6 +112,48 @@ Follow [Conventional Commits](https://www.conventionalcommits.org/):
 - `refactor:` code change without feature/fix
 - `test:` adding tests
 
+## Debug & Troubleshooting
+
+**Always start with:**
+```bash
+make diagnose     # Full diagnostic
+```
+
+**Key debug commands:**
+| Command | Purpose |
+|---------|---------|
+| `make diagnose` | Full system diagnostic |
+| `make diagnose-env` | Validate .env configuration |
+| `make diagnose-logs` | Show recent errors |
+| `make health` | Quick service health check |
+
+**Error response format:**
+```json
+{
+  "error_id": "uuid",
+  "trace_id": "trace-for-logs",
+  "error_code": "AUTH_001",
+  "message": "Human readable",
+  "path": "/api/v1/endpoint"
+}
+```
+
+**To find error details:**
+```bash
+docker logs devbridge-backend-1 2>&1 | grep "trace_id=YOUR_TRACE_ID"
+```
+
+**Common error codes:**
+| Code | Meaning | Action |
+|------|---------|--------|
+| `AUTH_001` | Invalid token | Re-login |
+| `VAL_001` | Validation failed | Check request body |
+| `RES_001` | Resource not found | Verify ID |
+| `EXT_001` | GitHub API error | Check token |
+| `INT_001` | Internal error | Collect trace_id |
+
+For detailed flows, see: [docs/development/debug-guide.md](docs/development/debug-guide.md)
+
 ## Deep Context
 
 For detailed information, see:
@@ -121,6 +163,8 @@ For detailed information, see:
 | [docs/system-context.md](docs/system-context.md) | Full system map and tech stack |
 | [docs/agent-guide.md](docs/agent-guide.md) | Development protocol for agents |
 | [docs/development/code-style.md](docs/development/code-style.md) | Detailed code conventions |
-| [docs/development/frontend-best-practices.md](docs/development/frontend-best-practices.md) | **Frontend TypeScript/React patterns** |
+| [docs/development/frontend-best-practices.md](docs/development/frontend-best-practices.md) | Frontend TypeScript/React patterns |
+| [docs/development/debug-guide.md](docs/development/debug-guide.md) | **Debug flows and error resolution** |
+| [docs/development/error-codes.md](docs/development/error-codes.md) | Full error code catalog (DVB-xxx) |
 | [docs/business/rules-catalog.md](docs/business/rules-catalog.md) | Domain business rules |
 | [docs/design/foundations.md](docs/design/foundations.md) | Design tokens (colors, typography) |

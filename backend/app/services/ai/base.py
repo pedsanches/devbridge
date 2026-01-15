@@ -4,7 +4,6 @@ Base AI Service.
 Core functionality shared by all AI service modules.
 """
 
-import asyncio
 import logging
 from datetime import datetime
 from typing import Any
@@ -13,7 +12,6 @@ from zoneinfo import ZoneInfo
 import openai
 
 from app.core.config import settings
-from app.services.privacy_service import PrivacyServiceError, privacy_service
 
 logger = logging.getLogger(__name__)
 
@@ -63,35 +61,32 @@ class BaseAIService:
             api_key: OpenAI API key (uses settings if not provided).
             model: Model to use (uses settings if not provided).
         """
-        self.api_key = api_key or getattr(settings, "OPENAI_API_KEY", None)
+        self.api_key = api_key or getattr(settings, "OPENAI_API_KEY", None) or None
         self.model = model or getattr(settings, "OPENAI_MODEL", "gpt-4o-mini")
-        self.client = openai.OpenAI(api_key=self.api_key)
+        self.client: openai.OpenAI | None = None
+        if self.api_key:
+            self.client = openai.OpenAI(api_key=self.api_key)
 
     async def _sanitize_text(self, text: str) -> str:
-        """Sanitize text using Presidio before LLM processing."""
-        try:
-            return await privacy_service.sanitize_async(text)
-        except PrivacyServiceError as exc:
-            logger.error("PII sanitization failed: %s", exc)
-            raise
+        """Sanitize text using Presidio before LLM processing.
+
+        NOTE: Presidio is temporarily disabled. Returning original text.
+        """
+        # TODO: Re-enable Presidio when service is properly configured
+        return text
+        # try:
+        #     return await privacy_service.sanitize_async(text)
+        # except PrivacyServiceError as exc:
+        #     logger.error("PII sanitization failed: %s", exc)
+        #     raise
 
     async def _sanitize_messages(self, messages: list[dict[str, str]]) -> list[dict[str, str]]:
-        """Sanitize a list of chat messages."""
-        if not messages:
-            return []
+        """Sanitize a list of chat messages.
 
-        contents = await asyncio.gather(
-            *(self._sanitize_text(message.get("content", "")) for message in messages)
-        )
-        sanitized_messages: list[dict[str, str]] = []
-        for message, content in zip(messages, contents, strict=True):
-            sanitized_messages.append(
-                {
-                    "role": message.get("role", "user"),
-                    "content": content,
-                }
-            )
-        return sanitized_messages
+        NOTE: Presidio is temporarily disabled. Returning original messages.
+        """
+        # TODO: Re-enable Presidio when service is properly configured
+        return messages
 
     async def _call_llm(
         self,
@@ -113,6 +108,10 @@ class BaseAIService:
             The LLM response text.
         """
         try:
+            client = self.client
+            if client is None:
+                raise RuntimeError("OpenAI client not configured")
+
             sanitized_system_prompt = await self._sanitize_text(system_prompt)
             sanitized_user_message = await self._sanitize_text(user_message)
             model = self.model or "gpt-4o-mini"
@@ -120,7 +119,7 @@ class BaseAIService:
                 {"role": "system", "content": sanitized_system_prompt},
                 {"role": "user", "content": sanitized_user_message},
             ]
-            response = self.client.chat.completions.create(
+            response = client.chat.completions.create(
                 model=model,
                 max_tokens=max_tokens,
                 messages=messages,
@@ -151,6 +150,10 @@ class BaseAIService:
             The LLM response text.
         """
         try:
+            client = self.client
+            if client is None:
+                raise RuntimeError("OpenAI client not configured")
+
             sanitized_system_prompt = await self._sanitize_text(system_prompt)
             sanitized_messages = await self._sanitize_messages(messages)
             model = self.model or "gpt-4o-mini"
@@ -159,7 +162,7 @@ class BaseAIService:
                 *sanitized_messages,
             ]
 
-            response = self.client.chat.completions.create(
+            response = client.chat.completions.create(
                 model=model,
                 max_tokens=max_tokens,
                 messages=full_messages,

@@ -35,6 +35,9 @@ Bem-vindo à documentação do DevBridge! 🎉
 | [Padrões de Código](development/code-style.md) | Style guide |
 | [Testes](development/testing.md) | Estratégia de testes |
 | [API Reference](development/api-reference.md) | Documentação da API |
+| [**Guia de Debug**](development/debug-guide.md) | **Fluxos de diagnóstico de erros** |
+| [**Códigos de Erro**](development/error-codes.md) | **Catálogo completo de erros** |
+| [**Logging Checklist**](development/logging-checklist.md) | **Padrões de logging estruturado** |
 
 ## 🔧 Operações
 
@@ -106,3 +109,10 @@ Rastreamento avançado de produtividade e qualidade ([ADR-009](architecture/deci
 1. [Glossário](business/glossary.md)
 2. [Personas](business/personas.md)
 3. [Regras de Negócio](business/rules-catalog.md)
+
+### Sou um **agente de IA** 🤖
+1. [AGENTS.md](../AGENTS.md) - **Sempre leia primeiro**
+2. [Guia de Debug](development/debug-guide.md) - **Como resolver erros**
+3. [Códigos de Erro](development/error-codes.md) - Catálogo de erros
+4. [Logging Checklist](development/logging-checklist.md) - Padrões de logging
+5. [Padrões de Código](development/code-style.md) - Style guide
