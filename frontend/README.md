@@ -33,10 +33,10 @@ src/
 pnpm install
 
 # Run development server
-pnpm dev
+pnpm dev -p 3001
 ```
 
-Open [http://localhost:3000](http://localhost:3000) to view it in the browser.
+Open [http://localhost:3001](http://localhost:3001) to view it in the browser.
 
 ## 🎨 Design System
 
@@ -59,6 +59,9 @@ pnpm test
 
 # Run tests with UI
 pnpm test:ui
+
+# Run E2E tests
+pnpm test:e2e
 ```
 
 ## 🤝 Contribution

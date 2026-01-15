@@ -77,13 +77,13 @@ cp ../.env.example ../.env
 
 ```bash
 # Iniciar infraestrutura (da raiz do projeto)
-docker-compose up -d postgres qdrant redis
+docker-compose --profile ai up -d postgres redis qdrant presidio-analyzer presidio-anonymizer
 
 # Rodar migrations
 alembic upgrade head
 
 # Iniciar servidor de desenvolvimento
-uvicorn app.main:app --reload --port 8000
+uvicorn app.main:app --reload --port 8001
 ```
 
 ### Variáveis de Ambiente Essenciais

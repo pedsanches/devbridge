@@ -41,7 +41,7 @@ pnpm install
 cp .env.example .env.local
 
 # Infraestrutura
-docker-compose up -d postgres redis qdrant
+docker-compose --profile ai up -d postgres redis qdrant presidio-analyzer presidio-anonymizer
 ```
 
 ### Verificar Instalação

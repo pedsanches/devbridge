@@ -50,18 +50,19 @@ sequenceDiagram
 @app.post("/webhooks/github")
 async def receive_webhook(
     request: Request,
-    x_hub_signature_256: str = Header()
+    x_github_event: str = Header(...),
+    x_hub_signature_256: str = Header(),
 ):
-    payload = await request.body()
+    payload = await request.json()
 
     # Valida assinatura HMAC
     if not verify_signature(payload, x_hub_signature_256):
         raise HTTPException(401)
 
     # Enfileira para processamento async
-    task_id = process_github_event.delay(payload)
+    task = process_webhook.delay(x_github_event, payload)
 
-    return {"status": "queued", "task_id": task_id}
+    return {"status": "queued", "task_id": task.id}
 ```
 
 ### 2. Parsing AST (Tree-sitter)

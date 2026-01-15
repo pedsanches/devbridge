@@ -8,8 +8,8 @@ Documentação dos endpoints da API REST do DevBridge.
 > **Atenção:** Este documento é mantido manualmente e pode estar desatualizado em relação à implementação atual.
 >
 > Para a referência mais precisa e testável em tempo real, utilize sempre o **Swagger UI** ou **Redoc**:
-> - [Swagger UI (http://localhost:8000/docs)](http://localhost:8000/docs)
-> - [Redoc (http://localhost:8000/redoc)](http://localhost:8000/redoc)
+> - [Swagger UI (http://localhost:8001/api/v1/docs)](http://localhost:8001/api/v1/docs)
+> - [Redoc (http://localhost:8001/api/v1/redoc)](http://localhost:8001/api/v1/redoc)
 
 ---
 
@@ -17,9 +17,9 @@ Documentação dos endpoints da API REST do DevBridge.
 
 | Recurso | URL | Descrição |
 |---------|-----|-----------|
-| **Swagger UI** | [localhost:8000/docs](http://localhost:8000/docs) | Interface interativa |
-| **ReDoc** | [localhost:8000/redoc](http://localhost:8000/redoc) | Documentação alternativa |
-| **OpenAPI Spec** | [localhost:8000/openapi.json](http://localhost:8000/openapi.json) | Schema JSON |
+| **Swagger UI** | [localhost:8001/api/v1/docs](http://localhost:8001/api/v1/docs) | Interface interativa |
+| **ReDoc** | [localhost:8001/api/v1/redoc](http://localhost:8001/api/v1/redoc) | Documentação alternativa |
+| **OpenAPI Spec** | [localhost:8001/api/v1/openapi.json](http://localhost:8001/api/v1/openapi.json) | Schema JSON |
 | **OpenAPI YAML** | [`docs/api/openapi.yaml`](../api/openapi.yaml) | Schema versionado |
 
 > [!TIP]
@@ -30,7 +30,7 @@ Documentação dos endpoints da API REST do DevBridge.
 ## Base URL
 
 ```
-http://localhost:8000/api
+http://localhost:8001/api/v1
 ```
 
 ## Autenticação
@@ -403,12 +403,13 @@ Detalhes de uma tradução.
 
 ## Rate Limiting
 
-- **Por usuário:** 1000 requests/hora
-- **Por repositório (webhooks):** 100 requests/hora
+- **Por IP:** 100 requests/minuto (`RATE_LIMIT_PER_MINUTE`)
+- **Por repositório (webhooks):** 100 requests/hora (`WEBHOOK_RATE_LIMIT_PER_HOUR`)
 
 Headers de resposta:
 ```
-X-RateLimit-Limit: 1000
-X-RateLimit-Remaining: 999
+X-RateLimit-Limit: 100
+X-RateLimit-Remaining: 99
 X-RateLimit-Reset: 1704110400
+Retry-After: 42
 ```

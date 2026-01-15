@@ -280,5 +280,5 @@ poetry run pre-commit run --all-files
 # Ou manualmente
 poetry run ruff check .
 poetry run ruff format .
-poetry run mypy app/
+poetry run mypy
 ```

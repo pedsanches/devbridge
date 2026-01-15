@@ -15,7 +15,7 @@ O DevBridge utiliza **OpenAPI 3.1** para documentar sua API REST. O arquivo prin
 Quando o backend está rodando, acesse:
 
 ```
-http://localhost:8000/docs
+http://localhost:8001/api/v1/docs
 ```
 
 O FastAPI gera automaticamente a UI do Swagger a partir do código.
@@ -23,13 +23,13 @@ O FastAPI gera automaticamente a UI do Swagger a partir do código.
 ### ReDoc (Alternativo)
 
 ```
-http://localhost:8000/redoc
+http://localhost:8001/api/v1/redoc
 ```
 
 ### Spec OpenAPI (JSON)
 
 ```
-http://localhost:8000/openapi.json
+http://localhost:8001/api/v1/openapi.json
 ```
 
 ---
@@ -139,6 +139,13 @@ parameters:
 ---
 
 ## Validação
+
+### Verificação de Contrato
+
+```bash
+make openapi-check
+make openapi-sync  # Regenera docs/api/openapi.yaml
+```
 
 ### Lint com Spectral
 

@@ -44,7 +44,7 @@ cp .env.example .env
 ### 4. Inicie Serviços de Suporte
 
 ```bash
-docker-compose up -d postgres redis qdrant
+docker-compose --profile ai up -d postgres redis qdrant presidio-analyzer presidio-anonymizer
 ```
 
 ### 5. Execute Migrações
@@ -56,13 +56,13 @@ poetry run alembic upgrade head
 ### 6. Inicie a API
 
 ```bash
-poetry run uvicorn app.main:app --reload --port 8000
+poetry run uvicorn app.main:app --reload --port 8001
 ```
 
 ### 7. Inicie o Worker (outro terminal)
 
 ```bash
-poetry run celery -A worker worker --loglevel=info
+poetry run celery -A app.worker worker --loglevel=info
 ```
 
 ## Frontend
@@ -81,17 +81,19 @@ pnpm install
 
 ### 3. Configure Variáveis
 
+Crie um `.env.local` com:
+
 ```bash
-cp .env.example .env.local
+NEXT_PUBLIC_API_URL=http://localhost:8001/api/v1
 ```
 
 ### 4. Inicie o Servidor de Desenvolvimento
 
 ```bash
-pnpm dev
+pnpm dev -p 3001
 ```
 
-Acesse [http://localhost:3000](http://localhost:3000)
+Acesse [http://localhost:3001](http://localhost:3001)
 
 ## Verificação da Instalação
 

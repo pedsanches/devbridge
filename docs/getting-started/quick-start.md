@@ -44,30 +44,41 @@ REDIS_URL=redis://localhost:6379/0
 ### 3. Inicie a Infraestrutura
 
 ```bash
-docker-compose up -d
+docker-compose --profile ai up -d
 ```
 
 Isso levanta:
 - PostgreSQL (porta 5432)
 - Redis (porta 6379)
 - Qdrant (porta 6333)
-- API (porta 8000)
-- Worker Celery
+- Presidio (portas 5001/5002)
 
-### 4. Verifique o Status
+### 4. Inicie a API e o Worker
+
+```bash
+make dev-backend
+```
+
+Em outro terminal, rode o worker para processar webhooks:
+
+```bash
+make dev-worker
+```
+
+### 5. Verifique o Status
 
 ```bash
 # Verificar se todos os containers estão rodando
 docker-compose ps
 
 # Verificar logs
-docker-compose logs -f api
+docker-compose logs -f
 ```
 
-### 5. Configure um Repositório
+### 6. Configure um Repositório
 
 ```bash
-curl -X POST http://localhost:8000/api/repos \
+curl -X POST http://localhost:8001/api/v1/repos \
   -H "Content-Type: application/json" \
   -d '{
     "url": "https://github.com/seu-usuario/seu-repo",
@@ -75,10 +86,10 @@ curl -X POST http://localhost:8000/api/repos \
   }'
 ```
 
-### 6. Teste o Chat
+### 7. Teste o Chat
 
 ```bash
-curl -X POST http://localhost:8000/api/chat \
+curl -X POST http://localhost:8001/api/v1/chat \
   -H "Content-Type: application/json" \
   -d '{"message": "O que o time fez essa semana?"}'
 ```
