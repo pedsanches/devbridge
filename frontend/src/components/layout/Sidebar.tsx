@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import Link from "next/link";
+import Link, { type LinkProps } from "next/link";
 import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
 import {
@@ -21,10 +21,10 @@ import { useAuth } from "@/hooks/use-auth";
 import { useSidebar } from "./SidebarContext";
 
 interface NavItem {
-    href: string;
+    href: LinkProps["href"];
     label: string;
     icon: React.ElementType;
-    isHighlighted?: boolean;
+    isHighlighted?: boolean | undefined;
 }
 
 const mainNavItems: NavItem[] = [
@@ -270,7 +270,7 @@ export function Sidebar() {
 }
 
 interface NavLinkProps {
-    href: string;
+    href: LinkProps["href"];
     icon: React.ElementType;
     label: string;
     isActive: boolean;
@@ -280,8 +280,7 @@ interface NavLinkProps {
 function NavLink({ href, icon: Icon, label, isActive, isCollapsed }: NavLinkProps) {
     return (
         <Link
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            href={href as any}
+            href={href}
             className={`
                 group flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium
                 transition-all duration-200

@@ -2,7 +2,7 @@
 
 import React from "react";
 import { Briefcase, Code, Layers, Calendar, Folder, ChevronDown, Users } from "lucide-react";
-import { Persona, Team } from "@/services/api";
+import { Persona } from "@/services/api";
 
 interface ToolbarChipProps {
     icon: React.ReactNode;

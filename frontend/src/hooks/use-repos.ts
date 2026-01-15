@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from './use-auth';
+import { frontendEnv } from "@/config/env";
 
 interface Repository {
     id: string;
@@ -9,7 +10,7 @@ interface Repository {
     last_synced_at: string | null;
 }
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
+const API_BASE_URL = frontendEnv.apiBaseUrl;
 
 export function useRepos() {
     const { isAuthenticated } = useAuth();

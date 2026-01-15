@@ -1,6 +1,6 @@
 "use client";
 
-import Link from "next/link";
+import Link, { type LinkProps } from "next/link";
 import { useRouter } from "next/navigation";
 import { MessageSquare, LayoutDashboard, LogOut, ChevronDown, User, ArrowLeft, Settings, FileText } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
@@ -8,9 +8,9 @@ import { useAuth } from "@/hooks/use-auth";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
 
 interface HeaderProps {
-    variant?: "default" | "minimal" | "auth";
-    backHref?: string;
-    backLabel?: string;
+    variant?: "default" | "minimal" | "auth" | undefined;
+    backHref?: LinkProps["href"] | undefined;
+    backLabel?: string | undefined;
 }
 
 export function Header({ variant = "default", backHref = "/", backLabel = "Voltar" }: HeaderProps) {
@@ -57,8 +57,7 @@ export function Header({ variant = "default", backHref = "/", backLabel = "Volta
                     {/* Optional Back Button */}
                     {(variant === "minimal" || backHref !== "/") && (
                         <Link
-                            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                            href={(backHref || "/") as any}
+                            href={backHref ?? "/"}
                             className="flex items-center gap-2 text-secondary hover:text-primary"
                         >
                             <ArrowLeft className="h-4 w-4" />

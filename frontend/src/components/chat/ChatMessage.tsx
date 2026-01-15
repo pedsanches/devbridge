@@ -133,7 +133,7 @@ export const ChatMessage = memo(function ChatMessage({
 
                                     // Check if this is a code block (has language) or inline code
                                     if (match && match[1]) {
-                                        return <CodeBlock language={match[1]} children={codeString} />;
+                                        return <CodeBlock language={match[1]}>{codeString}</CodeBlock>;
                                     }
 
                                     // Inline code

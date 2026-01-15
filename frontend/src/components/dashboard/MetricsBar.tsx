@@ -2,8 +2,9 @@
 
 import { useEffect, useState } from "react";
 import { TrendingUp, Clock, AlertTriangle, RefreshCw, ArrowUpRight, ArrowDownRight, Minus } from "lucide-react";
+import { frontendEnv } from "@/config/env";
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
+const API_BASE_URL = frontendEnv.apiBaseUrl;
 
 interface MetricData {
     value: string | number;

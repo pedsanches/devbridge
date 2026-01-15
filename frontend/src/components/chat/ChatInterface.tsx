@@ -1,6 +1,6 @@
 "use client";
 
-import { MessageSquare, Sparkles, Search, Zap, ChevronDown } from "lucide-react";
+import { MessageSquare, Sparkles, Zap } from "lucide-react";
 import { useState, useRef, useEffect, useCallback, useOptimistic, startTransition } from "react";
 import { useRouter } from "next/navigation";
 import { ChatMessage } from "@/components/chat/ChatMessage";
@@ -96,7 +96,6 @@ export function ChatInterface({ conversationId, initialMessages }: ChatInterface
     }, [conversationId]);
 
     // Handle team selection - load team repos
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const handleTeamChange = (teamId: string | null, team: Team | null) => {
         setSelectedTeamId(teamId);
         setTeamName(team?.name);
@@ -246,8 +245,9 @@ export function ChatInterface({ conversationId, initialMessages }: ChatInterface
                 }
             },
             // onError
-            (err: any) => {
-                setError(err.message);
+            (err: unknown) => {
+                const message = err instanceof Error ? err.message : "Erro desconhecido";
+                setError(message);
                 // Ensure messages are committed (with error state)
                 setMessages(prev => {
                     const messageExists = prev.some(m => m.id === userMessage.id);
@@ -270,7 +270,7 @@ export function ChatInterface({ conversationId, initialMessages }: ChatInterface
                 setIsLoading(false);
             }
         );
-    }, [persona, currentConversationId, conversationId, selectedRepos, router, days]);
+    }, [addOptimisticMessage, persona, currentConversationId, conversationId, selectedRepos, router, days]);
 
     return (
         <div className="flex h-full flex-col bg-[var(--background)]">

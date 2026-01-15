@@ -2,7 +2,9 @@
  * API Client for DevBridge Backend.
  */
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8001/api/v1";
+import { frontendEnv } from "@/config/env";
+
+const API_BASE_URL = frontendEnv.apiBaseUrl;
 
 async function fetchAPI<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
     const url = `${API_BASE_URL}${endpoint}`;

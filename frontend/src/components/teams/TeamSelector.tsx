@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useRef, useSyncExternalStore } from "react";
 import { Users, Check, ChevronsUpDown, Settings } from "lucide-react";
 import { getTeams, Team } from "@/services/api";
 import { Button } from "@/components/ui/button";
@@ -30,6 +30,66 @@ interface TeamSelectorProps {
     allLabel?: string; // Custom label for "All" option
 }
 
+type TeamStoreStatus = "idle" | "loading" | "loaded" | "error";
+
+interface TeamStoreState {
+    status: TeamStoreStatus;
+    teams: Team[];
+}
+
+const teamStore = {
+    state: { status: "idle", teams: [] as Team[] },
+    listeners: new Set<() => void>(),
+};
+
+const getTeamStoreSnapshot = (): TeamStoreState => teamStore.state;
+
+const subscribeTeamStore = (listener: () => void) => {
+    teamStore.listeners.add(listener);
+    return () => teamStore.listeners.delete(listener);
+};
+
+const notifyTeamStore = () => {
+    teamStore.listeners.forEach((listener) => listener());
+};
+
+const setTeamStoreState = (state: TeamStoreState) => {
+    teamStore.state = state;
+    notifyTeamStore();
+};
+
+const ensureTeamsLoaded = async () => {
+    if (teamStore.state.status !== "idle") {
+        return;
+    }
+
+    setTeamStoreState({ ...teamStore.state, status: "loading" });
+
+    try {
+        const response = await getTeams(1, 100);
+        setTeamStoreState({ status: "loaded", teams: response.items });
+    } catch (error) {
+        console.error("Failed to fetch teams:", error);
+        setTeamStoreState({ status: "error", teams: [] });
+    }
+};
+
+function useTeamsStore(enabled: boolean): TeamStoreState {
+    const snapshot = useSyncExternalStore(
+        subscribeTeamStore,
+        getTeamStoreSnapshot,
+        getTeamStoreSnapshot
+    );
+
+    useEffect(() => {
+        if (enabled && snapshot.status === "idle") {
+            void ensureTeamsLoaded();
+        }
+    }, [enabled, snapshot.status]);
+
+    return snapshot;
+}
+
 export function TeamSelector({
     selectedTeamId,
     onTeamChange,
@@ -52,43 +112,28 @@ export function TeamSelector({
     // Let's rely on TeamSelectorContent? No, because trigger is outside content.
     // So we keep the fetch logic here (or shared hook) to populate the trigger label.
 
-    const [teams, setTeams] = useState<Team[]>([]);
-    const [isLoading, setIsLoading] = useState(true);
+    const teamSnapshot = useTeamsStore(true);
+    const teams = teamSnapshot.teams;
+    const isLoading = teamSnapshot.status === "loading";
 
     // Track if we've attempted to set the default team
     const hasSetDefault = useRef(false);
 
-    const fetchTeams = useCallback(async () => {
-        try {
-            setIsLoading(true);
-            const response = await getTeams(1, 100);
-            setTeams(response.items);
-
-            // Auto-select logic:
-            // If no team is selected AND we haven't tried setting default yet
-            if (!selectedTeamId && !hasSetDefault.current && response.items.length > 0) {
-                const defaultTeam = response.items.find(t => t.is_default) ?? response.items[0];
-
-                // If we found a default team, select it (even if allowAll is true)
-                // This forces the "Default Team" to be the initial view
-                if (defaultTeam && defaultTeam.is_default) {
-                    onTeamChange(defaultTeam.id, defaultTeam);
-                }
-
-                hasSetDefault.current = true;
-            }
-        } catch (err) {
-            console.error("Failed to fetch teams:", err);
-        } finally {
-            setIsLoading(false);
-        }
-    }, [allowAll, selectedTeamId, onTeamChange]);
-
     useEffect(() => {
-        fetchTeams();
-    }, [fetchTeams]);
+        if (!selectedTeamId && !hasSetDefault.current && teams.length > 0) {
+            const defaultTeam = teams.find((team) => team.is_default) ?? teams[0] ?? null;
 
-    const selectedTeam = teams.find(t => t.id === selectedTeamId);
+            // If we found a default team, select it (even if allowAll is true)
+            // This forces the "Default Team" to be the initial view
+            if (defaultTeam && defaultTeam.is_default) {
+                onTeamChange(defaultTeam.id, defaultTeam);
+            }
+
+            hasSetDefault.current = true;
+        }
+    }, [onTeamChange, selectedTeamId, teams]);
+
+    const selectedTeam = teams.find((team) => team.id === selectedTeamId);
 
     return (
         <Popover open={open} onOpenChange={setOpen}>
@@ -147,20 +192,8 @@ export function TeamSelectorContent({
     allLabel = "Visão Global",
     teams: parentTeams,
 }: TeamSelectorContentProps) {
-    const [teams, setTeams] = useState<Team[]>(parentTeams || []);
-
-    // Only fetch if not provided
-    useEffect(() => {
-        if (!parentTeams) {
-            const load = async () => {
-                const response = await getTeams(1, 100);
-                setTeams(response.items);
-            };
-            load();
-        } else {
-            setTeams(parentTeams);
-        }
-    }, [parentTeams]);
+    const teamSnapshot = useTeamsStore(!parentTeams);
+    const teams = parentTeams ?? teamSnapshot.teams;
 
     return (
         <Command>
