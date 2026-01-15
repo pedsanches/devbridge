@@ -8,7 +8,7 @@ All settings are validated at startup.
 from functools import lru_cache
 from typing import Literal
 
-from pydantic import Field
+from pydantic import Field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -97,6 +97,12 @@ class Settings(BaseSettings):
     MAGIC_LINK_EXPIRE_MINUTES: int = 15
 
     # ============================================================
+    # Rate Limiting
+    # ============================================================
+    RATE_LIMIT_PER_MINUTE: int = 100
+    WEBHOOK_RATE_LIMIT_PER_HOUR: int = 100
+
+    # ============================================================
     # Email (Resend)
     # ============================================================
     RESEND_API_KEY: str = ""
@@ -116,6 +122,31 @@ class Settings(BaseSettings):
     ENABLE_SLACK_NOTIFICATIONS: bool = True
     ENABLE_DAILY_SUMMARY: bool = True
     ENABLE_RAG_CHAT: bool = True
+
+    @model_validator(mode="after")
+    def validate_required_settings(self) -> "Settings":
+        """Validate required settings on startup."""
+        if not self.API_PREFIX.startswith("/"):
+            raise ValueError("API_PREFIX must start with '/'")
+
+        if not self.CORS_ORIGINS:
+            raise ValueError("CORS_ORIGINS cannot be empty")
+
+        if not self.PRESIDIO_ANALYZER_URL or not self.PRESIDIO_ANONYMIZER_URL:
+            raise ValueError("Presidio endpoints must be configured")
+
+        if self.ENVIRONMENT == "production":
+            required = [
+                "SECRET_KEY",
+                "JWT_SECRET_KEY",
+                "OPENAI_API_KEY",
+                "GITHUB_WEBHOOK_SECRET",
+            ]
+            missing = [name for name in required if not getattr(self, name)]
+            if missing:
+                raise ValueError("Missing required settings for production: " + ", ".join(missing))
+
+        return self
 
 
 @lru_cache

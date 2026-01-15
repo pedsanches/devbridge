@@ -10,6 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.activity import Activity, ActivityType
 from app.models.developer_profile import DeveloperProfile
+from app.models.organization import Organization, PlanType
 from app.services.metrics_service import (
     calculate_developer_metrics,
     calculate_dora_metrics,
@@ -387,12 +388,17 @@ class TestGetDeveloperLeaderboard:
         )
         db_session.add(profile1)
 
-        # Create profile for different org (use valid UUID format)
-        import uuid
+        # Create profile for different org
+        other_org = Organization(
+            name="Other Org",
+            slug=f"other-org-{test_org.id}",
+            plan=PlanType.FREE,
+        )
+        db_session.add(other_org)
+        await db_session.flush()
 
-        different_org_id = str(uuid.uuid4())
         profile2 = DeveloperProfile(
-            organization_id=different_org_id,
+            organization_id=str(other_org.id),
             github_username="other-dev",
             total_commits=100,
         )
