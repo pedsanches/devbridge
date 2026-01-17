@@ -29,14 +29,24 @@ class ConversationService:
         user_id: UUID,
         organization_id: UUID,
         title: str | None = None,
+        # Context fields
+        team_id: UUID | None = None,
+        persona: str | None = None,
+        days: int | None = None,
+        repositories: list[str] | None = None,
     ) -> Conversation:
-        """Create a new conversation."""
+        """Create a new conversation with optional context settings."""
         conversation = Conversation(
             user_id=user_id,
             organization_id=organization_id,
             title=title,
             status=ConversationStatus.ACTIVE,
             message_count=0,
+            # Context fields
+            team_id=team_id,
+            persona=persona,
+            days=days,
+            repositories=repositories,
         )
         self.db.add(conversation)
         await self.db.commit()
@@ -135,6 +145,15 @@ class ConversationService:
             conversation.title = update_data.title
         if update_data.status is not None:
             conversation.status = update_data.status
+        # Context fields
+        if update_data.team_id is not None:
+            conversation.team_id = update_data.team_id
+        if update_data.persona is not None:
+            conversation.persona = update_data.persona
+        if update_data.days is not None:
+            conversation.days = update_data.days
+        if update_data.repositories is not None:
+            conversation.repositories = update_data.repositories
 
         conversation.updated_at = datetime.utcnow()
         await self.db.commit()

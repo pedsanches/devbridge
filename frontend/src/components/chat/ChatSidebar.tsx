@@ -6,6 +6,7 @@ import { useParams, usePathname, useRouter } from "next/navigation";
 import { Plus, MessageSquare, ChevronLeft, ChevronRight, Trash, Calendar } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getConversations, deleteConversation, ConversationSummary } from "@/services/api";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 export function ChatSidebar() {
     const [conversations, setConversations] = useState<ConversationSummary[]>([]);
@@ -46,6 +47,19 @@ export function ChatSidebar() {
         } catch (error) {
             console.error("Failed to delete conversation", error);
         }
+    };
+
+    // Helper function for relative timestamps
+    const getRelativeTime = (dateString: string): string => {
+        const date = new Date(dateString);
+        const now = new Date();
+        const diffMs = now.getTime() - date.getTime();
+        const diffMins = Math.floor(diffMs / 60000);
+        if (diffMins < 1) return "agora";
+        if (diffMins < 60) return `há ${diffMins}min`;
+        const diffHours = Math.floor(diffMins / 60);
+        if (diffHours < 24) return `há ${diffHours}h`;
+        return "";
     };
 
     const groupConversationsByDate = (convs: ConversationSummary[]) => {
@@ -94,7 +108,7 @@ export function ChatSidebar() {
                         className="flex flex-1 items-center gap-2 rounded-lg border border-neutral-200 bg-white px-3 py-2 text-sm font-medium shadow-sm transition-colors hover:bg-neutral-50 hover:text-primary dark:border-neutral-700 dark:bg-neutral-800 dark:hover:bg-neutral-700"
                     >
                         <Plus className="h-4 w-4" />
-                        Nova conversa
+                        Novo Chat
                     </Link>
                 )}
                 <button
@@ -110,31 +124,40 @@ export function ChatSidebar() {
 
             {isCollapsed ? (
                 // Collapsed View
-                <div className="flex flex-1 flex-col items-center gap-4 overflow-y-auto py-2">
-                    <Link
-                        href="/chat"
-                        className={cn(
-                            "flex h-10 w-10 items-center justify-center rounded-lg hover:bg-neutral-200 dark:hover:bg-neutral-800",
-                            pathname === "/chat" && !activeId && "bg-neutral-200 text-primary dark:bg-neutral-800"
-                        )}
-                        title="Nova conversa"
-                    >
-                        <Plus className="h-5 w-5" />
-                    </Link>
-                    {conversations.map((c) => (
-                        <Link
-                            key={c.id}
-                            href={`/chat/${c.id}`}
-                            className={cn(
-                                "flex h-10 w-10 items-center justify-center rounded-lg hover:bg-neutral-200 dark:hover:bg-neutral-800",
-                                activeId === c.id && "bg-neutral-200 text-primary dark:bg-neutral-800"
-                            )}
-                            title={c.title}
-                        >
-                            <MessageSquare className="h-4 w-4" />
-                        </Link>
-                    ))}
-                </div>
+                <TooltipProvider delayDuration={100}>
+                    <div className="flex flex-1 flex-col items-center gap-4 overflow-y-auto py-2">
+                        <Tooltip>
+                            <TooltipTrigger asChild>
+                                <Link
+                                    href="/chat"
+                                    className={cn(
+                                        "flex h-10 w-10 items-center justify-center rounded-lg hover:bg-neutral-200 dark:hover:bg-neutral-800",
+                                        pathname === "/chat" && !activeId && "bg-neutral-200 text-primary dark:bg-neutral-800"
+                                    )}
+                                >
+                                    <Plus className="h-5 w-5" />
+                                </Link>
+                            </TooltipTrigger>
+                            <TooltipContent side="right">Novo Chat</TooltipContent>
+                        </Tooltip>
+                        {conversations.map((c) => (
+                            <Tooltip key={c.id}>
+                                <TooltipTrigger asChild>
+                                    <Link
+                                        href={`/chat/${c.id}`}
+                                        className={cn(
+                                            "flex h-10 w-10 items-center justify-center rounded-lg hover:bg-neutral-200 dark:hover:bg-neutral-800",
+                                            activeId === c.id && "bg-primary/10 text-primary dark:bg-primary/15"
+                                        )}
+                                    >
+                                        <MessageSquare className="h-4 w-4" />
+                                    </Link>
+                                </TooltipTrigger>
+                                <TooltipContent side="right">{c.title || "Nova conversa"}</TooltipContent>
+                            </Tooltip>
+                        ))}
+                    </div>
+                </TooltipProvider>
             ) : (
                 // Expanded View
                 <div className="flex-1 overflow-y-auto px-3 py-2">
@@ -152,7 +175,7 @@ export function ChatSidebar() {
                                                 className={cn(
                                                     "flex items-start gap-3 rounded-lg px-3 py-2.5 text-sm transition-colors hover:bg-neutral-200 dark:hover:bg-neutral-800",
                                                     activeId === c.id
-                                                        ? "bg-neutral-200 dark:bg-neutral-800"
+                                                        ? "bg-primary/10 border-l-2 border-primary dark:bg-primary/15"
                                                         : "text-neutral-600 dark:text-neutral-300"
                                                 )}
                                             >
@@ -167,11 +190,18 @@ export function ChatSidebar() {
                                                     )}>
                                                         {c.title || "Nova conversa"}
                                                     </span>
-                                                    {c.preview && (
-                                                        <span className="block truncate text-xs text-neutral-400 dark:text-neutral-500 mt-0.5">
-                                                            {c.preview}
-                                                        </span>
-                                                    )}
+                                                    <div className="flex items-center gap-2 mt-0.5">
+                                                        {c.preview && (
+                                                            <span className="truncate text-xs text-neutral-400 dark:text-neutral-500">
+                                                                {c.preview}
+                                                            </span>
+                                                        )}
+                                                        {getRelativeTime(c.updated_at) && (
+                                                            <span className="shrink-0 text-xs text-neutral-400 dark:text-neutral-500">
+                                                                {getRelativeTime(c.updated_at)}
+                                                            </span>
+                                                        )}
+                                                    </div>
                                                 </div>
                                             </Link>
                                             <button

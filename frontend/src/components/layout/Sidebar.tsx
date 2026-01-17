@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import Link, { type LinkProps } from "next/link";
+import Link from "next/link";
 import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
 import {
@@ -21,7 +21,12 @@ import { useAuth } from "@/hooks/use-auth";
 import { useSidebar } from "./SidebarContext";
 
 interface NavItem {
-    href: LinkProps["href"];
+    href:
+    | "/dashboard"
+    | "/teams"
+    | "/metrics"
+    | "/reports"
+    | "/settings/data-sources";
     label: string;
     icon: React.ElementType;
     isHighlighted?: boolean | undefined;
@@ -270,7 +275,13 @@ export function Sidebar() {
 }
 
 interface NavLinkProps {
-    href: LinkProps["href"];
+    href:
+    | "/chat"
+    | "/dashboard"
+    | "/teams"
+    | "/metrics"
+    | "/reports"
+    | "/settings/data-sources";
     icon: React.ElementType;
     label: string;
     isActive: boolean;

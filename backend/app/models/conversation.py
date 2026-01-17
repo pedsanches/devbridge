@@ -57,9 +57,18 @@ class Conversation(Base, UUIDMixin, TimestampMixin):
     )
     message_count: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
 
+    # Context settings (persisted from conversation)
+    team_id: Mapped[UUID | None] = mapped_column(
+        ForeignKey("teams.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    persona: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    days: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    repositories: Mapped[list[str] | None] = mapped_column(JSONB, nullable=True)
+
     # Relationships
     organization = relationship("Organization", back_populates="conversations")
     user = relationship("User", back_populates="conversations")
+    team = relationship("Team", foreign_keys=[team_id])
     messages = relationship(
         "ChatMessage",
         back_populates="conversation",

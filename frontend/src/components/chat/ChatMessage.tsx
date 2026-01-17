@@ -1,13 +1,17 @@
 "use client";
 
 import React, { memo, useState } from "react";
-import { Bot, User, Copy, Check } from "lucide-react";
-import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
-import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
-import { oneDark } from "react-syntax-highlighter/dist/esm/styles/prism";
+import { Bot, User } from "lucide-react";
+import { Streamdown } from "streamdown";
+import type { BundledTheme } from "shiki";
 import { SourcesIndicator } from "./SourcesIndicator";
 import { MessageActions } from "./MessageActions";
+
+/**
+ * Shiki themes for syntax highlighting in code blocks.
+ * First theme is for light mode, second for dark mode.
+ */
+const SHIKI_THEME = ["github-light", "github-dark"] as [BundledTheme, BundledTheme];
 
 interface Source {
     title: string;
@@ -18,66 +22,40 @@ interface Source {
 }
 
 interface ChatMessageProps {
+    /** Unique identifier for the message (used for Streamdown memoization) */
+    id: string;
     role: "user" | "assistant";
     content: string;
     timestamp?: string | undefined;
     sources?: Source[] | undefined;
     activitiesCount?: number | undefined;
     confidenceScore?: number | undefined;
+    /** Whether this message is currently being streamed */
     isStreaming?: boolean;
 }
 
-const REMARK_PLUGINS = [remarkGfm];
+function stabilizeMarkdownForStreaming(markdown: string): string {
+    // Stream-friendly heuristics: close common "open" structures temporarily for rendering.
+    // This never touches what we persist; it's only used while streaming.
 
-// Code block component with syntax highlighting and copy button
-function CodeBlock({ language, children }: { language: string | null; children: string }) {
-    const [copied, setCopied] = useState(false);
+    // Fenced code blocks
+    const fenceCount = (markdown.match(/```/g) || []).length;
+    if (fenceCount % 2 === 1) {
+        return `${markdown}\n\n\`\`\`\n`;
+    }
 
-    const handleCopy = async () => {
-        await navigator.clipboard.writeText(children);
-        setCopied(true);
-        setTimeout(() => setCopied(false), 2000);
-    };
+    // Inline code (best-effort): if we have an odd number of backticks, close it.
+    // Note: this is a heuristic; it may be fooled by edge-cases, but helps most common cases.
+    const inlineTickCount = (markdown.match(/`/g) || []).length;
+    if (inlineTickCount % 2 === 1) {
+        return `${markdown}\``;
+    }
 
-    return (
-        <div className="group relative my-2">
-            {/* Copy button */}
-            <button
-                onClick={handleCopy}
-                className="absolute right-2 top-2 flex h-7 w-7 items-center justify-center rounded-md bg-neutral-700 text-neutral-300 opacity-0 transition-opacity hover:bg-neutral-600 hover:text-white group-hover:opacity-100"
-                aria-label="Copiar código"
-            >
-                {copied ? (
-                    <Check className="h-3.5 w-3.5 text-green-400" />
-                ) : (
-                    <Copy className="h-3.5 w-3.5" />
-                )}
-            </button>
-
-            {/* Language badge */}
-            {language && (
-                <span className="absolute left-3 top-2 text-[10px] font-medium uppercase text-neutral-500">
-                    {language}
-                </span>
-            )}
-
-            <SyntaxHighlighter
-                style={oneDark}
-                language={language || "text"}
-                PreTag="div"
-                className="!mt-0 !rounded-lg !text-sm"
-                customStyle={{
-                    margin: 0,
-                    paddingTop: language ? "2rem" : "1rem",
-                }}
-            >
-                {children}
-            </SyntaxHighlighter>
-        </div>
-    );
+    return markdown;
 }
 
 export const ChatMessage = memo(function ChatMessage({
+    id,
     role,
     content,
     timestamp,
@@ -88,6 +66,10 @@ export const ChatMessage = memo(function ChatMessage({
 }: ChatMessageProps) {
     const isUser = role === "user";
     const [showActions, setShowActions] = useState(false);
+
+    // Streamdown render mode: streaming for active streams, static for completed content
+    // No need for useMemo - this is a simple conditional
+    const renderMode = isStreaming ? "streaming" : "static";
 
     // Don't show actions while streaming or for user messages
     const canShowActions = !isUser && !isStreaming && content.length > 0;
@@ -106,50 +88,25 @@ export const ChatMessage = memo(function ChatMessage({
             )}
 
             <div
-                className={`rounded-2xl px-4 py-3 ${isUser
-                    ? "max-w-[80%] bg-primary text-white"
-                    : "max-w-[680px] bg-neutral-100 text-neutral-900 dark:bg-neutral-800 dark:text-white"
+                className={`rounded-2xl px-4 py-3 transition-opacity duration-150 ${isUser
+                    ? "max-w-[80%] bg-primary text-white shadow-sm"
+                    : "max-w-[680px] bg-[var(--card)] text-neutral-900 shadow-sm ring-1 ring-black/5 dark:bg-neutral-900/40 dark:text-white dark:ring-white/10"
                     }`}
             >
                 {isUser ? (
                     <p className="whitespace-pre-wrap text-sm leading-relaxed">{content}</p>
                 ) : (
-                    <div className="prose prose-sm dark:prose-invert max-w-none break-words leading-relaxed">
-                        <ReactMarkdown
-                            remarkPlugins={REMARK_PLUGINS}
-                            components={{
-                                a: ({ ...props }) => (
-                                    <a
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className="text-primary hover:underline"
-                                        {...props}
-                                    />
-                                ),
-                                pre: ({ children }) => <>{children}</>,
-                                code: ({ className, children, ...props }) => {
-                                    const match = /language-(\w+)/.exec(className || "");
-                                    const codeString = String(children).replace(/\n$/, "");
-
-                                    // Check if this is a code block (has language) or inline code
-                                    if (match && match[1]) {
-                                        return <CodeBlock language={match[1]}>{codeString}</CodeBlock>;
-                                    }
-
-                                    // Inline code
-                                    return (
-                                        <code
-                                            className="rounded bg-neutral-200 px-1 py-0.5 text-sm dark:bg-neutral-900"
-                                            {...props}
-                                        >
-                                            {children}
-                                        </code>
-                                    );
-                                },
-                            }}
+                    <div className="prose prose-sm dark:prose-invert max-w-none break-words leading-relaxed streamdown-content">
+                        <Streamdown
+                            key={id}
+                            mode={renderMode}
+                            isAnimating={isStreaming}
+                            parseIncompleteMarkdown={true}
+                            {...(isStreaming ? { caret: "block" as const } : {})}
+                            shikiTheme={SHIKI_THEME}
                         >
-                            {content}
-                        </ReactMarkdown>
+                            {isStreaming ? stabilizeMarkdownForStreaming(content) : content}
+                        </Streamdown>
                     </div>
                 )}
 

@@ -1,18 +1,22 @@
 import type { NextConfig } from "next";
 import bundleAnalyzer from "@next/bundle-analyzer";
+import path from "path";
 
 const withBundleAnalyzer = bundleAnalyzer({
     enabled: process.env.ANALYZE === "true",
 });
 
 const nextConfig: NextConfig = {
+    turbopack: {
+        root: path.resolve(__dirname),
+    },
     // Enable React strict mode for better development experience
     reactStrictMode: true,
 
     // Experimental features
     experimental: {
-        // Enable typed routes
-        typedRoutes: true,
+        // Typed routes disabled - causing type errors across codebase
+        // typedRoutes: true,
         // Enable filesystem caching for faster builds (Next.js 16)
         turbopackFileSystemCacheForDev: true,
         turbopackFileSystemCacheForBuild: true,

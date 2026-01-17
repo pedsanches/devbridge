@@ -22,17 +22,68 @@ log_error() { echo -e "${RED}[ERROR]${NC} $1"; }
 # Default: start all
 MODE="${1:-all}"
 
+docker_compose() {
+    if command -v docker-compose >/dev/null 2>&1; then
+        docker-compose "$@"
+    else
+        docker compose "$@"
+    fi
+}
+
+wait_for_port() {
+    local host="$1"
+    local port="$2"
+    local name="$3"
+    local timeout_s="${4:-30}"
+
+    local start
+    start="$(date +%s)"
+
+    while true; do
+        if (echo >"/dev/tcp/${host}/${port}") >/dev/null 2>&1; then
+            log_success "${name} ready on ${host}:${port}"
+            return 0
+        fi
+
+        if (( $(date +%s) - start >= timeout_s )); then
+            log_error "Timeout waiting for ${name} on ${host}:${port}"
+            return 1
+        fi
+
+        sleep 0.2
+    done
+}
+
+is_port_in_use() {
+    local port="$1"
+    if command -v lsof >/dev/null 2>&1; then
+        lsof -nP -iTCP:"${port}" -sTCP:LISTEN >/dev/null 2>&1
+        return $?
+    fi
+
+    # Fallback: best-effort check
+    (echo >"/dev/tcp/127.0.0.1/${port}") >/dev/null 2>&1
+}
+
 # Check if Docker services are running
 check_docker() {
-    if ! (command -v docker-compose >/dev/null 2>&1 && docker-compose ps | grep -q "Up") && ! (docker compose ps | grep -q "Up"); then
-        log_info "Starting Docker services..."
-        if command -v docker-compose >/dev/null 2>&1; then
-            docker-compose --profile ai up -d
-        else
-            docker compose --profile ai up -d
-        fi
-        sleep 3
+    if ! command -v docker >/dev/null 2>&1; then
+        log_error "Docker not found. Please install Docker Desktop."
+        return 1
     fi
+
+    if ! docker info >/dev/null 2>&1; then
+        log_error "Docker daemon not running. Please start Docker Desktop."
+        return 1
+    fi
+
+    log_info "Starting Docker services..."
+    docker_compose --profile ai up -d
+
+    # Wait only for dev dependencies; avoids arbitrary sleep.
+    wait_for_port "127.0.0.1" 5432 "PostgreSQL" 60 || true
+    wait_for_port "127.0.0.1" 6379 "Redis" 60 || true
+
     log_success "Docker services running"
 }
 
@@ -59,7 +110,7 @@ start_frontend() {
     fi
 
     cd frontend
-    pnpm dev -p 3001
+    pnpm dev -p 3001 --webpack
 }
 
 # Start Celery worker
@@ -103,21 +154,38 @@ start_all_tmux() {
 start_all_bg() {
     log_info "Starting all services in background..."
 
+    if is_port_in_use 8001; then
+        log_error "Port 8001 already in use (backend)."
+        log_error "Stop existing process or change port in scripts/dev.sh."
+        return 1
+    fi
+
+    if is_port_in_use 3001; then
+        log_error "Port 3001 already in use (frontend)."
+        log_error "Stop existing process or change port in scripts/dev.sh."
+        return 1
+    fi
+
+    local BACKEND_PID=""
+    local FRONTEND_PID=""
+
     # Backend
     if [[ -d backend ]]; then
-        cd backend
-        poetry run uvicorn app.main:app --reload --host 0.0.0.0 --port 8001 &
+        (
+            cd backend
+            exec poetry run uvicorn app.main:app --reload --host 0.0.0.0 --port 8001
+        ) &
         BACKEND_PID=$!
-        cd ..
         log_success "Backend started (PID: $BACKEND_PID)"
     fi
 
     # Frontend
     if [[ -d frontend ]]; then
-        cd frontend
-        pnpm dev -p 3001 &
+        (
+            cd frontend
+            exec pnpm dev -p 3001 --webpack
+        ) &
         FRONTEND_PID=$!
-        cd ..
         log_success "Frontend started (PID: $FRONTEND_PID)"
     fi
 
@@ -129,8 +197,29 @@ start_all_bg() {
     echo ""
     echo "Press Ctrl+C to stop all services"
 
-    # Wait for interrupt
-    trap 'kill $BACKEND_PID $FRONTEND_PID 2>/dev/null' EXIT
+    # Wait for readiness (best-effort).
+    wait_for_port "127.0.0.1" 8001 "Backend" 60 || true
+    wait_for_port "127.0.0.1" 3001 "Frontend" 60 || true
+
+    cleanup() {
+        log_info "Stopping services..."
+
+        if [[ -n "${BACKEND_PID}" ]]; then
+            kill -TERM "${BACKEND_PID}" 2>/dev/null || true
+        fi
+        if [[ -n "${FRONTEND_PID}" ]]; then
+            kill -TERM "${FRONTEND_PID}" 2>/dev/null || true
+        fi
+
+        wait "${BACKEND_PID}" 2>/dev/null || true
+        wait "${FRONTEND_PID}" 2>/dev/null || true
+
+        log_success "All services stopped"
+    }
+
+    trap cleanup INT TERM EXIT
+
+    # Wait for children
     wait
 }
 
@@ -142,7 +231,7 @@ main() {
     echo "╚══════════════════════════════════════════════════════════╝"
     echo ""
 
-    # Check Docker if docker-compose exists
+    # Start dependencies via docker-compose.yml (if present)
     if [[ -f docker-compose.yml ]]; then
         check_docker
     fi

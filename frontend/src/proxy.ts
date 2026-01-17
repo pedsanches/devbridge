@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
-export function middleware(request: NextRequest) {
+export function proxy(request: NextRequest) {
     // Get the pathname of the request
     const path = request.nextUrl.pathname;
 
@@ -33,7 +33,7 @@ export function middleware(request: NextRequest) {
     return NextResponse.next();
 }
 
-// Configure paths that match the middleware
+// Configure paths that match the proxy
 export const config = {
     matcher: [
         "/dashboard/:path*",

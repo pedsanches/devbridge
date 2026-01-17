@@ -38,7 +38,7 @@ interface TeamStoreState {
 }
 
 const teamStore = {
-    state: { status: "idle", teams: [] as Team[] },
+    state: { status: "idle" as TeamStoreStatus, teams: [] as Team[] },
     listeners: new Set<() => void>(),
 };
 

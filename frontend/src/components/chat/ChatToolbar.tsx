@@ -3,6 +3,7 @@
 import React from "react";
 import { Briefcase, Code, Layers, Calendar, Folder, ChevronDown, Users } from "lucide-react";
 import { Persona } from "@/services/api";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 interface ToolbarChipProps {
     icon: React.ReactNode;
@@ -17,7 +18,7 @@ function ToolbarChip({ icon, label, count, onClick, active }: ToolbarChipProps) 
         <button
             onClick={onClick}
             className={`
-                inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium
+                inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-medium
                 transition-all border
                 ${active
                     ? "bg-primary/10 text-primary border-primary/30"
@@ -115,10 +116,17 @@ export function ChatToolbar({
             />
 
             {/* RAG Indicator - pushed to the right */}
-            <div className="ml-auto flex items-center gap-1.5 text-xs text-[var(--muted-foreground)] shrink-0">
-                <div className="h-1.5 w-1.5 rounded-full bg-green-500 animate-pulse" />
-                <span>RAG ativo</span>
-            </div>
+            <TooltipProvider delayDuration={100}>
+                <Tooltip>
+                    <TooltipTrigger asChild>
+                        <div className="ml-auto flex items-center gap-1.5 text-sm text-[var(--muted-foreground)] shrink-0 cursor-help">
+                            <div className="h-2 w-2 rounded-full bg-green-500 animate-pulse" />
+                            <span>RAG ativo</span>
+                        </div>
+                    </TooltipTrigger>
+                    <TooltipContent>Busca aumentada por contexto ativa</TooltipContent>
+                </Tooltip>
+            </TooltipProvider>
         </div>
     );
 }

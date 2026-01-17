@@ -66,6 +66,7 @@ export interface ChatRequest {
     persona?: Persona | undefined;
     conversationId?: string | undefined;
     days?: number | undefined;
+    teamId?: string | undefined;
 }
 
 export interface ChatMetadata {
@@ -92,13 +93,18 @@ export async function sendChatMessage(request: ChatRequest): Promise<ChatRespons
 /**
  * Send a chat message with streaming response (SSE).
  * @param request - Chat request with message and optional persona
- * @param onChunk - Callback for each text chunk received
- * @param onDone - Callback when streaming is complete
+ * @param onEvent - Callback for each streaming event received
+ * @param onDone - Callback when streaming is complete (after type=done)
  * @param onError - Callback on error
  */
+export type ChatStreamEvent =
+    | { type: "metadata"; conversation_id?: string; sources?: unknown; activities_count?: number; confidence_score?: number }
+    | { type: "delta"; text: string }
+    | { type: "done" };
+
 export async function sendChatMessageStream(
     request: ChatRequest,
-    onChunk: (chunk: string) => void,
+    onEvent: (event: ChatStreamEvent) => void,
     onDone: () => void,
     onError: (error: Error) => void
 ): Promise<void> {
@@ -123,24 +129,53 @@ export async function sendChatMessageStream(
         }
 
         const decoder = new TextDecoder();
+        let buffer = "";
+
+        const processLine = (rawLine: string) => {
+            const line = rawLine.replace(/\r$/, "");
+            if (!line.startsWith("data: ")) return;
+
+            const data = line.slice(6);
+            if (!data) return;
+
+            try {
+                const parsed = JSON.parse(data) as ChatStreamEvent;
+                onEvent(parsed);
+                if (parsed.type === "done") {
+                    onDone();
+                    return "done" as const;
+                }
+                return undefined;
+            } catch {
+                // Backward compatibility / defensive fallback: treat as raw text.
+                if (data === "[DONE]") {
+                    onDone();
+                    return "done" as const;
+                }
+                onEvent({ type: "delta", text: data });
+                return undefined;
+            }
+        };
 
         while (true) {
             const { done, value } = await reader.read();
             if (done) break;
 
-            const text = decoder.decode(value, { stream: true });
-            const lines = text.split("\n");
+            buffer += decoder.decode(value, { stream: true });
+
+            // Split by \n, keep last partial line in buffer.
+            const lines = buffer.split("\n");
+            buffer = lines.pop() ?? "";
 
             for (const line of lines) {
-                if (line.startsWith("data: ")) {
-                    const data = line.slice(6);
-                    if (data === "[DONE]") {
-                        onDone();
-                        return;
-                    }
-                    onChunk(data);
-                }
+                const status = processLine(line);
+                if (status === "done") return;
             }
+        }
+
+        // Process any remaining buffered line (if it is complete enough).
+        if (buffer.length > 0) {
+            processLine(buffer);
         }
 
         onDone();
@@ -279,6 +314,11 @@ export interface ChatMessage {
 
 export interface ConversationDetail extends ConversationSummary {
     messages: ChatMessage[];
+    // Context fields
+    team_id?: string | null;
+    persona?: string | null;
+    days?: number | null;
+    repositories?: string[] | null;
 }
 
 export async function getConversation(id: string): Promise<ConversationDetail> {

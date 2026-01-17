@@ -100,6 +100,13 @@ async def chat_stream(
     conversation_service = ConversationService(db)
 
     # Get or create conversation
+    # Normalize repository to list for storage
+    repositories = None
+    if request.repository:
+        repositories = (
+            [request.repository] if isinstance(request.repository, str) else request.repository
+        )
+
     if request.conversation_id:
         conversation = await conversation_service.get_conversation(
             request.conversation_id, UUID(org_id)
@@ -109,12 +116,20 @@ async def chat_stream(
             conversation = await conversation_service.create_conversation(
                 user_id=_current_user.id,
                 organization_id=UUID(org_id),
+                team_id=request.team_id,
+                persona=request.persona.value if request.persona else None,
+                days=request.days,
+                repositories=repositories,
             )
     else:
-        # Create new conversation
+        # Create new conversation with context
         conversation = await conversation_service.create_conversation(
             user_id=_current_user.id,
             organization_id=UUID(org_id),
+            team_id=request.team_id,
+            persona=request.persona.value if request.persona else None,
+            days=request.days,
+            repositories=repositories,
         )
 
     # Save user message
@@ -167,6 +182,9 @@ async def chat_stream(
     confidence_score = chat_service._calculate_confidence(search_results, len(activities))
 
     async def generate():
+        def sse_event(payload: dict[str, object]) -> str:
+            return f"data: {json.dumps(payload, ensure_ascii=False)}\n\n"
+
         # Send metadata first with conversation_id and sources
         metadata = {
             "type": "metadata",
@@ -175,7 +193,7 @@ async def chat_stream(
             "sources": sources,
             "confidence_score": confidence_score,
         }
-        yield f"data: {json.dumps(metadata)}\n\n"
+        yield sse_event(metadata)
 
         # Accumulate response for saving
         full_response = ""
@@ -185,9 +203,9 @@ async def chat_stream(
             activities, request.message, request.persona
         ):
             full_response += chunk
-            yield f"data: {chunk}\n\n"
+            yield sse_event({"type": "delta", "text": chunk})
 
-        # Save assistant message BEFORE sending [DONE]
+        # Save assistant message BEFORE sending done
         # This ensures the message is persisted before the client closes the connection
         await conversation_service.add_message(
             conversation_id=conversation.id,
@@ -207,7 +225,7 @@ async def chat_stream(
                 conversation.id, UUID(org_id), ConversationUpdate(title=title)
             )
 
-        yield "data: [DONE]\n\n"
+        yield sse_event({"type": "done"})
 
     return StreamingResponse(
         generate(),
