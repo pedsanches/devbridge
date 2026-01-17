@@ -97,7 +97,12 @@ export function RepositorySelectorContent({ selectedRepos, onChange }: Omit<Repo
                 {isLoading ? (
                     <div className="px-2 py-4 text-center text-xs text-neutral-400">Carregando...</div>
                 ) : repos.length === 0 ? (
-                    <div className="px-2 py-4 text-center text-xs text-neutral-400">Nenhum repositório conectado. Conecte o GitHub nas configurações.</div>
+                    <div className="px-2 py-4 text-center">
+                        <p className="text-xs text-neutral-400 mb-2">Nenhum repositório conectado. Conecte o GitHub nas configurações.</p>
+                        <a href="/settings" className="text-xs text-primary hover:underline">
+                            Ir para Configurações →
+                        </a>
+                    </div>
                 ) : (
                     repos.map(repo => (
                         <button

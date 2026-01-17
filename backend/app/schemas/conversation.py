@@ -53,6 +53,11 @@ class ConversationUpdate(BaseModel):
 
     title: str | None = None
     status: ConversationStatus | None = None
+    # Context fields can also be updated
+    team_id: UUID | None = None
+    persona: str | None = None
+    days: int | None = None
+    repositories: list[str] | None = None
 
 
 class ConversationSummary(BaseModel):
@@ -74,6 +79,11 @@ class ConversationDetail(ConversationSummary):
 
     summary: str | None = None
     messages: list[MessageResponse] = Field(default_factory=list)
+    # Context fields
+    team_id: UUID | None = None
+    persona: str | None = None
+    days: int | None = None
+    repositories: list[str] | None = None
 
 
 class ConversationsListResponse(BaseModel):

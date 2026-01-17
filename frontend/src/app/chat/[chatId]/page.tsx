@@ -2,8 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
-import { ChatInterface } from "@/components/chat/ChatInterface";
-import { getConversation, ChatMessage } from "@/services/api";
+import { ChatInterface, ConversationContext } from "@/components/chat/ChatInterface";
+import { getConversation, ChatMessage, Persona } from "@/services/api";
 import { Loader2 } from "lucide-react";
 
 export default function ChatIdPage() {
@@ -16,6 +16,7 @@ export default function ChatIdPage() {
         timestamp: string;
         metadata?: Record<string, unknown> | undefined;
     }[]>([]);
+    const [savedContext, setSavedContext] = useState<ConversationContext | undefined>();
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
@@ -44,6 +45,14 @@ export default function ChatIdPage() {
                 });
 
                 setMessages(mappedMessages);
+
+                // Extract saved context from conversation
+                setSavedContext({
+                    teamId: data.team_id ?? null,
+                    persona: (data.persona as Persona | null) ?? null,
+                    days: data.days ?? null,
+                    repositories: data.repositories ?? null,
+                });
             } catch (err) {
                 console.error("Failed to load conversation", err);
                 setError("Não foi possível carregar a conversa.");
@@ -76,5 +85,11 @@ export default function ChatIdPage() {
         );
     }
 
-    return <ChatInterface conversationId={chatId} initialMessages={messages} />;
+    return (
+        <ChatInterface
+            conversationId={chatId}
+            initialMessages={messages}
+            {...(savedContext && { initialContext: savedContext })}
+        />
+    );
 }

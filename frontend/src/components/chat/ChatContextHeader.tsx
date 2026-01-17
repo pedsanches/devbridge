@@ -2,7 +2,7 @@ import React from "react";
 import { Users, Calendar } from "lucide-react";
 
 interface ChatContextHeaderProps {
-    teamName?: string;
+    teamName?: string | undefined;
     days: number;
 }
 

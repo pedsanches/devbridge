@@ -25,7 +25,9 @@ export const metadata: Metadata = {
     description: "Making Technical Work Visible to Non-Technical Stakeholders via AI Translation",
 };
 
-export const experimental_viewTransition = true;
+// Disabled because Next.js typed app exports don't accept it in our current setup.
+// If we want view transitions later, re-enable it alongside the proper Next.js config/type support.
+// export const experimental_viewTransition = true;
 
 export default function RootLayout({
     children,
