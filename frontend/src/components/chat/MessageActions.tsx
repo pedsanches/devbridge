@@ -1,17 +1,46 @@
 "use client";
 
-import React, { useState } from "react";
-import { Copy, Check, Share, ThumbsUp, ThumbsDown } from "lucide-react";
+import React, { useEffect, useMemo, useState } from "react";
+import { Copy, Check, Share, ThumbsUp, ThumbsDown, AlertCircle } from "lucide-react";
+import { submitFeedback, FeedbackType, Persona } from "@/services/api";
 
 interface MessageActionsProps {
     content: string;
-    onRate?: (positive: boolean) => void;
+    // Feedback props (optional)
+    messageId?: string | undefined;
+    conversationId?: string | undefined;
+    generationId?: string | undefined;
+    promptVersionId?: string | undefined;
+    traceId?: string | undefined;
+    persona?: Persona | undefined;
+    initialFeedbackSelection?: FeedbackType | null | undefined;
+    onFeedbackSelectionChange?: ((selection: FeedbackType | null) => void) | undefined;
 }
 
-export function MessageActions({ content, onRate }: MessageActionsProps) {
+export function MessageActions({
+    content,
+    messageId,
+    conversationId,
+    generationId,
+    promptVersionId,
+    traceId,
+    persona,
+    initialFeedbackSelection,
+    onFeedbackSelectionChange,
+}: MessageActionsProps) {
     const [copied, setCopied] = useState(false);
-    const [rated, setRated] = useState<"up" | "down" | null>(null);
     const [shared, setShared] = useState(false);
+
+    // Feedback state
+    const selectionKey = useMemo(() => initialFeedbackSelection ?? null, [initialFeedbackSelection]);
+    const [feedbackStatus, setFeedbackStatus] = useState<"idle" | "sending" | "success" | "error">("idle");
+    const [localFeedbackSelection, setLocalFeedbackSelection] = useState<FeedbackType | null>(selectionKey);
+
+    // Sync local feedback state when initialSelection prop changes
+    useEffect(() => {
+        setLocalFeedbackSelection(selectionKey);
+        setFeedbackStatus("idle");
+    }, [selectionKey]);
 
     const handleCopy = async () => {
         await navigator.clipboard.writeText(content);
@@ -32,17 +61,58 @@ export function MessageActions({ content, onRate }: MessageActionsProps) {
             }
         } else {
             // Fallback: copy formatted content with header
-            const formattedContent = `📊 Via DevBridge:\n\n${content}`;
+            const formattedContent = `Via DevBridge:\n\n${content}`;
             await navigator.clipboard.writeText(formattedContent);
             setShared(true);
             setTimeout(() => setShared(false), 2000);
         }
     };
 
-    const handleRate = (positive: boolean) => {
-        setRated(positive ? "up" : "down");
-        onRate?.(positive);
+    const handleFeedback = async (type: FeedbackType) => {
+        if (feedbackStatus === "sending") return;
+
+        // Debug: log when feedback is blocked due to missing values
+        if (!conversationId || !generationId || !promptVersionId) {
+            console.warn("[Feedback] Missing required values:", {
+                messageId,
+                conversationId: conversationId ?? "MISSING",
+                generationId: generationId ?? "MISSING",
+                promptVersionId: promptVersionId ?? "MISSING",
+            });
+            return;
+        }
+
+        // Optimistic update
+        setLocalFeedbackSelection(type);
+        onFeedbackSelectionChange?.(type);
+        setFeedbackStatus("sending");
+
+        try {
+            await submitFeedback({
+                feedback_type: type,
+                message_id: messageId!,
+                conversation_id: conversationId,
+                generation_id: generationId,
+                prompt_version_id: promptVersionId,
+                trace_id: traceId,
+                persona,
+            });
+            setFeedbackStatus("success");
+        } catch (error) {
+            console.error("Feedback failed:", error);
+            setFeedbackStatus("error");
+            // Reset selection after error so user can try again
+            setTimeout(() => {
+                setFeedbackStatus("idle");
+                setLocalFeedbackSelection(null);
+                onFeedbackSelectionChange?.(null);
+            }, 3000);
+        }
     };
+
+    // Determine if feedback buttons should be shown
+    const canShowFeedback = generationId && promptVersionId && conversationId && messageId;
+    const currentFeedbackSelection = localFeedbackSelection ?? selectionKey;
 
     return (
         <div className="mt-2 flex items-center gap-1 pt-2 border-t border-neutral-200 dark:border-neutral-700">
@@ -54,8 +124,8 @@ export function MessageActions({ content, onRate }: MessageActionsProps) {
             >
                 {copied ? (
                     <>
-                        <Check className="h-3.5 w-3.5 text-green-500" />
-                        <span className="text-green-500">Copiado</span>
+                        <Check className="h-3.5 w-3.5 text-[var(--color-success)]" />
+                        <span className="text-[var(--color-success)]">Copiado</span>
                     </>
                 ) : (
                     <>
@@ -73,8 +143,8 @@ export function MessageActions({ content, onRate }: MessageActionsProps) {
             >
                 {shared ? (
                     <>
-                        <Check className="h-3.5 w-3.5 text-green-500" />
-                        <span className="text-green-500">Link copiado</span>
+                        <Check className="h-3.5 w-3.5 text-[var(--color-success)]" />
+                        <span className="text-[var(--color-success)]">Link copiado</span>
                     </>
                 ) : (
                     <>
@@ -84,32 +154,57 @@ export function MessageActions({ content, onRate }: MessageActionsProps) {
                 )}
             </button>
 
-            {/* Divider */}
-            <div className="mx-1 h-4 w-px bg-neutral-200 dark:bg-neutral-700" />
+            {/* Divider before feedback buttons (if feedback is available) */}
+            {canShowFeedback && (
+                <>
+                    <div className="mx-1 h-4 w-px bg-neutral-200 dark:bg-neutral-700" />
 
-            {/* Rate Buttons */}
-            <button
-                onClick={() => handleRate(true)}
-                className={`inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs transition-colors ${rated === "up"
-                        ? "bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400"
-                        : "text-neutral-500 hover:bg-neutral-200 hover:text-neutral-700 dark:text-neutral-400 dark:hover:bg-neutral-700 dark:hover:text-neutral-200"
-                    }`}
-                aria-label="Resposta útil"
-                disabled={rated !== null}
-            >
-                <ThumbsUp className="h-3.5 w-3.5" />
-            </button>
-            <button
-                onClick={() => handleRate(false)}
-                className={`inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs transition-colors ${rated === "down"
-                        ? "bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400"
-                        : "text-neutral-500 hover:bg-neutral-200 hover:text-neutral-700 dark:text-neutral-400 dark:hover:bg-neutral-700 dark:hover:text-neutral-200"
-                    }`}
-                aria-label="Resposta não útil"
-                disabled={rated !== null}
-            >
-                <ThumbsDown className="h-3.5 w-3.5" />
-            </button>
+                    {/* Thumbs Up Button */}
+                    <button
+                        onClick={() => handleFeedback("thumbs_up")}
+                        disabled={feedbackStatus === "sending"}
+                        className={`inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-xs transition-colors ${currentFeedbackSelection === "thumbs_up"
+                                ? "text-[var(--color-success)] bg-[var(--color-success)]/10 dark:bg-[var(--color-success)]/20"
+                                : "text-neutral-500 hover:bg-neutral-200 hover:text-neutral-700 dark:text-neutral-400 dark:hover:bg-neutral-700 dark:hover:text-neutral-200"
+                            } ${feedbackStatus === "sending" ? "opacity-50 cursor-not-allowed" : ""} ${currentFeedbackSelection === "thumbs_down" ? "opacity-50" : ""}`}
+                        title="Resposta útil"
+                        aria-label="Resposta útil"
+                    >
+                        <ThumbsUp className="h-3.5 w-3.5" />
+                        <span>Útil</span>
+                    </button>
+
+                    {/* Thumbs Down Button */}
+                    <button
+                        onClick={() => handleFeedback("thumbs_down")}
+                        disabled={feedbackStatus === "sending"}
+                        className={`inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-xs transition-colors ${currentFeedbackSelection === "thumbs_down"
+                                ? "text-[var(--color-error)] bg-[var(--color-error)]/10 dark:bg-[var(--color-error)]/20"
+                                : "text-neutral-500 hover:bg-neutral-200 hover:text-neutral-700 dark:text-neutral-400 dark:hover:bg-neutral-700 dark:hover:text-neutral-200"
+                            } ${feedbackStatus === "sending" ? "opacity-50 cursor-not-allowed" : ""} ${currentFeedbackSelection === "thumbs_up" ? "opacity-50" : ""}`}
+                        title="Resposta não útil"
+                        aria-label="Resposta não útil"
+                    >
+                        <ThumbsDown className="h-3.5 w-3.5" />
+                        <span>Não útil</span>
+                    </button>
+
+                    {/* Feedback status indicator */}
+                    {feedbackStatus === "success" && (
+                        <div className="flex items-center gap-1 text-xs text-[var(--color-success)] animate-in fade-in duration-300 ml-1">
+                            <Check className="h-3 w-3" />
+                            <span className="sr-only">Feedback enviado</span>
+                        </div>
+                    )}
+
+                    {feedbackStatus === "error" && (
+                        <div className="flex items-center gap-1 text-xs text-[var(--color-error)] animate-in fade-in duration-300 ml-1">
+                            <AlertCircle className="h-3 w-3" />
+                            <span className="sr-only">Erro ao enviar feedback</span>
+                        </div>
+                    )}
+                </>
+            )}
         </div>
     );
 }

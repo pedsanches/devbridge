@@ -11,6 +11,7 @@ from app.models.conversation import (
     MessageRole,
 )
 from app.models.developer_profile import DeveloperProfile
+from app.models.feedback import EventLog, Feedback, FeedbackSource, FeedbackType
 from app.models.issue import Issue, IssueState
 from app.models.magic_link import MagicLink
 from app.models.membership import MemberRole, Membership
@@ -57,6 +58,11 @@ __all__ = [
     "ChatMessage",
     "ConversationStatus",
     "MessageRole",
+    # Feedback (Continuous Learning)
+    "Feedback",
+    "FeedbackType",
+    "FeedbackSource",
+    "EventLog",
     # Reports
     "Report",
     "ReportType",

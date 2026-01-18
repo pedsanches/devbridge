@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useParams, usePathname, useRouter } from "next/navigation";
 import { Plus, MessageSquare, ChevronLeft, ChevronRight, Trash, Calendar } from "lucide-react";
@@ -17,21 +17,42 @@ export function ChatSidebar() {
     const router = useRouter();
     const activeId = params?.chatId as string;
 
-    const fetchConversations = async () => {
-        try {
-            setIsLoading(true);
-            const data = await getConversations(50, 0);
-            setConversations(data.conversations);
-        } catch (error) {
-            console.error("Failed to fetch conversations", error);
-        } finally {
-            setIsLoading(false);
+    const inFlightRef = useRef<Promise<void> | null>(null);
+    const lastFetchAtRef = useRef<number>(0);
+
+    const fetchConversations = async (): Promise<void> => {
+        // Prevent request storms on quick route changes / dev re-renders.
+        if (inFlightRef.current) return inFlightRef.current;
+
+        const now = Date.now();
+        const minIntervalMs = 1200;
+        if (now - lastFetchAtRef.current < minIntervalMs) {
+            return;
         }
+        lastFetchAtRef.current = now;
+
+        const run = (async () => {
+            try {
+                setIsLoading(true);
+                const data = await getConversations(50, 0);
+                setConversations(data.conversations);
+            } catch (error) {
+                console.error("Failed to fetch conversations", error);
+            } finally {
+                setIsLoading(false);
+                inFlightRef.current = null;
+            }
+        })();
+
+        inFlightRef.current = run;
+        return run;
     };
 
     useEffect(() => {
         fetchConversations();
-    }, [activeId, pathname]); // Refresh when changing chat or pathname to ensure new conversations appear
+        // We only need to refresh when the route changes.
+        // Including activeId/pathname is redundant, but we keep pathname for safety.
+    }, [pathname]);
 
     const handleDelete = async (e: React.MouseEvent, id: string) => {
         e.preventDefault();

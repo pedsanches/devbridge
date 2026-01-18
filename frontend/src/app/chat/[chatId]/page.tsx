@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { ChatInterface, ConversationContext } from "@/components/chat/ChatInterface";
-import { getConversation, ChatMessage, Persona } from "@/services/api";
+import { getConversation, ChatMessage, Persona, getFeedbackForConversation, FeedbackType } from "@/services/api";
 import { Loader2 } from "lucide-react";
 
 export default function ChatIdPage() {
@@ -24,7 +24,15 @@ export default function ChatIdPage() {
         async function loadConversation() {
             try {
                 setIsLoading(true);
-                const data = await getConversation(chatId);
+                const [data, feedback] = await Promise.all([
+                    getConversation(chatId),
+                    getFeedbackForConversation(chatId),
+                ]);
+
+                const feedbackByMessageId = new Map<string, FeedbackType>();
+                for (const item of feedback.items) {
+                    feedbackByMessageId.set(item.message_id, item.feedback_type);
+                }
 
                 // Map API messages to ChatInterface format
                 const mappedMessages = data.messages.map((msg: ChatMessage) => {
@@ -41,8 +49,13 @@ export default function ChatIdPage() {
                         sources: meta?.sources as string[] | undefined,
                         activitiesCount: meta?.activities_count as number | undefined,
                         confidenceScore: meta?.confidence_score as number | undefined,
+                        generationId: meta?.generation_id as string | undefined,
+                        promptVersionId: meta?.prompt_version_id as string | undefined,
+                        traceId: meta?.trace_id as string | undefined,
+                        feedbackSelection: feedbackByMessageId.get(msg.id) ?? null,
                     };
                 });
+
 
                 setMessages(mappedMessages);
 
@@ -87,6 +100,7 @@ export default function ChatIdPage() {
 
     return (
         <ChatInterface
+            key={chatId}
             conversationId={chatId}
             initialMessages={messages}
             {...(savedContext && { initialContext: savedContext })}
