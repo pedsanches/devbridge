@@ -6,7 +6,7 @@ Retrieves activities via semantic search (RAG) and generates AI responses.
 """
 
 from datetime import UTC, datetime, timedelta
-from typing import Any
+from typing import Any, cast
 from uuid import UUID
 
 from sqlalchemy import func, select
@@ -165,7 +165,9 @@ class ChatService:
             return 0.5 + min(activities_count / 10, 0.2)
 
         # Get top-3 scores from semantic search
-        top_scores = [r.get("score", 0) for r in search_results[:3] if r.get("score") is not None]
+        top_scores: list[float] = [
+            float(r.get("score", 0) or 0) for r in search_results[:3] if r.get("score") is not None
+        ]
 
         if not top_scores:
             return 0.5
@@ -199,11 +201,14 @@ class ChatService:
         try:
             from app.services.vector_service import vector_service
 
-            return vector_service.search(
-                query,
-                limit=limit,
-                org_id=org_id,
-                repository_name=repository,
+            return cast(
+                list[dict[str, Any]],
+                vector_service.search(
+                    query,
+                    limit=limit,
+                    org_id=org_id,
+                    repository_name=repository,
+                ),
             )
         except Exception:
             return []
@@ -372,7 +377,7 @@ class ChatService:
                 await feedback_service.log_response_generated(
                     generation_id=generation_id,
                     message_id=str(message_obj.id),
-                    organization_id=org_id,
+                    organization_id=str(org_id) if org_id else "",
                     trace_id=trace_id,
                     user_id=str(user_id),
                     payload={

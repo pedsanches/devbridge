@@ -5,6 +5,9 @@ API for conversational queries about development activities.
 Implements persona-based responses (BR-030) and streaming.
 """
 
+from collections.abc import AsyncGenerator
+from typing import Any
+
 from fastapi import APIRouter
 from fastapi.responses import StreamingResponse
 from starlette.requests import Request
@@ -198,7 +201,7 @@ async def chat_stream(
     # Determine search method for consistency with non-streaming endpoint
     search_method = "semantic" if search_results else "sql"
 
-    async def generate():
+    async def generate() -> AsyncGenerator[str, Any]:
         def sse_event(payload: dict[str, object]) -> str:
             return f"data: {json.dumps(payload, ensure_ascii=False)}\n\n"
 
@@ -241,7 +244,7 @@ async def chat_stream(
             await feedback_service.log_response_generated(
                 generation_id=generation_id,
                 message_id=str(message_obj.id),
-                organization_id=org_id,
+                organization_id=str(org_id),
                 trace_id=trace_id,
                 user_id=str(_current_user.id),
                 payload={
