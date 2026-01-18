@@ -1,11 +1,12 @@
 "use client";
 
-import React, { memo, useState } from "react";
+import React, { memo } from "react";
 import { Bot, User } from "lucide-react";
 import { Streamdown } from "streamdown";
 import type { BundledTheme } from "shiki";
 import { SourcesIndicator } from "./SourcesIndicator";
 import { MessageActions } from "./MessageActions";
+import { logResponseDisplayed, Persona } from "@/services/api";
 
 /**
  * Shiki themes for syntax highlighting in code blocks.
@@ -32,6 +33,14 @@ interface ChatMessageProps {
     confidenceScore?: number | undefined;
     /** Whether this message is currently being streamed */
     isStreaming?: boolean;
+    // Lineage & Feedback
+    generationId?: string | undefined;
+    conversationId?: string | undefined;
+    promptVersionId?: string | undefined;
+    traceId?: string | undefined;
+    persona?: Persona | undefined;
+    feedbackSelection?: import("@/services/api").FeedbackType | null | undefined;
+    onFeedbackSelectionChange?: ((selection: import("@/services/api").FeedbackType | null) => void) | undefined;
 }
 
 function stabilizeMarkdownForStreaming(markdown: string): string {
@@ -63,22 +72,41 @@ export const ChatMessage = memo(function ChatMessage({
     activitiesCount,
     confidenceScore,
     isStreaming = false,
+    generationId,
+    promptVersionId,
+    traceId,
+    conversationId,
+    persona,
+    feedbackSelection,
+    onFeedbackSelectionChange,
 }: ChatMessageProps) {
     const isUser = role === "user";
-    const [showActions, setShowActions] = useState(false);
 
     // Streamdown render mode: streaming for active streams, static for completed content
     // No need for useMemo - this is a simple conditional
     const renderMode = isStreaming ? "streaming" : "static";
 
-    // Don't show actions while streaming or for user messages
+    // Show actions for completed assistant messages
     const canShowActions = !isUser && !isStreaming && content.length > 0;
+
+    // Log "Displayed" event after 2 seconds
+    React.useEffect(() => {
+        if (isStreaming || !generationId || isUser) return;
+
+        const timer = setTimeout(() => {
+            logResponseDisplayed({
+                generation_id: generationId,
+                message_id: id,
+                trace_id: traceId,
+            }).catch(() => { }); // Fire and forget
+        }, 2000);
+
+        return () => clearTimeout(timer);
+    }, [isStreaming, generationId, id, traceId, isUser]);
 
     return (
         <div
             className={`flex gap-3 ${isUser ? "justify-end" : "justify-start"}`}
-            onMouseEnter={() => canShowActions && setShowActions(true)}
-            onMouseLeave={() => setShowActions(false)}
             role="listitem"
         >
             {!isUser && (
@@ -88,7 +116,7 @@ export const ChatMessage = memo(function ChatMessage({
             )}
 
             <div
-                className={`rounded-2xl px-4 py-3 transition-opacity duration-150 ${isUser
+                className={`group/message rounded-2xl px-4 py-3 ${isUser
                     ? "max-w-[80%] bg-primary text-white shadow-sm"
                     : "max-w-[680px] bg-[var(--card)] text-neutral-900 shadow-sm ring-1 ring-black/5 dark:bg-neutral-900/40 dark:text-white dark:ring-white/10"
                     }`}
@@ -128,9 +156,19 @@ export const ChatMessage = memo(function ChatMessage({
                     />
                 )}
 
-                {/* Message actions (Copy, Share, Rate) - shown on hover */}
-                {showActions && (
-                    <MessageActions content={content} />
+                {/* Message actions (Copy, Share, Feedback) - always visible for completed assistant messages */}
+                {canShowActions && (
+                    <MessageActions
+                        content={content}
+                        messageId={id}
+                        conversationId={conversationId}
+                        generationId={generationId}
+                        promptVersionId={promptVersionId}
+                        traceId={traceId}
+                        persona={persona}
+                        initialFeedbackSelection={feedbackSelection}
+                        onFeedbackSelectionChange={onFeedbackSelectionChange}
+                    />
                 )}
             </div>
 

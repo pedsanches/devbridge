@@ -61,6 +61,10 @@ class ChatMetadata(BaseModel):
     sources: list[SourceItem] = Field(
         default_factory=list, description="Top sources used to generate response"
     )
+    # Lineage & Observability
+    generation_id: str | None = Field(None, description="Unique ID for this LLM generation")
+    prompt_version_id: str | None = Field(None, description="Version of the prompt/app used")
+    trace_id: str | None = Field(None, description="Request trace ID")
 
 
 class ChatResponse(BaseModel):

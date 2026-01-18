@@ -12,9 +12,11 @@ from uuid import UUID
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.version import get_prompt_version_id
 from app.models import Activity, Repository
 from app.schemas.chat import ChatMetadata, Persona
 from app.services.ai_service import ai_service
+from app.services.feedback_service import FeedbackService
 
 
 class ChatService:
@@ -218,6 +220,7 @@ class ChatService:
         persona: Persona = Persona.PRODUCT,
         days: int = 30,
         use_semantic_search: bool = True,
+        trace_id: str | None = None,
     ) -> dict[str, Any]:
         """
         Process a chat query and generate a response.
@@ -241,7 +244,15 @@ class ChatService:
         from app.models.conversation import MessageRole
         from app.services.conversation_service import ConversationService
 
+        # Initialize services
         conversation_service = ConversationService(db)
+        feedback_service = FeedbackService(db)
+
+        # 0. Generate Lineage IDs
+        from uuid import uuid4
+
+        generation_id = str(uuid4())
+        prompt_version_id = get_prompt_version_id()
 
         # 1. Handle Conversation Persistence
         chat_history = []
@@ -341,16 +352,44 @@ class ChatService:
             confidence_score=confidence_score,
             persona_used=persona,
             sources=sources,
+            generation_id=generation_id,
+            prompt_version_id=prompt_version_id,
+            trace_id=trace_id,
         )
 
         # Persist Assistant Message
         if conversation_id:
-            await conversation_service.add_message(
+            message_obj = await conversation_service.add_message(
                 conversation_id=conversation_id,
                 role=MessageRole.ASSISTANT,
                 content=response_text,
                 message_metadata=metadata.model_dump(),
             )
+
+            # 5. Log Chat Response Generation Event
+            # Best-effort logging - don't fail the request
+            try:
+                await feedback_service.log_response_generated(
+                    generation_id=generation_id,
+                    message_id=str(message_obj.id),
+                    organization_id=org_id,
+                    trace_id=trace_id,
+                    user_id=str(user_id),
+                    payload={
+                        "model": ai_service.model or "gpt-4o-mini",
+                        "persona": persona.value,
+                        "prompt_version_id": prompt_version_id,
+                        "activities_count": len(activities),
+                        "search_method": search_method,
+                        "confidence_score": confidence_score,
+                    },
+                )
+            except Exception:
+                # Log error but proceed
+                from logging import getLogger
+
+                logger = getLogger(__name__)
+                logger.exception("Failed to log chat response event")
 
         return {
             "answer": response_text,

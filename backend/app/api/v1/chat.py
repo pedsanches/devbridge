@@ -7,6 +7,7 @@ Implements persona-based responses (BR-030) and streaming.
 
 from fastapi import APIRouter
 from fastapi.responses import StreamingResponse
+from starlette.requests import Request
 
 from app.api.deps import CurrentOrgId, CurrentUserRequired, DbSession
 from app.schemas.chat import ChatRequest, ChatResponse
@@ -21,6 +22,7 @@ async def chat(
     request: ChatRequest,
     _current_user: CurrentUserRequired,
     org_id: CurrentOrgId,
+    req: Request,
 ) -> ChatResponse:
     """
     Send a message and get an AI-generated response about activities.
@@ -57,6 +59,7 @@ async def chat(
         persona=request.persona,
         days=request.days or 30,
         org_id=org_id,
+        trace_id=getattr(req.state, "trace_id", None),
     )
 
     return ChatResponse(
@@ -74,6 +77,7 @@ async def chat_stream(
     request: ChatRequest,
     _current_user: CurrentUserRequired,
     org_id: CurrentOrgId,
+    req: Request,
 ) -> StreamingResponse:
     """
     Send a message and get a streaming AI-generated response.
@@ -86,18 +90,24 @@ async def chat_stream(
         request: Chat request with message, optional filters, and persona.
         _current_user: Authenticated user (required).
         org_id: Current organization context.
+        req: Request object for extracting trace_id from middleware.
 
     Returns:
         Streaming response with AI-generated text chunks and metadata.
     """
     import json
-    from uuid import UUID
+    from uuid import UUID, uuid4
 
+    from app.core.version import get_prompt_version_id
     from app.models.conversation import MessageRole
     from app.services.ai_service import ai_service
     from app.services.conversation_service import ConversationService
+    from app.services.feedback_service import FeedbackService
 
     conversation_service = ConversationService(db)
+
+    # Extract trace_id from request state (set by middleware)
+    trace_id = getattr(req.state, "trace_id", None) or str(uuid4())
 
     # Get or create conversation
     # Normalize repository to list for storage
@@ -181,17 +191,27 @@ async def chat_stream(
     # Calculate confidence score
     confidence_score = chat_service._calculate_confidence(search_results, len(activities))
 
+    # Generate lineage IDs for feedback tracking (before stream starts)
+    generation_id = str(uuid4())
+    prompt_version_id = get_prompt_version_id()
+
+    # Determine search method for consistency with non-streaming endpoint
+    search_method = "semantic" if search_results else "sql"
+
     async def generate():
         def sse_event(payload: dict[str, object]) -> str:
             return f"data: {json.dumps(payload, ensure_ascii=False)}\n\n"
 
-        # Send metadata first with conversation_id and sources
+        # Send metadata first with conversation_id, sources, and lineage
         metadata = {
             "type": "metadata",
             "conversation_id": str(conversation.id),
             "activities_count": len(activities),
             "sources": sources,
             "confidence_score": confidence_score,
+            "generation_id": generation_id,
+            "prompt_version_id": prompt_version_id,
+            "trace_id": trace_id,
         }
         yield sse_event(metadata)
 
@@ -207,12 +227,38 @@ async def chat_stream(
 
         # Save assistant message BEFORE sending done
         # This ensures the message is persisted before the client closes the connection
-        await conversation_service.add_message(
+        message_obj = await conversation_service.add_message(
             conversation_id=conversation.id,
             role=MessageRole.ASSISTANT,
             content=full_response,
-            message_metadata=metadata,  # Persist metadata with sources
+            message_metadata=metadata,  # Persist metadata with sources and lineage
         )
+
+        # Log chat response generation event for feedback funnel
+        # Best-effort logging - don't fail the request if this fails
+        feedback_service = FeedbackService(db)
+        try:
+            await feedback_service.log_response_generated(
+                generation_id=generation_id,
+                message_id=str(message_obj.id),
+                organization_id=org_id,
+                trace_id=trace_id,
+                user_id=str(_current_user.id),
+                payload={
+                    "model": ai_service.model or "gpt-4o-mini",
+                    "persona": request.persona.value if request.persona else "product",
+                    "prompt_version_id": prompt_version_id,
+                    "activities_count": len(activities),
+                    "search_method": search_method,
+                    "confidence_score": confidence_score,
+                },
+            )
+        except Exception:
+            # Log error but proceed - don't fail the request
+            import logging
+
+            logger = logging.getLogger(__name__)
+            logger.exception("Failed to log chat response generation event")
 
         # Generate title if this is the first exchange (2 messages total)
         # Need to refresh conversation to get updated message_count
@@ -225,7 +271,8 @@ async def chat_stream(
                 conversation.id, UUID(org_id), ConversationUpdate(title=title)
             )
 
-        yield sse_event({"type": "done"})
+        # Send done event with server message_id so frontend can use correct ID for feedback
+        yield sse_event({"type": "done", "message_id": str(message_obj.id)})
 
     return StreamingResponse(
         generate(),

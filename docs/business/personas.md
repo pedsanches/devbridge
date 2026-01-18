@@ -2,7 +2,7 @@
 
 Definição dos perfis de usuário do DevBridge e suas necessidades específicas.
 
----
+> ⚡ **Atualização Janeiro/2026:** Prompts melhorados baseados em [pesquisa com comunidade PM](./pm-communication-research.md). Agora usamos formato outcome-focused com bullets estruturados.
 
 ## Visão Geral
 

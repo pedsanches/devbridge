@@ -24,7 +24,7 @@ import { TeamSelectorContent } from "@/components/teams";
 import { ChatToolbar } from "@/components/chat/ChatToolbar";
 import { PeriodSelectorContent } from "@/components/chat/PeriodSelector";
 import { ChatContextHeader } from "@/components/chat/ChatContextHeader";
-import { sendChatMessageStream, Persona, Team, getTeam } from "@/services/api";
+import { sendChatMessageStream, Persona, Team, getTeam, FeedbackType } from "@/services/api";
 import { useKeyboardShortcuts, KeyboardShortcutsHint } from "@/hooks/useKeyboardShortcuts";
 
 interface Source {
@@ -48,6 +48,11 @@ interface Message {
         search_method?: "semantic" | "sql" | undefined;
         confidence_score?: number | undefined;
     } | undefined;
+    // Lineage & Feedback
+    generationId?: string | undefined;
+    promptVersionId?: string | undefined;
+    traceId?: string | undefined;
+    feedbackSelection?: FeedbackType | null | undefined;
 }
 
 export interface ConversationContext {
@@ -260,38 +265,38 @@ export function ChatInterface({ conversationId, initialMessages, initialContext 
         });
 
         // Stream the response
-         await sendChatMessageStream(
-             {
-                 message: content,
-                 persona,
-                 conversationId: currentConversationId,
-                 repository: repositories,
-                 days,
-                 teamId: selectedTeamId ?? undefined,
-             },
-             // onEvent
-             (event) => {
-                 // First event: commit messages to state once.
-                 setMessages((prev) => {
-                     const messageExists = prev.some((m) => m.id === userMessage.id);
-                     if (!messageExists) return [...prev, userMessage, assistantMessage];
-                     return prev;
-                 });
+        await sendChatMessageStream(
+            {
+                message: content,
+                persona,
+                conversationId: currentConversationId,
+                repository: repositories,
+                days,
+                teamId: selectedTeamId ?? undefined,
+            },
+            // onEvent
+            (event) => {
+                // First event: commit messages to state once.
+                setMessages((prev) => {
+                    const messageExists = prev.some((m) => m.id === userMessage.id);
+                    if (!messageExists) return [...prev, userMessage, assistantMessage];
+                    return prev;
+                });
 
-                 // Queue data for the next flush.
-                 if (event.type === "metadata") {
-                     const metadataChunk = JSON.stringify(event);
-                     streamingMetadataQueueRef.current.push(metadataChunk);
+                // Queue data for the next flush.
+                if (event.type === "metadata") {
+                    const metadataChunk = JSON.stringify(event);
+                    streamingMetadataQueueRef.current.push(metadataChunk);
 
-                     if (event.conversation_id) {
-                         streamConversationId = event.conversation_id;
-                         setCurrentConversationId(event.conversation_id);
-                     }
-                 }
+                    if (event.conversation_id) {
+                        streamConversationId = event.conversation_id;
+                        setCurrentConversationId(event.conversation_id);
+                    }
+                }
 
-                 if (event.type === "delta") {
-                     streamingBufferRef.current += event.text;
-                 }
+                if (event.type === "delta") {
+                    streamingBufferRef.current += event.text;
+                }
 
 
                 // Smooth flushing: avoid too many tiny updates AND avoid giant delayed jumps.
@@ -301,11 +306,11 @@ export function ChatInterface({ conversationId, initialMessages, initialContext 
                 // - we got metadata (flush soon to show sources/count early).
                 const now = Date.now();
                 const timeSinceLastFlush = now - lastFlushAtRef.current;
-                 const shouldFlushSoon =
-                     shouldFlushForMarkdown(streamingBufferRef.current) ||
-                     streamingBufferRef.current.length >= STREAM_MIN_CHARS_PER_FLUSH ||
-                     timeSinceLastFlush >= STREAM_MAX_DEBOUNCE_MS ||
-                     streamingMetadataQueueRef.current.length > 0;
+                const shouldFlushSoon =
+                    shouldFlushForMarkdown(streamingBufferRef.current) ||
+                    streamingBufferRef.current.length >= STREAM_MIN_CHARS_PER_FLUSH ||
+                    timeSinceLastFlush >= STREAM_MAX_DEBOUNCE_MS ||
+                    streamingMetadataQueueRef.current.length > 0;
 
                 if (shouldFlushSoon && flushTimerRef.current == null) {
                     const delay = Math.max(0, STREAM_FLUSH_INTERVAL_MS - timeSinceLastFlush);
@@ -337,6 +342,9 @@ export function ChatInterface({ conversationId, initialMessages, initialContext 
                                             sources?: Source[];
                                             activities_count?: number;
                                             confidence_score?: number;
+                                            generation_id?: string;
+                                            prompt_version_id?: string;
+                                            trace_id?: string;
                                         };
 
                                         if (metadata.type === "metadata") {
@@ -345,6 +353,9 @@ export function ChatInterface({ conversationId, initialMessages, initialContext 
                                                 sources: metadata.sources,
                                                 activitiesCount: metadata.activities_count,
                                                 confidenceScore: metadata.confidence_score,
+                                                generationId: metadata.generation_id,
+                                                promptVersionId: metadata.prompt_version_id,
+                                                traceId: metadata.trace_id,
                                             };
                                         }
                                     } catch {
@@ -358,8 +369,8 @@ export function ChatInterface({ conversationId, initialMessages, initialContext 
                     }, delay);
                 }
             },
-            // onDone
-            () => {
+            // onDone - receives server-generated message_id for feedback persistence
+            (serverMessageId?: string) => {
                 // Force a final flush (so Streamdown gets the complete markdown).
                 if (flushTimerRef.current != null) {
                     window.clearTimeout(flushTimerRef.current);
@@ -395,6 +406,9 @@ export function ChatInterface({ conversationId, initialMessages, initialContext 
                                     sources?: Source[];
                                     activities_count?: number;
                                     confidence_score?: number;
+                                    generation_id?: string;
+                                    prompt_version_id?: string;
+                                    trace_id?: string;
                                 };
 
                                 if (metadata.type === "metadata") {
@@ -403,6 +417,9 @@ export function ChatInterface({ conversationId, initialMessages, initialContext 
                                         sources: metadata.sources,
                                         activitiesCount: metadata.activities_count,
                                         confidenceScore: metadata.confidence_score,
+                                        generationId: metadata.generation_id,
+                                        promptVersionId: metadata.prompt_version_id,
+                                        traceId: metadata.trace_id,
                                     };
                                 }
                             } catch {
@@ -410,18 +427,20 @@ export function ChatInterface({ conversationId, initialMessages, initialContext 
                             }
                         }
 
-                        return { ...nextMsg, isStreaming: false };
+                        // Use server-generated message ID if available (critical for feedback persistence)
+                        const finalId = serverMessageId ?? msg.id;
+                        return { ...nextMsg, id: finalId, isStreaming: false };
                     });
                 });
 
                 setIsLoading(false);
                 setPendingSuggestion(null);
 
-                 if (streamConversationId && !conversationId) {
-                     // Avoid "flash" at the end of the first streamed message by replacing
-                     // instead of pushing a new entry (which can re-mount the page).
-                     router.replace(`/chat/${streamConversationId}`);
-                 }
+                if (streamConversationId && !conversationId) {
+                    // Avoid "flash" at the end of the first streamed message by replacing
+                    // instead of pushing a new entry (which can re-mount the page).
+                    router.replace(`/chat/${streamConversationId}`);
+                }
             },
             // onError
             (err: unknown) => {
@@ -553,7 +572,21 @@ export function ChatInterface({ conversationId, initialMessages, initialContext 
                                             activitiesCount={message.activitiesCount}
                                             confidenceScore={message.confidenceScore}
                                             isStreaming={!!message.isStreaming}
+                                            generationId={message.generationId}
+                                            promptVersionId={message.promptVersionId}
+                                            traceId={message.traceId}
+                                            conversationId={currentConversationId}
+                                            persona={persona}
+                                            feedbackSelection={message.feedbackSelection}
+                                            onFeedbackSelectionChange={(selection) => {
+                                                setMessages((prev) =>
+                                                    prev.map((m) =>
+                                                        m.id === message.id ? { ...m, feedbackSelection: selection } : m
+                                                    )
+                                                );
+                                            }}
                                         />
+
                                         {/* Streaming indicator */}
                                         {message.isStreaming && message.content && (
                                             <div className="ml-11 mt-1 flex items-center gap-1 text-xs text-[var(--muted-foreground)]">

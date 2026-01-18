@@ -17,10 +17,11 @@ class TestConversationAI:
             assert len(PERSONA_PROMPTS[persona]) > 100  # Non-trivial prompt
 
     def test_executive_prompt_focuses_on_business(self):
-        """Executive prompt should focus on business outcomes."""
+        """Executive prompt should focus on business outcomes and brevity."""
         prompt = PERSONA_PROMPTS[Persona.EXECUTIVE]
         assert "negócio" in prompt.lower() or "roi" in prompt.lower()
-        assert "conciso" in prompt.lower()
+        # Check for brevity constraint (changed from "conciso" to "máximo" in improved prompts)
+        assert "máximo" in prompt.lower() or "conciso" in prompt.lower()
 
     def test_technical_prompt_focuses_on_code(self):
         """Technical prompt should include code/architecture focus."""

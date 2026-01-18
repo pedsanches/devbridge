@@ -98,14 +98,14 @@ export async function sendChatMessage(request: ChatRequest): Promise<ChatRespons
  * @param onError - Callback on error
  */
 export type ChatStreamEvent =
-    | { type: "metadata"; conversation_id?: string; sources?: unknown; activities_count?: number; confidence_score?: number }
+    | { type: "metadata"; conversation_id?: string; sources?: unknown; activities_count?: number; confidence_score?: number; generation_id?: string; prompt_version_id?: string; trace_id?: string }
     | { type: "delta"; text: string }
-    | { type: "done" };
+    | { type: "done"; message_id?: string };
 
 export async function sendChatMessageStream(
     request: ChatRequest,
     onEvent: (event: ChatStreamEvent) => void,
-    onDone: () => void,
+    onDone: (messageId?: string) => void,
     onError: (error: Error) => void
 ): Promise<void> {
     const url = `${API_BASE_URL}/chat/stream`;
@@ -142,7 +142,7 @@ export async function sendChatMessageStream(
                 const parsed = JSON.parse(data) as ChatStreamEvent;
                 onEvent(parsed);
                 if (parsed.type === "done") {
-                    onDone();
+                    onDone(parsed.message_id);
                     return "done" as const;
                 }
                 return undefined;
@@ -472,4 +472,68 @@ export async function getDoraMetrics(days: number = 30, teamId?: string): Promis
         params.append("team_id", teamId);
     }
     return fetchAPI<DoraMetricsResponse>(`/metrics/dora?${params.toString()}`);
+}
+
+// ============================================================
+// Feedback API
+// ============================================================
+
+export type FeedbackType = "thumbs_up" | "thumbs_down";
+
+export interface FeedbackCreate {
+    feedback_type: FeedbackType;
+    message_id: string; // Idempotency scope
+    conversation_id: string;
+    generation_id: string;
+    prompt_version_id: string;
+    trace_id?: string | undefined;
+    persona?: Persona | undefined;
+    metadata?: Record<string, unknown> | undefined;
+}
+
+export interface FeedbackResponse {
+    feedback_id: string;
+    created: boolean;
+    message: string;
+}
+
+export interface FeedbackForConversationItem {
+    message_id: string;
+    feedback_type: FeedbackType;
+    created_at: string;
+}
+
+export interface FeedbackForConversationResponse {
+    conversation_id: string;
+    items: FeedbackForConversationItem[];
+}
+
+export async function submitFeedback(feedback: FeedbackCreate): Promise<FeedbackResponse> {
+    return fetchAPI<FeedbackResponse>("/feedback", {
+        method: "POST",
+        body: JSON.stringify(feedback),
+    });
+}
+
+export async function getFeedbackForConversation(
+    conversationId: string
+): Promise<FeedbackForConversationResponse> {
+    return fetchAPI<FeedbackForConversationResponse>(`/feedback/conversation/${conversationId}`);
+}
+
+export async function logResponseDisplayed(data: {
+    generation_id: string;
+    message_id: string;
+    trace_id?: string | undefined;
+}): Promise<void> {
+    const params = new URLSearchParams({
+        generation_id: data.generation_id,
+        message_id: data.message_id,
+    });
+    if (data.trace_id) params.set("trace_id", data.trace_id);
+
+    // Backend expects query params (not JSON body)
+    return fetchAPI(`/feedback/events/displayed?${params.toString()}`, {
+        method: "POST",
+    });
 }
