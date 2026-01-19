@@ -11,6 +11,7 @@ from typing import Any
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.schemas.report import (
+    ReferenceType,
     ReportListResponse,
     ReportMetric,
     ReportPeriod,
@@ -171,17 +172,44 @@ class ReportService:
         return metrics
 
     def _build_sources(
-        self, activities: list[dict[str, Any]], max_sources: int = 10
+        self, activities: list[dict[str, Any]], max_sources: int = 20
     ) -> list[ReportSource]:
-        """Build sources list from activities."""
+        """Build structured sources list from activities with citation IDs."""
         sources = []
-        for act in activities[:max_sources]:
+        for i, act in enumerate(activities[:max_sources], start=1):
+            # Determine type
+            act_type = act.get("type", "unknown")
+
+
+            if act_type == "pull_request":
+                ref_type = ReferenceType.PULL_REQUEST
+            elif act_type == "issue":
+                ref_type = ReferenceType.ISSUE
+            elif act_type == "commit":
+                ref_type = ReferenceType.COMMIT
+            else:
+                # Default to DOC or map unknown types
+                ref_type = ReferenceType.DOC
+
+            # Determine External ID
+            external_id = None
+            if ref_type == ReferenceType.PULL_REQUEST and act.get("number"):
+                external_id = f"PR #{act.get('number')}"
+            elif ref_type == ReferenceType.ISSUE and act.get("number"):
+                external_id = f"Issue #{act.get('number')}"
+            elif ref_type == ReferenceType.COMMIT and act.get("sha"):
+                external_id = f"SHA {act.get('sha')[:7]}"
+
             sources.append(
                 ReportSource(
+                    ref_id=f"R{i}",
+                    external_id=external_id,
                     title=act.get("title", "Untitled"),
-                    repository=act.get("repository", "unknown"),
-                    type=act.get("type", "unknown"),
+                    repository=act.get("repository"),
+                    type=ref_type,
                     url=act.get("url"),
+                    description=act.get("summary")
+                    or act.get("description"),  # Try to get summary if exists
                 )
             )
         return sources
@@ -250,6 +278,9 @@ class ReportService:
             return "Nenhuma atividade encontrada no período especificado."
 
         # Group by type
+        for i, act in enumerate(activities, start=1):
+            act["ref_id"] = f"R{i}"  # Assign temporary ref_id for AI Prompting
+
         by_type: dict[str, list[dict[str, Any]]] = {}
         for act in activities:
             act_type = act.get("type", "other")
@@ -262,16 +293,23 @@ class ReportService:
             f"## Período: {self._format_period(period)}",
             f"## Total: {len(activities)} atividades",
             "",
+            "## REGRAS DE CITAÇÃO:",
+            "- Quando se referir a uma atividade específica, USE OBRIGATORIAMENTE o ID de referência no formato `[R<n>]`.",
+            "- Exemplo: 'O bug de header foi corrigido [R12]'.",
+            "- Não crie links Markdown para as fontes; use apenas o ID `[Rn]`.",
+            "",
         ]
 
         for act_type, type_activities in by_type.items():
             lines.append(f"### {act_type.upper()} ({len(type_activities)})")
             for act in type_activities[:15]:  # Limit per type
+                ref_id = act.get("ref_id")
                 title = act.get("title", "Untitled")[:100]
                 author = act.get("author", "unknown")
                 repo = act.get("repository", "unknown")
                 date = act.get("date", "")[:10] if act.get("date") else ""
-                lines.append(f"- [{date}] {title} (by {author} in {repo})")
+
+                lines.append(f"- [{ref_id}] {title} (Author: {author}, Repo: {repo}, Date: {date})")
             lines.append("")
 
         return "\n".join(lines)

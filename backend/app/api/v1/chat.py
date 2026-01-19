@@ -179,17 +179,12 @@ async def chat_stream(
             days=request.days or 30,
         )
 
-    # Build sources list for transparency (top 5)
-    sources = [
-        {
-            "title": act.get("title", "Untitled"),
-            "repository": act.get("repository", "unknown"),
-            "type": act.get("type", "unknown"),
-            "author": act.get("author"),
-            "url": act.get("url"),
-        }
-        for act in activities[:5]
-    ]
+    # Build sources list with citations for transparency (BR-011 + BR-012)
+    from app.services.chat_service import build_sources_with_citations
+
+    sources_items = build_sources_with_citations(activities, limit=50)
+    # Convert to dict for SSE JSON serialization
+    sources = [s.model_dump() for s in sources_items]
 
     # Calculate confidence score
     confidence_score = chat_service._calculate_confidence(search_results, len(activities))
@@ -206,12 +201,17 @@ async def chat_stream(
             return f"data: {json.dumps(payload, ensure_ascii=False)}\n\n"
 
         # Send metadata first with conversation_id, sources, and lineage
+        from app.services.chat_service import build_confidence_explanation
+
         metadata = {
             "type": "metadata",
             "conversation_id": str(conversation.id),
             "activities_count": len(activities),
             "sources": sources,
             "confidence_score": confidence_score,
+            "confidence_explanation": build_confidence_explanation(
+                confidence_score, len(activities)
+            ),
             "generation_id": generation_id,
             "prompt_version_id": prompt_version_id,
             "trace_id": trace_id,
@@ -221,12 +221,28 @@ async def chat_stream(
         # Accumulate response for saving
         full_response = ""
 
-        # Stream AI response
-        async for chunk in ai_service.summarize_activities_stream(
-            activities, request.message, request.persona
-        ):
-            full_response += chunk
-            yield sse_event({"type": "delta", "text": chunk})
+        # ─────────────────────────────────────────────────────────────────
+        # ANTI-HALLUCINATION GATE: No activities → No LLM call
+        # ─────────────────────────────────────────────────────────────────
+        if not activities:
+            import logging as log_module
+
+            from app.services.chat_service import build_no_context_response
+
+            log_module.getLogger(__name__).info(
+                "No activities found - returning deterministic response (streaming)"
+            )
+            full_response = build_no_context_response(
+                days=request.days, repository=request.repository
+            )
+            yield sse_event({"type": "delta", "text": full_response})
+        else:
+            # Stream AI response with sources for R# consistency
+            async for chunk in ai_service.summarize_activities_stream(
+                activities, request.message, request.persona, sources=sources_items
+            ):
+                full_response += chunk
+                yield sse_event({"type": "delta", "text": chunk})
 
         # Save assistant message BEFORE sending done
         # This ensures the message is persisted before the client closes the connection

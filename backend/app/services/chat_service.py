@@ -5,6 +5,7 @@ Business logic for chat functionality.
 Retrieves activities via semantic search (RAG) and generates AI responses.
 """
 
+import logging
 from datetime import UTC, datetime, timedelta
 from typing import Any, cast
 from uuid import UUID
@@ -14,9 +15,144 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.version import get_prompt_version_id
 from app.models import Activity, Repository
-from app.schemas.chat import ChatMetadata, Persona
+from app.schemas.chat import ChatMetadata, Persona, SourceItem
 from app.services.ai_service import ai_service
 from app.services.feedback_service import FeedbackService
+
+logger = logging.getLogger(__name__)
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# NO-CONTEXT RESPONSE HELPER (anti-hallucination gate)
+# ─────────────────────────────────────────────────────────────────────────────
+NO_CONTEXT_RESPONSE = (
+    "Não encontrei atividades de desenvolvimento para responder sua pergunta. "
+    "Isso pode acontecer por alguns motivos:\n\n"
+    "• **Período de tempo**: tente aumentar o filtro de dias\n"
+    "• **Repositórios selecionados**: verifique se os repos corretos estão selecionados\n"
+    "• **Time/Autor**: ajuste os filtros de equipe ou autor\n\n"
+    "Por favor, ajuste os filtros e tente novamente."
+)
+
+
+def build_no_context_response(
+    days: int | None = None,
+    repository: str | list[str] | None = None,
+) -> str:
+    """
+    Build a deterministic response when no activities are found.
+
+    This avoids calling the LLM (anti-hallucination measure).
+
+    Args:
+        days: Current days filter value.
+        repository: Current repository filter value.
+
+    Returns:
+        Helpful, deterministic message for the user.
+    """
+    hints: list[str] = []
+
+    if days and days < 30:
+        hints.append(f"aumentar o período (atualmente {days} dias)")
+    if repository:
+        repo_str = ", ".join(repository) if isinstance(repository, list) else repository
+        hints.append(f"verificar se o repositório '{repo_str}' possui atividades recentes")
+
+    base = (
+        "Não encontrei atividades de desenvolvimento para responder sua pergunta. "
+        "Isso pode acontecer por alguns motivos:\n\n"
+    )
+
+    bullets = [
+        "• **Período de tempo**: tente aumentar o filtro de dias",
+        "• **Repositórios selecionados**: verifique se os repos corretos estão selecionados",
+        "• **Time/Autor**: ajuste os filtros de equipe ou autor",
+    ]
+
+    if hints:
+        bullets.append(f"• **Sugestão específica**: {'; '.join(hints)}")
+
+    return base + "\n".join(bullets) + "\n\nPor favor, ajuste os filtros e tente novamente."
+
+
+def build_confidence_explanation(score: float, activities_count: int) -> str:
+    """
+    Build a human-readable explanation of the confidence score.
+
+    Args:
+        score: The confidence score (0.0 to 1.0).
+        activities_count: Number of activities used as evidence.
+
+    Returns:
+        Short explanation string for UI display.
+    """
+    if activities_count == 0:
+        return "Sem evidências digitais encontradas"
+
+    if score >= 0.8:
+        return f"Alta relevância • {activities_count} evidências encontradas"
+    elif score >= 0.6:
+        return f"Boa relevância • {activities_count} evidências encontradas"
+    elif score >= 0.4:
+        return f"Relevância moderada • {activities_count} evidências"
+    else:
+        return f"Poucas evidências • {activities_count} registros"
+
+
+def build_sources_with_citations(
+    activities: list[dict[str, Any]],
+    limit: int = 5,
+) -> list[SourceItem]:
+    """
+    Build SourceItem list with sequential ref_id citations (R1, R2, ...).
+
+    This enables verifiable citations in chat responses. Each source gets:
+    - ref_id: Sequential ID like "R1", "R2" for LLM citation
+    - external_id: The PR number, commit SHA, or issue number
+
+    Args:
+        activities: List of activity dicts (must include 'external_id' and 'type').
+        limit: Maximum sources to return (default 5).
+
+    Returns:
+        List of SourceItem with citation support.
+    """
+    sources: list[SourceItem] = []
+
+    for i, act in enumerate(activities[:limit], start=1):
+        ref_id = f"R{i}"
+
+        # Map external_id based on activity type
+        activity_type = (act.get("type") or "").upper()
+        raw_external_id = act.get("external_id")
+
+        if raw_external_id:
+            if activity_type == "PULL_REQUEST":
+                # For PRs, external_id is the PR number
+                external_id = f"PR#{raw_external_id}"
+            elif activity_type == "COMMIT":
+                # For commits, external_id is the SHA (show first 7 chars)
+                external_id = str(raw_external_id)[:7]
+            else:
+                # Generic fallback
+                external_id = str(raw_external_id)
+        else:
+            external_id = None
+
+        sources.append(
+            SourceItem(
+                title=act.get("title", "Untitled"),
+                repository=act.get("repository", "unknown"),
+                type=act.get("type", "unknown"),
+                author=act.get("author"),
+                url=act.get("url"),
+                ref_id=ref_id,
+                external_id=external_id,
+            )
+        )
+
+    return sources
 
 
 class ChatService:
@@ -77,6 +213,7 @@ class ChatService:
                     "content": activity.content,
                     "author": activity.author,
                     "repository": repo_name,
+                    "external_id": activity.external_id,  # PR number or commit SHA
                     "date": (activity.occurred_at or activity.created_at).isoformat()
                     if (activity.occurred_at or activity.created_at)
                     else None,
@@ -124,6 +261,7 @@ class ChatService:
                     "content": activity.content,
                     "author": activity.author,
                     "repository": repo_name,
+                    "external_id": activity.external_id,  # PR number or commit SHA
                     "date": (activity.occurred_at or activity.created_at).isoformat()
                     if (activity.occurred_at or activity.created_at)
                     else None,
@@ -328,24 +466,30 @@ class ChatService:
             # Clear search_results since we're using SQL fallback
             search_results = []
 
-        # Generate AI response with persona
-        response_text = await ai_service.summarize_activities(
-            activities, query, persona, chat_history=chat_history
-        )
-
-        # Build sources list from top 5 activities (BR-011: Sources Transparency)
-        from app.schemas.chat import SourceItem
-
-        sources = [
-            SourceItem(
-                title=act.get("title", "Untitled"),
-                repository=act.get("repository", "unknown"),
-                type=act.get("type", "unknown"),
-                author=act.get("author"),
-                url=act.get("url"),
+        # ─────────────────────────────────────────────────────────────────────
+        # ANTI-HALLUCINATION GATE: No activities → No LLM call
+        # ─────────────────────────────────────────────────────────────────────
+        if not activities:
+            logger.info(
+                "No activities found for query - returning deterministic response",
+                extra={
+                    "query": query[:100],
+                    "days": days,
+                    "repository": repository,
+                    "org_id": org_id,
+                },
             )
-            for act in activities[:5]
-        ]
+            response_text = build_no_context_response(days=days, repository=repository)
+            # No citations when no activities
+            sources: list[SourceItem] = []
+        else:
+            # Build sources BEFORE calling LLM to ensure R# consistency
+            sources = build_sources_with_citations(activities, limit=50)
+
+            # Generate AI response with persona and sources for citation consistency
+            response_text = await ai_service.summarize_activities(
+                activities, query, persona, chat_history=chat_history, sources=sources
+            )
 
         # Calculate dynamic confidence score based on retrieval quality
         confidence_score = self._calculate_confidence(search_results, len(activities))
@@ -391,9 +535,6 @@ class ChatService:
                 )
             except Exception:
                 # Log error but proceed
-                from logging import getLogger
-
-                logger = getLogger(__name__)
                 logger.exception("Failed to log chat response event")
 
         return {

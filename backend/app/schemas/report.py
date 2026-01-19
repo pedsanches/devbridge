@@ -58,13 +58,26 @@ class ReportSection(BaseModel):
     metrics: list[ReportMetric] | None = Field(None, description="Associated metrics")
 
 
+class ReferenceType(str, Enum):
+    """Type of reference for smart citations."""
+
+    PULL_REQUEST = "pull_request"
+    ISSUE = "issue"
+    COMMIT = "commit"
+    DOC = "doc"
+    SLACK = "slack"
+
+
 class ReportSource(BaseModel):
     """A source activity used to generate the report."""
 
+    ref_id: str = Field(..., description="Citation ID used in text (e.g., 'R1')")
+    external_id: str | None = Field(None, description="Human readable ID (e.g. 'PR #1234')")
     title: str = Field(..., description="Activity title")
-    repository: str = Field(..., description="Repository name")
-    type: str = Field(..., description="Activity type (commit, pr, issue)")
+    repository: str | None = Field(None, description="Repository name")
+    type: ReferenceType = Field(..., description="Activity type")
     url: str | None = Field(None, description="Link to the activity")
+    description: str | None = Field(None, description="AI-generated relevance summary")
 
 
 class ReportResponse(BaseModel):

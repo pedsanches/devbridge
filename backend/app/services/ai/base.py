@@ -177,14 +177,26 @@ class BaseAIService:
         """
         Format activities list into a context string for the LLM.
 
+        This is a GENERIC formatter that does NOT include citation logic.
+        Citation-aware formatting should be done in domain-specific services
+        like ConversationAI.
+
         Args:
             activities: List of activity dictionaries.
 
         Returns:
-            Formatted context string.
+            Formatted context string (neutral, no citations).
         """
         if not activities:
             return "Nenhuma atividade encontrada no período selecionado."
+
+        # Header clarifying data source limitations (anti-hallucination)
+        header = (
+            "═══ FONTE DE DADOS ═══\n"
+            "Logs técnicos de desenvolvimento: commits, PRs, issues.\n"
+            "NÃO inclui: métricas de negócio, analytics, custos, incidentes de produção.\n"
+            "══════════════════════\n\n"
+        )
 
         context_parts = []
         for i, activity in enumerate(activities[:50], 1):
@@ -198,9 +210,9 @@ class BaseAIService:
             activity_type = activity.get("type", "COMMIT")
             title = activity.get("title", "Sem título")
             author = activity.get("author", "desconhecido")
-            repo = activity.get("repository_name", "")
+            repo = activity.get("repository_name") or activity.get("repository", "")
 
-            # Build activity info
+            # Build activity info (neutral format, no citations)
             parts = [f"{i}. [{activity_type}] {title}"]
             parts.append(f"   Autor: {author} | Data: {date}")
             if repo:
@@ -227,4 +239,4 @@ class BaseAIService:
 
             context_parts.append("\n".join(parts))
 
-        return "\n\n".join(context_parts)
+        return header + "\n\n".join(context_parts)

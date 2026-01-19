@@ -252,7 +252,7 @@ make obs-up
 ### Acessar
 | Ferramenta | URL | Credenciais |
 |------------|-----|-------------|
-| Grafana | http://localhost:3000 | admin/devbridge |
+| Grafana | http://localhost:3033 | admin/devbridge |
 | Jaeger | http://localhost:16686 | - |
 | Loki | http://localhost:3100 | - |
 

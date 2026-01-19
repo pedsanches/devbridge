@@ -31,7 +31,13 @@ help: ## Show this help message
 setup: ## Initial project setup
 	@./scripts/setup.sh
 
-dev: ## Start development servers
+kill-ports: ## Kill processes on ports 8001 (backend) and 3001 (frontend)
+	@echo "$(BLUE)[CLEANUP]$(NC) Checking for processes on ports 8001 and 3001..."
+	@-lsof -ti:8001 | xargs kill -9 >/dev/null 2>&1 || true
+	@-lsof -ti:3001 | xargs kill -9 >/dev/null 2>&1 || true
+	@echo "$(GREEN)[OK]$(NC) Ports released"
+
+dev: kill-ports ## Start development servers
 	@./scripts/dev.sh
 
 dev-backend: ## Start only backend
@@ -156,7 +162,7 @@ obs-up: ## Start observability stack (Grafana, Loki, Jaeger)
 	@docker compose --profile observability up -d
 	@echo "$(GREEN)[OK]$(NC) Observability stack started"
 	@echo ""
-	@echo "  $(YELLOW)Grafana:$(NC)  http://localhost:3000 (admin/devbridge)"
+	@echo "  $(YELLOW)Grafana:$(NC)  http://localhost:3033 (admin/devbridge)"
 	@echo "  $(YELLOW)Jaeger:$(NC)   http://localhost:16686"
 	@echo "  $(YELLOW)Loki:$(NC)     http://localhost:3100"
 	@echo ""
@@ -211,7 +217,7 @@ health: ## Check all services health
 	@docker exec devbridge-redis redis-cli ping 2>/dev/null | grep -q PONG && echo "  $(GREEN)✓ Running$(NC)" || echo "  $(RED)✗ Not running$(NC)"
 	@echo ""
 	@echo "$(YELLOW)Grafana:$(NC)"
-	@curl -sf http://localhost:3000/api/health 2>/dev/null | grep -q 'database' && echo "  $(GREEN)✓ Running$(NC)" || echo "  $(RED)✗ Not running$(NC)"
+	@curl -sf http://localhost:3033/api/health 2>/dev/null | grep -q 'database' && echo "  $(GREEN)✓ Running$(NC)" || echo "  $(RED)✗ Not running$(NC)"
 	@echo ""
 	@echo "$(YELLOW)Loki:$(NC)"
 	@curl -sf http://localhost:3100/ready 2>/dev/null | grep -q "ready" && echo "  $(GREEN)✓ Running$(NC)" || echo "  $(RED)✗ Not running$(NC)"
