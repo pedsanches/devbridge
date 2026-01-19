@@ -5,8 +5,6 @@ Tests that sources include ref_id (R1, R2, ...) and external_id for verifiable c
 Also tests architectural hardening: BaseAIService decoupling, consistent R# generation.
 """
 
-import pytest
-
 from app.schemas.chat import SourceItem
 from app.services.chat_service import build_sources_with_citations
 
@@ -17,9 +15,24 @@ class TestChatCitations:
     def test_build_sources_with_citations_generates_sequential_ref_ids(self):
         """build_sources_with_citations should generate R1, R2, R3, etc."""
         activities = [
-            {"title": "First PR", "repository": "repo1", "type": "PULL_REQUEST", "external_id": "123"},
-            {"title": "Second commit", "repository": "repo2", "type": "COMMIT", "external_id": "abc1234def"},
-            {"title": "Third PR", "repository": "repo1", "type": "PULL_REQUEST", "external_id": "456"},
+            {
+                "title": "First PR",
+                "repository": "repo1",
+                "type": "PULL_REQUEST",
+                "external_id": "123",
+            },
+            {
+                "title": "Second commit",
+                "repository": "repo2",
+                "type": "COMMIT",
+                "external_id": "abc1234def",
+            },
+            {
+                "title": "Third PR",
+                "repository": "repo1",
+                "type": "PULL_REQUEST",
+                "external_id": "456",
+            },
         ]
 
         sources = build_sources_with_citations(activities, limit=5)
@@ -42,7 +55,12 @@ class TestChatCitations:
     def test_build_sources_with_citations_formats_commit_sha(self):
         """Commit external_id should show first 7 characters of SHA."""
         activities = [
-            {"title": "Add feature", "repository": "repo", "type": "COMMIT", "external_id": "abc1234567890def"},
+            {
+                "title": "Add feature",
+                "repository": "repo",
+                "type": "COMMIT",
+                "external_id": "abc1234567890def",
+            },
         ]
 
         sources = build_sources_with_citations(activities)
@@ -63,7 +81,12 @@ class TestChatCitations:
     def test_build_sources_with_citations_respects_limit(self):
         """Should respect the limit parameter."""
         activities = [
-            {"title": f"Activity {i}", "repository": "repo", "type": "COMMIT", "external_id": f"sha{i}"}
+            {
+                "title": f"Activity {i}",
+                "repository": "repo",
+                "type": "COMMIT",
+                "external_id": f"sha{i}",
+            }
             for i in range(10)
         ]
 
@@ -163,7 +186,12 @@ class TestConversationAICitations:
         service = ConversationAI()
         activities = [
             {"title": "Test PR", "repository": "repo", "type": "PULL_REQUEST", "external_id": "42"},
-            {"title": "Test Commit", "repository": "repo", "type": "COMMIT", "external_id": "abc1234"},
+            {
+                "title": "Test Commit",
+                "repository": "repo",
+                "type": "COMMIT",
+                "external_id": "abc1234",
+            },
         ]
 
         context = service.format_activities_with_citations(activities)
@@ -225,4 +253,3 @@ class TestHonestyClauseCitationRules:
         assert "factual" in HONESTY_CLAUSE.lower() or "fato" in HONESTY_CLAUSE.lower()
         # When NOT to use
         assert "intenção" in HONESTY_CLAUSE.lower() or "hipótese" in HONESTY_CLAUSE.lower()
-

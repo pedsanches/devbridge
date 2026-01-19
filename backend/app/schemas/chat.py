@@ -64,12 +64,13 @@ class ChatMetadata(BaseModel):
     activities_count: int = Field(..., description="Number of activities used as context")
     search_method: str = Field("sql", description="Method used: 'semantic' or 'sql'")
     confidence_score: float = Field(
-        ge=0.0, le=1.0, default=0.8,
-        description="Retrieval confidence: measures relevance and density of evidence found (commits/PRs/issues)"
+        ge=0.0,
+        le=1.0,
+        default=0.8,
+        description="Retrieval confidence: measures relevance and density of evidence found (commits/PRs/issues)",
     )
     confidence_explanation: str | None = Field(
-        None,
-        description="Human-readable explanation of the confidence score"
+        None, description="Human-readable explanation of the confidence score"
     )
     persona_used: Persona = Field(default=Persona.PRODUCT, description="Persona used for response")
     sources: list[SourceItem] = Field(

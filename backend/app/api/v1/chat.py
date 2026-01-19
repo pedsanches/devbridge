@@ -209,7 +209,9 @@ async def chat_stream(
             "activities_count": len(activities),
             "sources": sources,
             "confidence_score": confidence_score,
-            "confidence_explanation": build_confidence_explanation(confidence_score, len(activities)),
+            "confidence_explanation": build_confidence_explanation(
+                confidence_score, len(activities)
+            ),
             "generation_id": generation_id,
             "prompt_version_id": prompt_version_id,
             "trace_id": trace_id,

@@ -240,5 +240,3 @@ class BaseAIService:
             context_parts.append("\n".join(parts))
 
         return header + "\n\n".join(context_parts)
-
-

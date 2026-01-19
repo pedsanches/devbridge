@@ -60,6 +60,7 @@ class ReportSection(BaseModel):
 
 class ReferenceType(str, Enum):
     """Type of reference for smart citations."""
+
     PULL_REQUEST = "pull_request"
     ISSUE = "issue"
     COMMIT = "commit"

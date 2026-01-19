@@ -62,7 +62,7 @@ export function FeedbackButtons({
             setStatus("error");
             setTimeout(() => {
                 setStatus("idle");
-                // Don't reset selection largely to keep UI stable, 
+                // Don't reset selection largely to keep UI stable,
                 // but allow retry.
             }, 3000);
         }
