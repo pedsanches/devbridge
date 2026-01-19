@@ -63,10 +63,15 @@ class TestChatService:
 
     @pytest.mark.asyncio
     async def test_process_query_passes_persona_to_ai_service(self, chat_service):
-        """process_query should pass persona to ai_service."""
+        """process_query should pass persona to ai_service when activities exist."""
+        # Must have activities for AI service to be called (anti-hallucination gate)
+        mock_activities = [{"id": "test", "title": "Test Activity", "type": "commit"}]
         with (
             patch.object(
-                chat_service, "get_context_activities", new_callable=AsyncMock, return_value=[]
+                chat_service,
+                "get_context_activities",
+                new_callable=AsyncMock,
+                return_value=mock_activities,
             ),
             patch.object(
                 chat_service, "search_activities_semantic", new_callable=AsyncMock, return_value=[]
@@ -219,3 +224,48 @@ class TestChatService:
             # Semantic score 0.9 + coverage bonus (1 activity / 5 * 0.15 = 0.03) = 0.93
             assert result["metadata"].confidence_score == 0.93
             assert result["metadata"].search_method == "semantic"
+
+    @pytest.mark.asyncio
+    async def test_no_activities_skips_llm_call(self, chat_service):
+        """When no activities found, should NOT call LLM (anti-hallucination gate)."""
+        with (
+            patch.object(
+                chat_service, "get_context_activities", new_callable=AsyncMock, return_value=[]
+            ),
+            patch.object(
+                chat_service, "search_activities_semantic", new_callable=AsyncMock, return_value=[]
+            ),
+            patch(
+                "app.services.chat_service.ai_service.summarize_activities",
+                new_callable=AsyncMock,
+                return_value="Should not be called",
+            ) as mock_summarize,
+            patch("app.services.conversation_service.ConversationService") as MockConvService,
+        ):
+            mock_conv_instance = MockConvService.return_value
+            mock_conv_instance.create_conversation = AsyncMock(
+                return_value=MagicMock(id="123", organization_id="org")
+            )
+            mock_conv_instance.generate_title = AsyncMock(return_value="AI Generated Title")
+            mock_conv_instance.update_conversation = AsyncMock()
+            mock_conv_instance.add_message = AsyncMock()
+            mock_conv_instance.get_conversation_messages = AsyncMock(return_value=[])
+
+            result = await chat_service.process_query(
+                MagicMock(),
+                query="What happened?",
+                user_id=uuid4(),
+                org_id=str(uuid4()),
+            )
+
+            # LLM should NOT have been called
+            mock_summarize.assert_not_called()
+
+            # Response should be deterministic no-context message
+            assert "Não encontrei atividades" in result["answer"]
+            assert "ajuste os filtros" in result["answer"]
+
+            # Metadata should reflect no activities
+            assert result["activities_count"] == 0
+            assert result["metadata"].activities_count == 0
+            assert result["metadata"].confidence_score == 0.3  # Base confidence

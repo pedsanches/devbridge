@@ -83,10 +83,11 @@ class AIService:
         question: str,
         persona: Persona = Persona.PRODUCT,
         chat_history: list[dict[str, str]] | None = None,
+        sources: list[Any] | None = None,
     ) -> str:
         """Summarize activities based on a question."""
         return await self._conversation.summarize_activities(
-            activities, question, persona, chat_history
+            activities, question, persona, chat_history, sources
         )
 
     async def summarize_activities_stream(
@@ -95,10 +96,11 @@ class AIService:
         question: str,
         persona: Persona = Persona.PRODUCT,
         chat_history: list[dict[str, str]] | None = None,
+        sources: list[Any] | None = None,
     ) -> AsyncGenerator[str, None]:
         """Summarize activities with streaming response."""
         async for chunk in self._conversation.summarize_activities_stream(
-            activities, question, persona, chat_history
+            activities, question, persona, chat_history, sources
         ):
             yield chunk
 

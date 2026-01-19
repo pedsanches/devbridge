@@ -98,7 +98,7 @@ export async function sendChatMessage(request: ChatRequest): Promise<ChatRespons
  * @param onError - Callback on error
  */
 export type ChatStreamEvent =
-    | { type: "metadata"; conversation_id?: string; sources?: unknown; activities_count?: number; confidence_score?: number; generation_id?: string; prompt_version_id?: string; trace_id?: string }
+    | { type: "metadata"; conversation_id?: string; sources?: unknown; activities_count?: number; confidence_score?: number; confidence_explanation?: string; generation_id?: string; prompt_version_id?: string; trace_id?: string }
     | { type: "delta"; text: string }
     | { type: "done"; message_id?: string };
 

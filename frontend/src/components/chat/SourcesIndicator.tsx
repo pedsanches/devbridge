@@ -15,6 +15,7 @@ interface SourcesIndicatorProps {
     sources: Source[];
     activitiesCount: number;
     confidenceScore?: number | undefined;
+    confidenceExplanation?: string | undefined;
 }
 
 const TYPE_ICONS: Record<string, React.ReactNode> = {
@@ -31,7 +32,7 @@ function getConfidenceLabel(score: number): { label: string; color: string } {
     return { label: "Low confidence", color: "text-orange-600 dark:text-orange-400" };
 }
 
-export function SourcesIndicator({ sources, activitiesCount, confidenceScore }: SourcesIndicatorProps) {
+export function SourcesIndicator({ sources, activitiesCount, confidenceScore, confidenceExplanation }: SourcesIndicatorProps) {
     const [isExpanded, setIsExpanded] = useState(false);
 
     if (sources.length === 0) {
@@ -56,7 +57,10 @@ export function SourcesIndicator({ sources, activitiesCount, confidenceScore }: 
                     )}
                 </button>
                 {confidence && (
-                    <span className={`flex items-center gap-1 ${confidence.color}`}>
+                    <span
+                        className={`flex items-center gap-1 ${confidence.color} cursor-help`}
+                        title={confidenceExplanation || `Mede a densidade e relevância das evidências encontradas (commits/PRs/issues).`}
+                    >
                         <Shield className="h-3 w-3" />
                         {confidence.label}
                     </span>

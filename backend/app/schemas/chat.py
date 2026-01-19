@@ -40,13 +40,22 @@ class ChatRequest(BaseModel):
 
 
 class SourceItem(BaseModel):
-    """A source activity used to generate the response."""
+    """A source activity used to generate the response with citation support."""
 
     title: str = Field(..., description="Activity title")
     repository: str = Field(..., description="Repository name")
     type: str = Field(..., description="Activity type (commit, pr, issue)")
     author: str | None = Field(None, description="Activity author")
     url: str | None = Field(None, description="Link to the activity")
+    # Citation support (BR-012)
+    ref_id: str | None = Field(
+        None,
+        description="Citation reference ID (e.g., R1, R2). Sequential per response.",
+    )
+    external_id: str | None = Field(
+        None,
+        description="External identifier: PR number, commit SHA, or issue number",
+    )
 
 
 class ChatMetadata(BaseModel):
@@ -55,7 +64,12 @@ class ChatMetadata(BaseModel):
     activities_count: int = Field(..., description="Number of activities used as context")
     search_method: str = Field("sql", description="Method used: 'semantic' or 'sql'")
     confidence_score: float = Field(
-        ge=0.0, le=1.0, default=0.8, description="AI confidence in response"
+        ge=0.0, le=1.0, default=0.8,
+        description="Retrieval confidence: measures relevance and density of evidence found (commits/PRs/issues)"
+    )
+    confidence_explanation: str | None = Field(
+        None,
+        description="Human-readable explanation of the confidence score"
     )
     persona_used: Persona = Field(default=Persona.PRODUCT, description="Persona used for response")
     sources: list[SourceItem] = Field(

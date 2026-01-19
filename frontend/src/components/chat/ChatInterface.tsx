@@ -44,6 +44,7 @@ interface Message {
     sources?: Source[] | undefined;
     activitiesCount?: number | undefined;
     confidenceScore?: number | undefined;
+    confidenceExplanation?: string | undefined;
     metadata?: {
         search_method?: "semantic" | "sql" | undefined;
         confidence_score?: number | undefined;
@@ -342,6 +343,7 @@ export function ChatInterface({ conversationId, initialMessages, initialContext 
                                             sources?: Source[];
                                             activities_count?: number;
                                             confidence_score?: number;
+                                            confidence_explanation?: string;
                                             generation_id?: string;
                                             prompt_version_id?: string;
                                             trace_id?: string;
@@ -353,6 +355,7 @@ export function ChatInterface({ conversationId, initialMessages, initialContext 
                                                 sources: metadata.sources,
                                                 activitiesCount: metadata.activities_count,
                                                 confidenceScore: metadata.confidence_score,
+                                                confidenceExplanation: metadata.confidence_explanation,
                                                 generationId: metadata.generation_id,
                                                 promptVersionId: metadata.prompt_version_id,
                                                 traceId: metadata.trace_id,
@@ -406,6 +409,7 @@ export function ChatInterface({ conversationId, initialMessages, initialContext 
                                     sources?: Source[];
                                     activities_count?: number;
                                     confidence_score?: number;
+                                    confidence_explanation?: string;
                                     generation_id?: string;
                                     prompt_version_id?: string;
                                     trace_id?: string;
@@ -417,6 +421,7 @@ export function ChatInterface({ conversationId, initialMessages, initialContext 
                                         sources: metadata.sources,
                                         activitiesCount: metadata.activities_count,
                                         confidenceScore: metadata.confidence_score,
+                                        confidenceExplanation: metadata.confidence_explanation,
                                         generationId: metadata.generation_id,
                                         promptVersionId: metadata.prompt_version_id,
                                         traceId: metadata.trace_id,
@@ -510,11 +515,11 @@ export function ChatInterface({ conversationId, initialMessages, initialContext 
                                 <MessageSquare className="h-12 w-12 text-primary" />
                             </div>
                             <h2 className="mb-2 text-xl font-semibold">
-                                Converse sobre o trabalho do time
+                                Silêncio nos logs...
                             </h2>
                             <p className="max-w-md text-secondary">
-                                Pergunte sobre commits, pull requests e atividades recentes.
-                                A IA vai analisar os dados e responder em linguagem de negócio.
+                                Não detectamos código movido neste período.
+                                Que tal checar os filtros de repositório?
                             </p>
 
                             {/* Persona Info */}
@@ -571,6 +576,7 @@ export function ChatInterface({ conversationId, initialMessages, initialContext 
                                             sources={message.sources}
                                             activitiesCount={message.activitiesCount}
                                             confidenceScore={message.confidenceScore}
+                                            confidenceExplanation={message.confidenceExplanation}
                                             isStreaming={!!message.isStreaming}
                                             generationId={message.generationId}
                                             promptVersionId={message.promptVersionId}
@@ -682,7 +688,8 @@ export function ChatInterface({ conversationId, initialMessages, initialContext 
 
                     <div className="px-4">
                         <ChatInput ref={chatInputRef} onSend={handleSendMessage} disabled={isLoading} />
-                        <div className="mt-2 flex justify-end">
+                        <div className="mt-2 flex items-center justify-between text-xs text-neutral-400 px-1">
+                            <span>As respostas baseiam-se em logs técnicos e não acessam dados financeiros.</span>
                             <KeyboardShortcutsHint />
                         </div>
                     </div>

@@ -21,6 +21,10 @@ import {
     Users,
 } from "lucide-react";
 
+import ReactMarkdown from 'react-markdown';
+import { SmartReference, ReportSource, ReferenceType } from "@/components/ui/SmartReference";
+import { rehypeSmartReferences } from "@/lib/rehype-smart-references";
+
 import ReportBuilder, { ReportBuilderConfig } from "@/components/reports/ReportBuilder";
 import TemplatesManager, { FullTemplate } from "@/components/reports/TemplatesManager";
 import { TeamSelector } from "@/components/teams";
@@ -320,8 +324,40 @@ function ReportPreview({
                     <h3 className="mb-2 text-lg font-medium text-[var(--foreground)]">
                         {section.title}
                     </h3>
-                    <div className="whitespace-pre-wrap text-[var(--foreground)]">
-                        {section.content}
+                    <div className="prose prose-sm dark:prose-invert max-w-none text-[var(--foreground)]">
+                        <ReactMarkdown
+                            rehypePlugins={[rehypeSmartReferences]}
+                            components={{
+                                "smart-ref": (props: any) => {
+                                    const refId = props.id || props.children;
+
+                                    // Map ReportSource (backend) to SmartReference source
+                                    const sourceDict = report.sources?.reduce((acc, src) => {
+                                        // ReportSource from backend doesn't have ref_id yet in API unless we update it
+                                        // But we assume the API will return it.
+                                        // We cast to any because the frontend might not have updated types yet
+                                        const s = src as any;
+                                        if (s.ref_id) {
+                                            acc[s.ref_id] = {
+                                                ref_id: s.ref_id,
+                                                external_id: s.external_id,
+                                                title: s.title,
+                                                repository: s.repository,
+                                                type: s.type,
+                                                url: s.url,
+                                                description: s.description,
+                                            } as ReportSource;
+                                        }
+                                        return acc;
+                                    }, {} as Record<string, ReportSource>) || {};
+
+                                    const source = sourceDict[refId];
+                                    return <SmartReference id={refId} source={source} />;
+                                }
+                            } as any}
+                        >
+                            {section.content}
+                        </ReactMarkdown>
                     </div>
                 </div>
             ))}

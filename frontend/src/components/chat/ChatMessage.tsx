@@ -7,6 +7,8 @@ import type { BundledTheme } from "shiki";
 import { SourcesIndicator } from "./SourcesIndicator";
 import { MessageActions } from "./MessageActions";
 import { logResponseDisplayed, Persona } from "@/services/api";
+import { SmartReference, ReportSource, ReferenceType } from "@/components/ui/SmartReference";
+import { rehypeSmartReferences } from "@/lib/rehype-smart-references";
 
 /**
  * Shiki themes for syntax highlighting in code blocks.
@@ -31,6 +33,7 @@ interface ChatMessageProps {
     sources?: Source[] | undefined;
     activitiesCount?: number | undefined;
     confidenceScore?: number | undefined;
+    confidenceExplanation?: string | undefined;
     /** Whether this message is currently being streamed */
     isStreaming?: boolean;
     // Lineage & Feedback
@@ -71,6 +74,7 @@ export const ChatMessage = memo(function ChatMessage({
     sources,
     activitiesCount,
     confidenceScore,
+    confidenceExplanation,
     isStreaming = false,
     generationId,
     promptVersionId,
@@ -132,6 +136,38 @@ export const ChatMessage = memo(function ChatMessage({
                             parseIncompleteMarkdown={true}
                             {...(isStreaming ? { caret: "block" as const } : {})}
                             shikiTheme={SHIKI_THEME}
+                            rehypePlugins={[rehypeSmartReferences]}
+                            components={{
+                                "smart-ref": (props: any) => {
+                                    // Parse ID from props or children
+                                    const refId = props.id || props.children;
+
+                                    // Map simple source structure to ReportSource for SmartReference
+                                    // The chat defines Source differently than ReportSource, so we mitigate here
+                                    const sourceDict = sources?.reduce((acc, src) => {
+                                        // The backend 'Source' object doesn't strictly have a 'ref_id' field in the frontend type,
+                                        // but it comes from the API. We assume the API provides it or we can infer it.
+                                        // For now, let's assume the API sources have 'ref_id' if they are citations.
+                                        const s = src as any;
+                                        if (s.ref_id) {
+                                            acc[s.ref_id] = {
+                                                ref_id: s.ref_id,
+                                                external_id: s.external_id,
+                                                title: s.title,
+                                                repository: s.repository,
+                                                type: s.type, // Enum or string
+                                                url: s.url,
+                                                // Chat sources might have author/status if rich
+                                            } as ReportSource;
+                                        }
+                                        return acc;
+                                    }, {} as Record<string, ReportSource>) || {};
+
+                                    const source = sourceDict[refId];
+
+                                    return <SmartReference id={refId} source={source} />;
+                                }
+                            }}
                         >
                             {isStreaming ? stabilizeMarkdownForStreaming(content) : content}
                         </Streamdown>
@@ -153,6 +189,7 @@ export const ChatMessage = memo(function ChatMessage({
                         sources={sources}
                         activitiesCount={activitiesCount || sources.length}
                         confidenceScore={confidenceScore}
+                        confidenceExplanation={confidenceExplanation}
                     />
                 )}
 

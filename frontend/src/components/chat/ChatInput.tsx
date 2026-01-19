@@ -15,7 +15,7 @@ export interface ChatInputHandle {
 }
 
 export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function ChatInput(
-    { onSend, disabled = false, placeholder = "Pergunte sobre as atividades do time..." },
+    { onSend, disabled = false, placeholder = "Pergunte sobre entregas, riscos ou o foco do time..." },
     ref
 ) {
     const [message, setMessage] = useState("");

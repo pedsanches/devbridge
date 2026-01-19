@@ -131,8 +131,8 @@ diagnose_services() {
     echo -e "${YELLOW}Observability Stack (optional):${NC}"
     local obs_running=0
 
-    if curl -sf http://localhost:3000/api/health &>/dev/null; then
-        print_success "Grafana (localhost:3000)"
+    if curl -sf http://localhost:3033/api/health &>/dev/null; then
+        print_success "Grafana (localhost:3033)"
         ((obs_running++))
     else
         print_warning "Grafana not running"
@@ -242,7 +242,7 @@ diagnose_ports() {
         "8001:Backend (FastAPI)"
         "5432:PostgreSQL"
         "6379:Redis"
-        "3000:Grafana"
+        "3033:Grafana"
         "3100:Loki"
         "16686:Jaeger"
     )
