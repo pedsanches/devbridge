@@ -23,10 +23,10 @@ log_error() { echo -e "${RED}[ERROR]${NC} $1"; }
 MODE="${1:-all}"
 
 docker_compose() {
-    if command -v docker-compose >/dev/null 2>&1; then
-        docker-compose "$@"
-    else
+    if docker compose version >/dev/null 2>&1; then
         docker compose "$@"
+    else
+        docker-compose "$@"
     fi
 }
 
@@ -81,7 +81,7 @@ check_docker() {
     docker_compose --profile ai up -d
 
     # Wait only for dev dependencies; avoids arbitrary sleep.
-    wait_for_port "127.0.0.1" 5432 "PostgreSQL" 60 || true
+    wait_for_port "127.0.0.1" 5433 "PostgreSQL" 60 || true
     wait_for_port "127.0.0.1" 6379 "Redis" 60 || true
 
     log_success "Docker services running"

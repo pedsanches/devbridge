@@ -46,29 +46,61 @@ log_error() { echo -e "${RED}[ERROR]${NC} $1"; }
 check_requirements() {
     log_info "Checking requirements..."
 
-    local missing=()
+    # Check/Install Poetry
+    if ! command -v poetry >/dev/null 2>&1; then
+        log_warn "Poetry not found. Installing..."
+        curl -sSL https://install.python-poetry.org | python3 -
+        export PATH="$HOME/.local/bin:$PATH"
+        if ! command -v poetry >/dev/null 2>&1; then
+             log_error "Failed to install Poetry automatically."
+             exit 1
+        fi
+        log_success "Poetry installed."
+    fi
 
+    # Check/Install pnpm
+    if ! command -v pnpm >/dev/null 2>&1; then
+        log_warn "pnpm not found. Installing..."
+        if command -v npm >/dev/null 2>&1; then
+            npm install -g pnpm
+        else
+             # Try standalone install if npm is missing
+             curl -fsSL https://get.pnpm.io/install.sh | sh -
+             # Assuming default pnpm location, typically depends on shell, but let's try updating PATH if we can guess
+             export PNPM_HOME="$HOME/.local/share/pnpm"
+             case ":$PATH:" in
+               *":$PNPM_HOME:"*) ;;
+               *) export PATH="$PNPM_HOME:$PATH" ;;
+             esac
+        fi
+
+        if ! command -v pnpm >/dev/null 2>&1; then
+             log_error "Failed to install pnpm automatically. Please install it manually."
+             exit 1
+        fi
+        log_success "pnpm installed."
+    fi
+
+    local missing=()
     command -v python3 >/dev/null 2>&1 || missing+=("python3")
-    command -v poetry >/dev/null 2>&1 || missing+=("poetry")
+    # node is checked implicitly by pnpm, but good to keep if pnpm standalone was used and node is still needed for running app
     command -v node >/dev/null 2>&1 || missing+=("node")
-    command -v pnpm >/dev/null 2>&1 || missing+=("pnpm")
 
     if [[ "$SKIP_DOCKER" == false ]]; then
         command -v docker >/dev/null 2>&1 || missing+=("docker")
-        if ! command -v docker-compose >/dev/null 2>&1; then
-            if ! docker compose version >/dev/null 2>&1; then
-                missing+=("docker-compose")
-            fi
+        if command -v docker-compose >/dev/null 2>&1; then
+             :
+        elif docker compose version >/dev/null 2>&1; then
+             :
+        else
+             missing+=("docker-compose")
         fi
     fi
 
     if [[ ${#missing[@]} -gt 0 ]]; then
         log_error "Missing required tools: ${missing[*]}"
         echo ""
-        echo "Install missing tools:"
-        echo "  - poetry: curl -sSL https://install.python-poetry.org | python3 -"
-        echo "  - pnpm: npm install -g pnpm"
-        echo "  - docker: https://docs.docker.com/get-docker/"
+        echo "Please install the missing tools manually."
         exit 1
     fi
 
@@ -148,14 +180,48 @@ setup_docker() {
     log_info "Starting Docker services..."
 
     if [[ -f docker-compose.yml ]]; then
-        if command -v docker-compose >/dev/null 2>&1; then
-            docker-compose --profile ai up -d
-        else
+        if docker compose version >/dev/null 2>&1; then
             docker compose --profile ai up -d
+        else
+            docker-compose --profile ai up -d
         fi
         log_success "Docker services started"
     else
         log_warn "docker-compose.yml not found, skipping"
+    fi
+}
+
+# Run database migrations
+setup_db() {
+    if [[ "$SKIP_DOCKER" == true ]]; then
+        log_info "Skipping database setup"
+        return
+    fi
+
+    log_info "Waiting for database..."
+
+    # Wait for DB port
+    local host="127.0.0.1"
+    local port="5433"
+    local timeout=60
+    local start_time=$(date +%s)
+
+    while ! (echo >/dev/tcp/$host/$port) >/dev/null 2>&1; do
+        if [ $(($(date +%s) - $start_time)) -gt $timeout ]; then
+            log_error "Timeout waiting for database"
+            return 1
+        fi
+        sleep 1
+    done
+
+    log_info "Running database migrations..."
+    if [[ -d backend ]]; then
+        cd backend
+        poetry run alembic upgrade head
+        cd ..
+        log_success "Database migrations applied"
+    else
+        log_warn "backend/ directory not found, skipping migrations"
     fi
 }
 
@@ -192,6 +258,7 @@ main() {
     setup_frontend
     setup_precommit
     setup_docker
+    setup_db
 
     echo ""
     echo "╔══════════════════════════════════════════════════════════╗"
