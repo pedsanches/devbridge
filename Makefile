@@ -133,25 +133,25 @@ build: ## Build for production
 	@echo "$(GREEN)[OK]$(NC) Build complete"
 
 docker-build: ## Build Docker images
-	@if command -v docker-compose >/dev/null 2>&1; then docker-compose build; else docker compose build; fi
+	@if docker compose version >/dev/null 2>&1; then docker compose build; else docker-compose build; fi
 
 ## ============================================================
 ## DOCKER
 ## ============================================================
 
 docker-up: ## Start Docker services
-	@if command -v docker-compose >/dev/null 2>&1; then docker-compose up -d; else docker compose up -d; fi
+	@if docker compose version >/dev/null 2>&1; then docker compose up -d; else docker-compose up -d; fi
 	@echo "$(GREEN)[OK]$(NC) Docker services started"
 
 docker-down: ## Stop Docker services
-	@if command -v docker-compose >/dev/null 2>&1; then docker-compose down; else docker compose down; fi
+	@if docker compose version >/dev/null 2>&1; then docker compose down; else docker-compose down; fi
 	@echo "$(GREEN)[OK]$(NC) Docker services stopped"
 
 docker-logs: ## Show Docker logs
-	@if command -v docker-compose >/dev/null 2>&1; then docker-compose logs -f; else docker compose logs -f; fi
+	@if docker compose version >/dev/null 2>&1; then docker compose logs -f; else docker-compose logs -f; fi
 
 docker-ps: ## Show Docker status
-	@if command -v docker-compose >/dev/null 2>&1; then docker-compose ps; else docker compose ps; fi
+	@if docker compose version >/dev/null 2>&1; then docker compose ps; else docker-compose ps; fi
 
 ## ============================================================
 ## OBSERVABILITY (Grafana + Loki + Jaeger)
@@ -268,5 +268,5 @@ clean: ## Clean build artifacts
 	@echo "$(GREEN)[OK]$(NC) Cleanup complete"
 
 clean-docker: ## Remove Docker volumes and containers
-	@if command -v docker-compose >/dev/null 2>&1; then docker-compose down -v --remove-orphans; else docker compose down -v --remove-orphans; fi
+	@if docker compose version >/dev/null 2>&1; then docker compose down -v --remove-orphans; else docker-compose down -v --remove-orphans; fi
 	@echo "$(GREEN)[OK]$(NC) Docker cleanup complete"
