@@ -48,7 +48,7 @@ docker-compose logs -f
 |---------|-------|-----------|
 | api | 8001 | FastAPI Backend |
 | worker | - | Celery Worker |
-| postgres | 5432 | Database |
+| postgres | 5433 | Database |
 | redis | 6379 | Cache e Queue |
 | qdrant | 6333 | Vector DB |
 | presidio-analyzer | 5001 | PII Analyzer |

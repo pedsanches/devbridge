@@ -35,7 +35,7 @@ GITHUB_TOKEN=ghp_...
 GITHUB_WEBHOOK_SECRET=seu-secret-aleatorio
 
 # Database (padrão para Docker)
-DATABASE_URL=postgresql://devbridge:devbridge@localhost:5432/devbridge
+DATABASE_URL=postgresql://devbridge:devbridge@localhost:5433/devbridge
 
 # Redis
 REDIS_URL=redis://localhost:6379/0
@@ -48,7 +48,7 @@ docker-compose --profile ai up -d
 ```
 
 Isso levanta:
-- PostgreSQL (porta 5432)
+- PostgreSQL (porta 5433)
 - Redis (porta 6379)
 - Qdrant (porta 6333)
 - Presidio (portas 5001/5002)

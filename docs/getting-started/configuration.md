@@ -8,7 +8,7 @@ Todas as opções de configuração disponíveis via variáveis de ambiente.
 |----------|-----------|---------|
 | `ANTHROPIC_API_KEY` | API Key do Claude | `sk-ant-api03-...` |
 | `GITHUB_TOKEN` | Personal Access Token do GitHub | `ghp_...` |
-| `DATABASE_URL` | URL de conexão PostgreSQL | `postgresql://user:pass@host:5432/db` |
+| `DATABASE_URL` | URL de conexão PostgreSQL | `postgresql://user:pass@host:5433/db` |
 | `REDIS_URL` | URL de conexão Redis | `redis://localhost:6379/0` |
 
 > Em produção, o backend valida `SECRET_KEY`, `JWT_SECRET_KEY`, `OPENAI_API_KEY` e `GITHUB_WEBHOOK_SECRET` na inicialização.
@@ -145,7 +145,7 @@ GITHUB_WEBHOOK_SECRET=meu-secret-super-seguro
 # ===================
 # Database
 # ===================
-DATABASE_URL=postgresql://devbridge:devbridge@localhost:5432/devbridge
+DATABASE_URL=postgresql://devbridge:devbridge@localhost:5433/devbridge
 DB_POOL_SIZE=10
 
 # ===================

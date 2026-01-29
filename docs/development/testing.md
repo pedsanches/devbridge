@@ -379,7 +379,7 @@ jobs:
         env:
           POSTGRES_PASSWORD: postgres
         ports:
-          - 5432:5432
+          - 5433:5432
 
     steps:
       - uses: actions/checkout@v4
