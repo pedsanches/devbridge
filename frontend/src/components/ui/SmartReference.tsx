@@ -38,7 +38,7 @@ export interface ReportSource {
 
 interface SmartReferenceProps {
     id: string; // The "R1" string
-    source?: ReportSource;
+    source?: ReportSource | undefined; // Allow undefined explicitly for exactOptionalPropertyTypes
 }
 
 const TYPE_ICONS: Record<string, React.ElementType> = {
@@ -129,7 +129,7 @@ export const SmartReference: React.FC<SmartReferenceProps> = ({ id, source }) =>
                     {/* RELEVANCE/DESCRIPTION (Optional) */}
                     {source.description && (
                         <div className="text-xs text-muted-foreground bg-muted/30 p-2.5 rounded-md border border-border/50 italic">
-                            "{source.description}"
+                            &ldquo;{source.description}&rdquo;
                         </div>
                     )}
 

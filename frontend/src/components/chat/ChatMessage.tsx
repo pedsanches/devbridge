@@ -7,7 +7,7 @@ import type { BundledTheme } from "shiki";
 import { SourcesIndicator } from "./SourcesIndicator";
 import { MessageActions } from "./MessageActions";
 import { logResponseDisplayed, Persona } from "@/services/api";
-import { SmartReference, ReportSource, ReferenceType } from "@/components/ui/SmartReference";
+import { SmartReference, ReportSource } from "@/components/ui/SmartReference";
 import { rehypeSmartReferences } from "@/lib/rehype-smart-references";
 
 /**
@@ -138,6 +138,10 @@ export const ChatMessage = memo(function ChatMessage({
                             shikiTheme={SHIKI_THEME}
                             rehypePlugins={[rehypeSmartReferences]}
                             components={{
+                                // Override 'p' to 'div' to prevent nesting errors with block elements in references
+                                // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Streamdown component types
+                                "p": (props: any) => <div className="mb-4 last:mb-0" {...props} />,
+                                // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Streamdown custom component types
                                 "smart-ref": (props: any) => {
                                     // Parse ID from props or children
                                     const refId = props.id || props.children;
@@ -148,6 +152,7 @@ export const ChatMessage = memo(function ChatMessage({
                                         // The backend 'Source' object doesn't strictly have a 'ref_id' field in the frontend type,
                                         // but it comes from the API. We assume the API provides it or we can infer it.
                                         // For now, let's assume the API sources have 'ref_id' if they are citations.
+                                        // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Backend API may add fields
                                         const s = src as any;
                                         if (s.ref_id) {
                                             acc[s.ref_id] = {
@@ -167,7 +172,8 @@ export const ChatMessage = memo(function ChatMessage({
 
                                     return <SmartReference id={refId} source={source} />;
                                 }
-                            }}
+                                // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Streamdown components type limitation
+                            } as any}
                         >
                             {isStreaming ? stabilizeMarkdownForStreaming(content) : content}
                         </Streamdown>

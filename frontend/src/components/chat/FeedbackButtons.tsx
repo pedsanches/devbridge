@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState, useRef } from "react";
 import { ThumbsUp, ThumbsDown, Check, AlertCircle } from "lucide-react";
 import { submitFeedback, FeedbackType, Persona } from "@/services/api";
 
@@ -31,11 +31,15 @@ export function FeedbackButtons({
     const [status, setStatus] = useState<"idle" | "sending" | "success" | "error">("idle");
     const [localSelection, setLocalSelection] = useState<FeedbackType | null>(selectionKey);
 
-    // Sync local state when initialSelection prop changes
-    useEffect(() => {
+    // Track previous selectionKey to detect prop changes and reset state
+    const prevSelectionKeyRef = useRef(selectionKey);
+    if (prevSelectionKeyRef.current !== selectionKey) {
+        prevSelectionKeyRef.current = selectionKey;
+        // This is safe because we're synchronously updating during render
+        // React 19 pattern: derive state from props without useEffect
         setLocalSelection(selectionKey);
         setStatus("idle");
-    }, [selectionKey]);
+    }
 
     const handleFeedback = async (type: FeedbackType, reason?: string) => {
         if (status === "sending" || !conversationId) return;

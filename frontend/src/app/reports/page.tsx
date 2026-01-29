@@ -22,7 +22,7 @@ import {
 } from "lucide-react";
 
 import ReactMarkdown from 'react-markdown';
-import { SmartReference, ReportSource, ReferenceType } from "@/components/ui/SmartReference";
+import { SmartReference, ReportSource } from "@/components/ui/SmartReference";
 import { rehypeSmartReferences } from "@/lib/rehype-smart-references";
 
 import ReportBuilder, { ReportBuilderConfig } from "@/components/reports/ReportBuilder";
@@ -97,6 +97,8 @@ interface ReportResponse {
     summary_metrics?: ReportMetric[];
     confidence_score: number;
     sources_count: number;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- API sources type varies, typed downstream
+    sources?: any[];
 }
 
 interface SavedReport {
@@ -328,6 +330,10 @@ function ReportPreview({
                         <ReactMarkdown
                             rehypePlugins={[rehypeSmartReferences]}
                             components={{
+                                // Override 'p' to 'div' to prevent nesting errors with block elements in references
+                                // eslint-disable-next-line @typescript-eslint/no-explicit-any -- ReactMarkdown component types
+                                "p": (props: any) => <div className="mb-4 last:mb-0" {...props} />,
+                                // eslint-disable-next-line @typescript-eslint/no-explicit-any -- ReactMarkdown custom component types
                                 "smart-ref": (props: any) => {
                                     const refId = props.id || props.children;
 
@@ -336,6 +342,7 @@ function ReportPreview({
                                         // ReportSource from backend doesn't have ref_id yet in API unless we update it
                                         // But we assume the API will return it.
                                         // We cast to any because the frontend might not have updated types yet
+                                        // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Backend API may add fields
                                         const s = src as any;
                                         if (s.ref_id) {
                                             acc[s.ref_id] = {
@@ -354,6 +361,7 @@ function ReportPreview({
                                     const source = sourceDict[refId];
                                     return <SmartReference id={refId} source={source} />;
                                 }
+                                // eslint-disable-next-line @typescript-eslint/no-explicit-any -- ReactMarkdown components type limitation
                             } as any}
                         >
                             {section.content}
