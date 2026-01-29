@@ -49,7 +49,7 @@ class Settings(BaseSettings):
     # ============================================================
     # Database
     # ============================================================
-    DATABASE_URL: str = Field(default="postgresql://devbridge:devbridge@localhost:5432/devbridge")
+    DATABASE_URL: str = Field(default="postgresql://devbridge:devbridge@localhost:5433/devbridge")
     DATABASE_POOL_SIZE: int = 5
     DATABASE_MAX_OVERFLOW: int = 10
 
