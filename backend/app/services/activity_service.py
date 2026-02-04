@@ -292,6 +292,7 @@ async def get_or_create_activity(
         changed = False
 
         # Helper to update field if changed
+        # Helper to update field if changed
         for field in [
             "files_touched",
             "labels",
@@ -303,11 +304,27 @@ async def get_or_create_activity(
             "first_review_at",
             "approved_at",
             "merged_at",
+            "github_node_id",  # Static ID
         ]:
             new_val = getattr(activity_in, field)
             if new_val is not None and getattr(existing, field) != new_val:
                 setattr(existing, field, new_val)
                 changed = True
+
+        # State Machine Update (Last Write Wins via Timestamp)
+        if activity_in.last_event_at and (
+            not existing.last_event_at or activity_in.last_event_at >= existing.last_event_at
+        ):
+            if activity_in.state != existing.state:
+                existing.state = activity_in.state
+                changed = True
+
+            if activity_in.state_updated_at != existing.state_updated_at:
+                existing.state_updated_at = activity_in.state_updated_at
+                changed = True
+
+            existing.last_event_at = activity_in.last_event_at
+            changed = True
 
         if changed:
             await _calculate_metrics(existing)

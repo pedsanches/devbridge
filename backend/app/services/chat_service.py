@@ -15,6 +15,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.version import get_prompt_version_id
 from app.models import Activity, Repository
+from app.models.membership import MemberRole
 from app.schemas.chat import ChatMetadata, Persona, SourceItem
 from app.services.ai_service import ai_service
 from app.services.feedback_service import FeedbackService
@@ -103,25 +104,28 @@ def build_confidence_explanation(score: float, activities_count: int) -> str:
 def build_sources_with_citations(
     activities: list[dict[str, Any]],
     limit: int = 5,
+    ref_map: dict[UUID, str] | None = None,
 ) -> list[SourceItem]:
     """
-    Build SourceItem list with sequential ref_id citations (R1, R2, ...).
-
-    This enables verifiable citations in chat responses. Each source gets:
-    - ref_id: Sequential ID like "R1", "R2" for LLM citation
-    - external_id: The PR number, commit SHA, or issue number
+    Build SourceItem list with citations (Smart References).
 
     Args:
-        activities: List of activity dicts (must include 'external_id' and 'type').
-        limit: Maximum sources to return (default 5).
+        activities: List of activity dicts.
+        limit: Maximum sources.
+        ref_map: Optional mapping of activity_id -> persistent code (e.g. R-TEAM-123).
 
     Returns:
-        List of SourceItem with citation support.
+        List of SourceItem.
     """
     sources: list[SourceItem] = []
 
     for i, act in enumerate(activities[:limit], start=1):
-        ref_id = f"R{i}"
+        activity_id = act.get("id")
+        # Use persistent code if available, else fallback to ephemeral R{i}
+        if ref_map and activity_id and UUID(str(activity_id)) in ref_map:
+            ref_id = ref_map[UUID(str(activity_id))]
+        else:
+            ref_id = f"R{i}"
 
         # Map external_id based on activity type
         activity_type = (act.get("type") or "").upper()
@@ -163,12 +167,17 @@ class ChatService:
         db: AsyncSession,
         *,
         org_id: str | None = None,
+        team_id: str | None = None,
+        user_role: "MemberRole | None" = None,
         repository_name: str | list[str] | None = None,
         author: str | None = None,
         days: int = 7,
         limit: int = 20,
     ) -> list[dict[str, Any]]:
         """Get activities from database as context for chat."""
+        from app.models.membership import MemberRole
+        from app.models.team import team_repositories
+
         since = datetime.now(UTC) - timedelta(days=days)
 
         query = (
@@ -182,6 +191,16 @@ class ChatService:
         # Multi-tenant filter
         if org_id:
             query = query.where(Repository.organization_id == org_id)
+
+        # Team Scope (Security Boundary)
+        if team_id:
+            from sqlalchemy import or_
+
+            query = query.outerjoin(
+                team_repositories, Repository.id == team_repositories.c.repository_id
+            ).where(
+                or_(Repository.team_id == str(team_id), team_repositories.c.team_id == str(team_id))
+            )
 
         if repository_name:
             if isinstance(repository_name, list):
@@ -200,9 +219,19 @@ class ChatService:
         rows = result.all()
 
         activities = []
+        is_viewer = user_role == MemberRole.VIEWER
+
         for row in rows:
             activity = row[0]
             repo_name = row[1]
+
+            # Sanitization for VIEWER role (ADR-013)
+            # Viewers see sanitized summaries, no raw diffs/content
+            # Ideally we would fetch BusinessUpdate summary here
+            # For now, we strictly hide raw technically dense content
+            # Keep title as it's usually safe-ish, but hide full commit body
+            content = activity.title if is_viewer else activity.content
+
             activities.append(
                 {
                     "id": activity.id,
@@ -210,15 +239,21 @@ class ChatService:
                     if hasattr(activity.type, "value")
                     else str(activity.type),
                     "title": activity.title,
-                    "content": activity.content,
-                    "author": activity.author,
+                    "content": content,  # Role-based content
+                    "author": activity.author
+                    if not is_viewer
+                    else activity.author.split("<")[
+                        0
+                    ].strip(),  # Simple obfuscation for viewers? Optional.
                     "repository": repo_name,
-                    "external_id": activity.external_id,  # PR number or commit SHA
+                    "external_id": activity.external_id
+                    if not is_viewer
+                    else None,  # Hide SHAs for viewers
                     "date": (activity.occurred_at or activity.created_at).isoformat()
                     if (activity.occurred_at or activity.created_at)
                     else None,
                     "created_at": activity.created_at.isoformat() if activity.created_at else None,
-                    "files_touched": activity.files_touched,
+                    "files_touched": activity.files_touched if not is_viewer else [],
                     "labels": activity.labels,
                     "linked_issues": activity.linked_issues,
                     "value_tags": activity.value_tags,
@@ -358,6 +393,8 @@ class ChatService:
         user_id: UUID,
         org_id: str | None = None,
         conversation_id: UUID | None = None,
+        team_id: str | None = None,
+        user_role: "MemberRole | None" = None,
         repository: str | list[str] | None = None,
         author: str | None = None,
         persona: Persona = Persona.PRODUCT,
@@ -377,6 +414,8 @@ class ChatService:
             user_id: ID of the user sending the query.
             org_id: Organization ID for multi-tenant filtering.
             conversation_id: Optional ID of existing conversation.
+            team_id: Optional Team ID for context scoping (ADR-013).
+            user_role: User's role in the team (ADR-013).
             repository: Optional repository filter.
             author: Optional author filter.
             use_semantic_search: Whether to try semantic search first.
@@ -395,6 +434,7 @@ class ChatService:
         from uuid import uuid4
 
         generation_id = str(uuid4())
+
         prompt_version_id = get_prompt_version_id()
 
         # 1. Handle Conversation Persistence
@@ -459,6 +499,8 @@ class ChatService:
             activities = await self.get_context_activities(
                 db,
                 org_id=org_id,
+                team_id=str(team_id) if team_id else None,
+                user_role=user_role,
                 repository_name=repository,
                 author=author,
                 days=days,
@@ -484,7 +526,25 @@ class ChatService:
             sources: list[SourceItem] = []
         else:
             # Build sources BEFORE calling LLM to ensure R# consistency
-            sources = build_sources_with_citations(activities, limit=50)
+            # 1. Fetch persistent references if team context is available (ADR-013)
+            ref_map = {}
+            if team_id:
+                try:
+                    from app.services.reference_service import reference_service
+                    from app.services.team_service import team_service
+
+                    team_obj = await team_service.get_team(
+                        db, str(team_id), str(org_id) if org_id else ""
+                    )
+                    if team_obj:
+                        ref_map = await reference_service.get_or_create_references(
+                            db, UUID(str(team_id)), team_obj.slug, activities
+                        )
+                except Exception:
+                    logger.exception("Failed to fetch smart references")
+
+            # 2. Enrich activities and sources with Ref Codes
+            sources = build_sources_with_citations(activities, limit=50, ref_map=ref_map)
 
             # Generate AI response with persona and sources for citation consistency
             response_text = await ai_service.summarize_activities(

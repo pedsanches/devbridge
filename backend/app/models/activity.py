@@ -40,6 +40,12 @@ class Activity(Base, UUIDMixin, TimestampMixin):
     author = Column(String, nullable=False)
     occurred_at = Column(DateTime(timezone=True), nullable=True)
 
+    # === State Machine (ADR-012) ===
+    github_node_id = Column(String(100), unique=True, nullable=True)
+    state = Column(String(20), nullable=True)  # open, closed, merged
+    state_updated_at = Column(DateTime(timezone=True), nullable=True)
+    last_event_at = Column(DateTime(timezone=True), nullable=True)
+
     # Context enrichment fields (Phase 1)
     files_touched = Column(ARRAY(String), nullable=True)  # List of filenames changed
     labels = Column(ARRAY(String), nullable=True)  # PR labels (bug, feature, etc.)

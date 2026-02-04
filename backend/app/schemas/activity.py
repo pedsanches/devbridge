@@ -54,6 +54,12 @@ class ActivityCreate(BaseSchema):
     approved_at: datetime | None = None
     merged_at: datetime | None = None
 
+    # State Machine (ADR-012)
+    github_node_id: str | None = None
+    state: str | None = None
+    state_updated_at: datetime | None = None
+    last_event_at: datetime | None = None
+
 
 class ActivityResponse(TimestampSchema):
     """Schema for activity response."""
@@ -89,6 +95,12 @@ class ActivityResponse(TimestampSchema):
     rework_iterations: int = 0
     comments_received: int = 0
     is_reverted: bool = False
+
+    # State Machine
+    github_node_id: str | None = None
+    state: str | None = None
+    state_updated_at: datetime | None = None
+    last_event_at: datetime | None = None
 
 
 class ActivityWithUpdate(ActivityResponse):

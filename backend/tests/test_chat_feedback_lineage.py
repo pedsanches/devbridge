@@ -81,9 +81,7 @@ async def test_chat_lineage_and_logging(db_session: AsyncSession, test_user, tes
 
 
 @pytest.mark.asyncio
-async def test_chat_stream_lineage_in_metadata(
-    db_session: AsyncSession, test_user, test_org, async_client
-):
+async def test_chat_stream_lineage_in_metadata(test_user, test_org, async_client):
     """
     Test that streaming endpoint includes lineage fields in SSE metadata.
     """

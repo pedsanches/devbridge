@@ -45,18 +45,81 @@ async def chat(
 
     Args:
         db: Database session.
-        request: Chat request with message, optional filters, and persona.
+        request: ChatRequest.
         _current_user: Authenticated user (required).
         org_id: Current organization context.
+        req: FastAPI Request object.
 
     Returns:
         AI-generated response with activity context and metadata.
     """
+    from uuid import UUID
+
+    from fastapi import HTTPException
+    from sqlalchemy import select
+
+    from app.models.membership import Membership
+    from app.services.conversation_service import ConversationService
+    from app.services.team_service import team_service
+
+    # Resolve Team ID (Security Boundary ADR-013)
+    team_id_uuid = request.team_id
+    user_role = None
+
+    # If conversation exists, get team from it
+    if not team_id_uuid and request.conversation_id:
+        conversation_service = ConversationService(db)
+        conversation = await conversation_service.get_conversation(
+            request.conversation_id, UUID(org_id)
+        )
+        if conversation and conversation.team_id:
+            team_id_uuid = UUID(conversation.team_id)
+
+    # If still no team, try default team check or allow global fallback ONLY if enforced
+    if not team_id_uuid:
+        # Try to find user's default context or org default team
+        default_team = await team_service.get_default_team(db, org_id)
+        if default_team:
+            team_id_uuid = UUID(default_team.id)
+
+    # If we have a team, validate membership
+    if team_id_uuid:
+        # Validate Membership
+        query = select(Membership).where(
+            Membership.user_id == str(_current_user.id),
+            Membership.team_id == str(team_id_uuid),
+            Membership.organization_id == org_id,
+        )
+        result = await db.execute(query)
+        membership = result.scalar_one_or_none()
+
+        if not membership:
+            # Check for Org Admin override or strictly fail?
+            # ADR-013 implies strict boundaries.
+            # But also check if membership is org-level (team_id is None in Membership)
+            # If membership has team_id=None, it might be an org-wide member.
+            # Let's check org-level membership fallback
+            org_membership = await db.execute(
+                select(Membership).where(
+                    Membership.user_id == str(_current_user.id),
+                    Membership.organization_id == org_id,
+                    Membership.team_id.is_(None),
+                )
+            )
+            membership = org_membership.scalar_one_or_none()
+
+        if not membership:
+            raise HTTPException(status_code=403, detail="Access denied to this team context")
+
+        user_role = membership.role
+
     result = await chat_service.process_query(
         db,
         query=request.message,
         user_id=_current_user.id,
         conversation_id=request.conversation_id,
+        team_id=str(team_id_uuid) if team_id_uuid else None,
+        user_role=user_role,
         repository=request.repository,
         author=request.author,
         persona=request.persona,

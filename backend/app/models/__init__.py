@@ -10,13 +10,16 @@ from app.models.conversation import (
     ConversationStatus,
     MessageRole,
 )
+from app.models.derived_artifact import DerivedArtifact
 from app.models.developer_profile import DeveloperProfile
 from app.models.feedback import EventLog, Feedback, FeedbackSource, FeedbackType
+from app.models.ingest_ledger import IngestEventLedger
 from app.models.issue import Issue, IssueState
 from app.models.magic_link import MagicLink
 from app.models.membership import MemberRole, Membership
 from app.models.organization import Organization, PlanType
 from app.models.organization_settings import OrganizationSettings
+from app.models.public_reference import PublicReference
 from app.models.repo import Repository
 from app.models.report import Report, ReportType
 from app.models.report_template import ReportTemplate
@@ -67,4 +70,8 @@ __all__ = [
     "Report",
     "ReportType",
     "ReportTemplate",
+    # Idempotency & Stakeholder Access
+    "IngestEventLedger",
+    "DerivedArtifact",
+    "PublicReference",
 ]

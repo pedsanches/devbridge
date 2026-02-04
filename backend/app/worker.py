@@ -44,37 +44,71 @@ app = celery_app
 
 
 @celery_app.task(name="devbridge.process_webhook")  # type: ignore[untyped-decorator]
-def process_webhook(event: str, payload: dict[str, Any]) -> str:
+def process_webhook(
+    event: str,
+    payload: dict[str, Any],
+    ledger_id: str | None = None,
+) -> str:
     """
     Process a GitHub webhook payload asynchronously.
 
     Args:
         event: GitHub event name (e.g., "push", "pull_request").
         payload: Webhook JSON payload.
+        ledger_id: Optional ID of the ingestion ledger event (ADR-012).
 
     Returns:
         Status string for logging/monitoring.
     """
+    from sqlalchemy import text
 
     async def _process() -> str:
         async with async_session_factory() as session:
             try:
+                result = "ignored"
                 if event == "push":
                     push_payload = GitHubPushPayload.model_validate(payload)
                     activities = await webhook_service.process_push_event(session, push_payload)
-                    await session.commit()
-                    return f"processed_push:{len(activities)}"
+                    result = f"processed_push:{len(activities)}"
 
-                if event == "pull_request":
+                elif event == "pull_request":
                     pr_payload = GitHubPRPayload.model_validate(payload)
                     activity = await webhook_service.process_pr_event(session, pr_payload)
-                    await session.commit()
-                    return "processed_pull_request" if activity else "skipped_pull_request"
+                    result = "processed_pull_request" if activity else "skipped_pull_request"
 
-                return f"ignored:{event}"
-            except Exception:
+                else:
+                    result = f"ignored:{event}"
+
+                # Update ledger on success
+                if ledger_id:
+                    await session.execute(
+                        text(
+                            "UPDATE ingest_event_ledger SET status = 'completed', processed_at = NOW() WHERE id = :id"
+                        ),
+                        {"id": ledger_id},
+                    )
+
+                await session.commit()
+                return result
+
+            except Exception as e:
                 await session.rollback()
                 logger.exception("Failed to process webhook", webhook_event=event)
+
+                # Update ledger on failure (new session to ensure commit)
+                if ledger_id:
+                    try:
+                        async with async_session_factory() as error_session:
+                            await error_session.execute(
+                                text(
+                                    "UPDATE ingest_event_ledger SET status = 'failed', error_message = :msg WHERE id = :id"
+                                ),
+                                {"msg": str(e), "id": ledger_id},
+                            )
+                            await error_session.commit()
+                    except Exception:
+                        logger.exception("Failed to update ledger status")
+
                 raise
 
     return asyncio.run(_process())

@@ -114,6 +114,13 @@ async def process_pr_event(
 
     pr = payload.pull_request
 
+    # Calculate State (ADR-012)
+    state = "open"
+    if pr.merged:
+        state = "merged"
+    elif pr.state == "closed":
+        state = "closed"
+
     # Build content with PR details
     content = f"{pr.body or ''}\n\n---\nStats: +{pr.additions} -{pr.deletions} in {pr.changed_files} files"
 
@@ -124,6 +131,11 @@ async def process_pr_event(
         title=f"[{payload.action.upper()}] {pr.title}"[:100],
         content=content,
         author=pr.user.login,
+        # State Machine
+        github_node_id=pr.node_id,
+        state=state,
+        state_updated_at=pr.updated_at,
+        last_event_at=pr.updated_at,
     )
 
     activity, created = await activity_service.get_or_create_activity(db, activity_in)
