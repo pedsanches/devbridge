@@ -1,225 +1,93 @@
-# Component Guidelines
+# Canonical Components
 
-Diretrizes para componentes de UI do DevBridge. Use em conjunto com `foundations.md` para os tokens.
-
----
-
-## 🔘 Buttons
-
-### Variantes
-
-| Variante | Uso | Estilo |
-|----------|-----|--------|
-| **Primary** | Ação principal | `bg: primary`, `text: white` |
-| **Secondary** | Ação secundária | `bg: neutral-100`, `text: neutral-900` |
-| **Ghost** | Ação terciária | `bg: transparent`, `text: primary` |
-| **Destructive** | Ações perigosas | `bg: error`, `text: white` |
-
-### Tamanhos
-
-| Size | Height | Padding | Font Size |
-|------|--------|---------|-----------|
-| `sm` | 32px | 12px 16px | 13px |
-| `md` | 40px | 12px 20px | 15px |
-| `lg` | 48px | 16px 24px | 17px |
-
-### Exemplo CSS
-
-```css
-.button-primary {
-  background: var(--color-primary);
-  color: white;
-  padding: var(--space-3) var(--space-5);
-  border-radius: var(--radius-md);
-  font-weight: var(--font-medium);
-  transition: background var(--duration-normal) var(--easing-default);
-}
-
-.button-primary:hover {
-  background: var(--color-primary-hover);
-}
-
-.button-primary:focus-visible {
-  outline: 2px solid var(--color-primary);
-  outline-offset: 2px;
-}
-```
+Lista de componentes oficiais do DevBridge. **Agentes devem usar estes blocos de construção para criar interfaces.**
 
 ---
 
-## 📝 Inputs
+## 🧠 Business Components (Core)
 
-### Text Input
+Estes são os componentes exclusivos do domínio do DevBridge.
 
-| Estado | Border | Background |
-|--------|--------|------------|
-| Default | `neutral-200` | `white` |
-| Hover | `neutral-300` | `white` |
-| Focus | `primary` | `white` |
-| Error | `error` | `white` |
-| Disabled | `neutral-200` | `neutral-100` |
+### 1. InsightCard
+Um container para exibir uma conclusão inteligente da IA.
+- **Props**: `title`, `severity` (info/success/warn/error), `confidence` (high/med/low).
+- **Slot**: `content` (texto), `actions` (botões), `evidence` (lista).
+- **Uso**: Resultado de uma análise de PR, review de código, ou sugestão de arquitetura.
 
-### Dimensões
+### 2. EvidenceTable
+Tabela densa otimizada para dados técnicos.
+- **Features Obrigatórias**: Sticky header, Fonte monospace para colunas de ID/Path.
+- **Estilo**: Bordas sutis, zebra-striping opcional em alta densidade.
+- **Uso**: Listar commits, arquivos alterados, linhas de log, violações de lint.
 
-| Propriedade | Valor |
-|-------------|-------|
-| Height | 40px |
-| Padding | 12px 16px |
-| Border Width | 1px |
-| Border Radius | `--radius-sm` |
+### 3. ReferenceChip (R#)
+O menor átomo de rastreabilidade. Um link clicável que leva à fonte.
+- **Variantes**:
+  - `Code`: `📄 path/to/file.py:45`
+  - `Commit`: `🔗 a1b2c3d`
+  - `Rule`: `📜 BR-021`
+- **Comportamento**: Ao clicar, abre o arquivo/diff no contexto lateral ou em nova aba.
 
-### Exemplo CSS
+### 4. DeltaIndicator
+Mostra mudança numérica ou de estado.
+- **Visual**: Ícone seta (↑/↓/→) + Valor + Cor semântica.
+- **Exemplos**:
+  - `↑ 15% Complexity` (Red/Warning)
+  - `↓ 200ms Latency` (Green/Success)
+  - `+ 3 Files` (Neutral)
 
-```css
-.input {
-  height: 40px;
-  padding: var(--space-3) var(--space-4);
-  border: 1px solid var(--color-neutral-200);
-  border-radius: var(--radius-sm);
-  font-size: var(--text-base);
-  transition: border-color var(--duration-fast);
-}
+### 5. TimelineRow
+Linha única em uma lista de eventos cronológicos.
+- **Layout**: [Hora/Data] -- [Linha Conectora] -- [Ícone Status] -- [Conteúdo].
+- **Uso**: Logs de execução, histórico de chat, trilha de auditoria.
 
-.input:focus {
-  border-color: var(--color-primary);
-  outline: none;
-}
+### 6. AIResponseBlock (Insight Block)
+O wrapper padrão para toda comunicação inteligente da IA.
 
-.input--error {
-  border-color: var(--color-error);
-}
-```
+#### Slots Obrigatórios
+1.  **Header**:
+    - `Title`: Resumo curto da intenção (ex: "Análise de PR").
+    - `ConfidenceBadge`: Nível de certeza (`High`=Verde, `Med`=Amarelo, `Low`=Vermelho).
+2.  **Summary**: Texto explicativo direto (`text-base`).
+3.  **Evidence List** (Obrigatório se houver afirmação técnica):
+    - Lista de `ReferenceChip` apontando para commits, arquivos ou logs.
+4.  **Actions**:
+    - Botões de ação (`Primary` para correção, `Ghost` para ignorar).
+5.  **Feedback**:
+    - Curto (👍/👎) para RLHF.
 
----
-
-## 🃏 Cards
-
-### Estrutura
-
-```
-┌─────────────────────────────┐
-│  Header (opcional)          │
-├─────────────────────────────┤
-│                             │
-│  Content                    │
-│                             │
-├─────────────────────────────┤
-│  Footer (opcional)          │
-└─────────────────────────────┘
-```
-
-### Tokens
-
-| Propriedade | Valor |
-|-------------|-------|
-| Background | `--color-neutral-100` ou `white` |
-| Border Radius | `--radius-lg` |
-| Padding | `--space-4` (16px) |
-| Shadow | `--shadow-md` |
-| Gap interno | `--space-3` |
-
-### Exemplo CSS
-
-```css
-.card {
-  background: white;
-  border-radius: var(--radius-lg);
-  padding: var(--space-4);
-  box-shadow: var(--shadow-md);
-}
-
-.card-header {
-  padding-bottom: var(--space-3);
-  border-bottom: 1px solid var(--color-neutral-200);
-  margin-bottom: var(--space-3);
-}
-```
+#### Visual
+- **Borda**: `border-l-4` colorida baseada na Confiança/Status.
+- **Background**: `bg-neutral-50` (sutil destaque do chat normal).
 
 ---
 
-## 🔔 Toasts / Notifications
+## 🧱 UI Primitives (Base)
 
-### Tipos
+Componentes genéricos adaptados para a marca.
 
-| Tipo | Cor de Fundo | Ícone |
-|------|--------------|-------|
-| Info | `primary` (10% opacity) | `Info` |
-| Success | `success` (10% opacity) | `CheckCircle` |
-| Warning | `warning` (10% opacity) | `AlertTriangle` |
-| Error | `error` (10% opacity) | `XCircle` |
+### Button
+- **Primary**: Azul sólido (`bg-primary`). Apenas 1 por tela/card.
+- **Secondary**: Cinza claro (`bg-neutral-100`).
+- **Ghost**: Apenas texto/ícone. Para ações em tabelas/listas.
 
-### Posicionamento
-- Padrão: **Bottom Right**
-- Stack: Máximo 3 toasts visíveis
-- Auto-dismiss: 5 segundos
+### StatusBadge
+Badge arredondado (Pill) com cor de fundo suave e texto forte.
+- `Success`: `bg-success-subtle` + `text-success`.
+- `Warning`: `bg-warning-subtle` + `text-warning`.
 
----
+### EmptyState
+Componente placeholder para quando não há dados.
+- **Anatomia**: Ícone (grande, cinza) + Título ("Nenhum commit") + Descrição + Ação CTA (opcional).
+- **Regra**: Nunca deixe um espaço em branco "misterioso".
 
-## 🪟 Modals
-
-### Estrutura
-
-| Elemento | Especificação |
-|----------|---------------|
-| Overlay | `rgba(0,0,0,0.5)` com blur (8px) |
-| Container | `max-width: 480px`, `--radius-xl` |
-| Padding | `--space-5` (24px) |
-| Shadow | `--shadow-xl` |
-
-### Animação de Entrada
-
-```css
-.modal-enter {
-  opacity: 0;
-  transform: scale(0.95);
-}
-
-.modal-enter-active {
-  opacity: 1;
-  transform: scale(1);
-  transition: all var(--duration-slow) var(--easing-spring);
-}
-```
+### SkeletonLoader
+Indicador de carregamento que mimetiza a estrutura do conteúdo.
+- **Uso**: Enquanto a IA processa ou busca dados no backend. Substitui spinners genéricos em áreas de conteúdo.
 
 ---
 
-## 📐 Layout Patterns
-
-### Sidebar Layout
-
-```
-┌──────────┬─────────────────────────────┐
-│          │  Header                     │
-│  Side    ├─────────────────────────────┤
-│  bar     │                             │
-│  (240px) │  Main Content               │
-│          │                             │
-└──────────┴─────────────────────────────┘
-```
-
-| Elemento | Largura |
-|----------|---------|
-| Sidebar | 240px (collapsible) |
-| Content | Flex-grow |
-
-### Responsive Breakpoints
-
-| Breakpoint | Value | Sidebar |
-|------------|-------|---------|
-| Mobile | < 768px | Hidden |
-| Tablet | 768px - 1024px | Collapsed (icons only) |
-| Desktop | > 1024px | Full |
-
----
-
-## ✅ Checklist para Novos Componentes
-
-- [ ] Usa tokens do `foundations.md`
-- [ ] Suporta Dark Mode
-- [ ] Touch target mínimo de 44x44px
-- [ ] Estado `:focus-visible` definido
-- [ ] Transições suaves aplicadas
-- [ ] Testado em mobile
-
-> [!TIP]
-> Use a biblioteca de ícones **Lucide** para consistência.
+## 🚫 Don't Do This
+- **NUNCA** crie cards com sombras gigantes ou bordas coloridas sem motivo semântico.
+- **NUNCA** use botões primários vermelhos a menos que seja uma ação destrutiva irreversível (Ex: Delete Repo).
+- **NUNCA** coloque texto longo (logs) sem container scrollável (`max-h-XXX overflow-y-auto`).

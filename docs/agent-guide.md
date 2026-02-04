@@ -28,12 +28,23 @@ Ao concluir uma tarefa:
 - **Nunca** altere lógica de negócio sem atualizar a documentação correspondente em `docs/business`.
 - Se você tomou uma decisão arquitetural significativa, sugira criar um ADR em `docs/architecture/decisions`.
 
-## 🎨 Diretrizes de UI/Design
+## 🎨 Diretrizes de UI/Design (Governança)
 
-Ao criar ou modificar interfaces visuais:
+Antes de criar qualquer interface, **leia o Contrato de UI**: `docs/design/ui-charter.md`.
 
-1.  **Use os Tokens**: Consulte `docs/design/foundations.md` para cores, tipografia e espaçamento.
-    - *Nunca* use valores hardcoded (ex: `#0071E3`). Use variáveis (ex: `var(--color-primary)`).
-2.  **Siga os Componentes**: Veja `docs/design/components.md` para padrões de botões, inputs, cards.
-3.  **Respeite a Marca**: Consulte `docs/design/brand.md` para logo, voz e ícones (Lucide).
-4.  **Garanta Acessibilidade**: Contraste mínimo 4.5:1, touch targets 44x44px.
+### 📚 Referência Obrigatória
+- **Regras Visuais**: `docs/design/ui-constraints.md` (Layout, Cores, Tabelas)
+- **Tokens**: `docs/design/foundations.md` (Use variáveis, nunca hardcode!)
+- **Componentes**: `docs/design/components.md` (InsightCard, EvidenceTable, etc)
+- **Interações IA**: `docs/design/patterns/ai-interactions.md` (Patterns de resposta)
+
+### ✅ Checklist "Antes de Criar UI"
+1.  **Validar Tokens**: Estou usando `--color-primary` e `--space-4`? (Proibido hex/px)
+2.  **Verificar Anti-Patterns**: Minha UI parece um "Dribbble shot"? Se sim, simplifique.
+3.  **Rastreabilidade**: Adicionei `ReferenceChip` ou link de evidência para toda afirmação?
+4.  **Estados**: Defini como fica esta tela vazia (`EmptyState`) ou carregando (`Skeleton`)?
+5.  **Confirmação**: Ações de escrita exigem fluxo `Proposta -> Preview -> Confirmar`.
+
+> [!WARNING]
+> Agentes flagrados inventando estilos ou ignorando tokens receberão feedback negativo severo no Code Review.
+
