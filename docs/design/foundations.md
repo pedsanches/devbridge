@@ -79,7 +79,7 @@ Baseada em tons neutros industriais, focada em alto contraste para leitura de da
   --color-success: #34C759;
   --color-warning: #FF9500;
   --color-error: #FF3B30;
-  
+
   /* Neutrals */
   --color-neutral-50: #FAFAFA;
   --color-neutral-100: #F5F5F7;

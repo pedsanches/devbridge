@@ -47,4 +47,3 @@ Antes de criar qualquer interface, **leia o Contrato de UI**: `docs/design/ui-ch
 
 > [!WARNING]
 > Agentes flagrados inventando estilos ou ignorando tokens receberão feedback negativo severo no Code Review.
-

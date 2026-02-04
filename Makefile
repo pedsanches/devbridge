@@ -88,7 +88,12 @@ lint: ## Run linters
 	@cd backend && uv run mypy
 	@echo "$(BLUE)[LINT]$(NC) Checking TypeScript..."
 	@cd frontend && pnpm lint
+	@echo "$(BLUE)[LINT]$(NC) Checking UI Governance..."
+	@make lint-ui
 	@echo "$(GREEN)[OK]$(NC) All checks passed"
+
+lint-ui: ## Check for UI hardcoded values
+	@./scripts/lint-ui.sh
 
 openapi-check: ## Validate OpenAPI spec
 	@cd backend && uv run python scripts/check_openapi.py

@@ -12,7 +12,7 @@ Este arquivo fornece um mapa mental de alta densidade do projeto DevBridge para 
 | `docs/architecture` | Arquitetura do sistema | `overview.md`, `project-structure.md`, `data-flow.md`, `decisions/` |
 | `docs/business` | Domínio do negócio | `rules-catalog.md` |
 | `docs/development` | Guias de código | `code-style.md` (Linting, Types), `testing.md`, `contributing.md` |
-| `docs/design` | **Design System** | `foundations.md` (Tokens), `components.md`, `brand.md` |
+| `docs/design` | **Design System** | `ui-charter.md`, `constraints.md`, `foundations.md`, `components.md` |
 | `docs/operations` | Infra e Runbooks | `deployment.md`, `runbook.md`, `mcp-integration.md` |
 | `docs/api` | **OpenAPI Spec** | `openapi.yaml` |
 

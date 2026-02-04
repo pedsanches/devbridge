@@ -65,6 +65,6 @@
 
 ## Action Plan
 1.  [x] **Replace Emojis in Reports**: Switch to Lucide icons (`PieChart`, `Cpu`, `LineChart`) to strictly enforce the "No Emojis" design rule.
-2.  [x] **Differentiate MTTR**: Change MTTR icon to `RefreshCw` to visually distinguish from Lead Time (`Clock`). 
+2.  [x] **Differentiate MTTR**: Change MTTR icon to `RefreshCw` to visually distinguish from Lead Time (`Clock`).
 3.  [x] **Unify "New Chat"**: adopt `MessageSquarePlus` consistently.
 4.  [ ] **Refine Empty States**: Do not default to `Users` for everything. (Future Refinement)
