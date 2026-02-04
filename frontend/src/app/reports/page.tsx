@@ -19,6 +19,9 @@ import {
     Sparkles,
     FolderOpen,
     Users,
+    BarChart3,
+    Settings,
+    TrendingUp,
 } from "lucide-react";
 
 import ReactMarkdown from 'react-markdown';
@@ -47,7 +50,7 @@ interface ReportType {
     name: string;
     audience: string;
     description: string;
-    icon: string;
+    icon: React.ElementType;
 }
 
 const REPORT_TYPES: ReportType[] = [
@@ -56,21 +59,21 @@ const REPORT_TYPES: ReportType[] = [
         name: "Resumo Semanal",
         audience: "Product Manager",
         description: "Foco em entregas, progresso nas metas, e próximos passos.",
-        icon: "📊",
+        icon: BarChart3,
     },
     {
         id: "technical_report",
         name: "Relatório Técnico",
         audience: "CTO / Tech Lead",
         description: "Decisões técnicas, qualidade de código, dívida técnica.",
-        icon: "⚙️",
+        icon: Settings,
     },
     {
         id: "executive_summary",
         name: "Resumo Executivo",
         audience: "CEO / C-Level",
         description: "Máximo 5 bullets, linguagem de negócio, foco em ROI.",
-        icon: "📈",
+        icon: TrendingUp,
     },
 ];
 
@@ -180,6 +183,7 @@ function ReportHistoryCard({
     onDelete: () => void;
 }) {
     const typeInfo = getReportTypeInfo(report.report_type);
+    const Icon = typeInfo?.icon || FileText;
 
     return (
         <div
@@ -191,7 +195,9 @@ function ReportHistoryCard({
         >
             <div className="flex items-start justify-between gap-3">
                 <div className="flex items-start gap-3 flex-1 min-w-0">
-                    <span className="text-2xl flex-shrink-0">{typeInfo?.icon || "📄"}</span>
+                    <div className="p-2 rounded-lg bg-primary/10 text-primary">
+                        <Icon className="h-6 w-6" />
+                    </div>
                     <div className="min-w-0 flex-1">
                         <div className="font-medium text-[var(--foreground)] truncate">
                             {report.title}
@@ -855,7 +861,7 @@ export default function ReportsPage() {
                                                     : "border-[var(--border)] hover:border-primary/50"
                                                     }`}
                                             >
-                                                <span>{type.icon}</span>
+                                                <type.icon className="h-4 w-4" />
                                                 <span className="hidden sm:inline">{type.name}</span>
                                             </button>
                                         ))}

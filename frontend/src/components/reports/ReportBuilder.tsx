@@ -11,6 +11,9 @@ import {
     Palette,
     Eye,
     Check,
+    Circle,
+    AlertCircle,
+    AlertOctagon,
 } from "lucide-react";
 import {
     DndContext,
@@ -241,11 +244,12 @@ function DataStep({ config, onChange }: StepProps) {
                 <label className="block text-sm font-medium mb-2">Níveis de Impacto</label>
                 <div className="flex gap-3">
                     {[
-                        { id: "LOW", label: "🟢 Baixo", color: "green" },
-                        { id: "MEDIUM", label: "🟡 Médio", color: "yellow" },
-                        { id: "HIGH", label: "🔴 Alto", color: "red" },
+                        { id: "LOW", label: "Baixo", color: "text-green-500", icon: Circle },
+                        { id: "MEDIUM", label: "Médio", color: "text-yellow-500", icon: AlertCircle },
+                        { id: "HIGH", label: "Alto", color: "text-red-500", icon: AlertOctagon },
                     ].map((level) => {
                         const isSelected = config.dataFilters.impactLevels?.includes(level.id as any) ?? true;
+                        const Icon = level.icon;
                         return (
                             <button
                                 key={level.id}
@@ -261,11 +265,12 @@ function DataStep({ config, onChange }: StepProps) {
                                         },
                                     });
                                 }}
-                                className={`px-4 py-2 rounded-lg border transition-all ${isSelected
+                                className={`px-4 py-2 rounded-lg border transition-all flex items-center gap-2 ${isSelected
                                     ? "border-primary bg-primary/10 text-primary"
                                     : "border-[var(--border)] text-[var(--muted-foreground)]"
                                     }`}
                             >
+                                <Icon className={`h-4 w-4 ${level.color}`} />
                                 {level.label}
                             </button>
                         );

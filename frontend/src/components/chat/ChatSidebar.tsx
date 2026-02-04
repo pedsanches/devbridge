@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useParams, usePathname, useRouter } from "next/navigation";
-import { Plus, MessageSquare, ChevronLeft, ChevronRight, Trash, Calendar } from "lucide-react";
+import { Plus, MessageSquare, ChevronLeft, ChevronRight, Trash, Calendar, MessageSquarePlus } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getConversations, deleteConversation, ConversationSummary } from "@/services/api";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
@@ -128,7 +128,7 @@ export function ChatSidebar() {
                         href="/chat"
                         className="flex flex-1 items-center gap-2 rounded-lg border border-neutral-200 bg-white px-3 py-2 text-sm font-medium shadow-sm transition-colors hover:bg-neutral-50 hover:text-primary dark:border-neutral-700 dark:bg-neutral-800 dark:hover:bg-neutral-700"
                     >
-                        <Plus className="h-4 w-4" />
+                        <MessageSquarePlus className="h-4 w-4" />
                         Novo Chat
                     </Link>
                 )}
@@ -156,7 +156,7 @@ export function ChatSidebar() {
                                         pathname === "/chat" && !activeId && "bg-neutral-200 text-primary dark:bg-neutral-800"
                                     )}
                                 >
-                                    <Plus className="h-5 w-5" />
+                                    <MessageSquarePlus className="h-5 w-5" />
                                 </Link>
                             </TooltipTrigger>
                             <TooltipContent side="right">Novo Chat</TooltipContent>

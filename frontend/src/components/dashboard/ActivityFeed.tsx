@@ -20,6 +20,8 @@ interface ActivityItem {
     created_at: string;
     occurred_at: string | null;
     value_tags?: string[] | null;
+    // New State Machine Field (ADR-012)
+    state?: string | null;
     business_update: {
         id: string;
         summary: string;
@@ -74,6 +76,26 @@ export function ActivityFeed({ activities, isLoading }: ActivityFeedProps) {
         }
     };
 
+    const getActivityStateIcon = (type: string, state?: string | null) => {
+        if (type === "COMMIT") return <GitCommit className="h-5 w-5" />;
+
+        switch (state) {
+            case "merged": return <GitPullRequest className="h-5 w-5" />; // Could use GitMerge if available in Lucide
+            case "closed": return <GitPullRequest className="h-5 w-5" />;
+            default: return <GitPullRequest className="h-5 w-5" />;
+        }
+    };
+
+    const getStatusColor = (type: string, state?: string | null) => {
+        if (type === "COMMIT") return "text-blue-500 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20";
+
+        switch (state) {
+            case "merged": return "text-purple-600 dark:text-purple-400 bg-purple-50 dark:bg-purple-900/20";
+            case "closed": return "text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20";
+            default: return "text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/20"; // Open
+        }
+    }
+
     const VALUE_TAG_COLORS: Record<string, string> = {
         RISK_MITIGATION: "bg-red-100 text-red-700 dark:bg-red-900/20 dark:text-red-400",
         VELOCITY_ENABLER: "bg-blue-100 text-blue-700 dark:bg-blue-900/20 dark:text-blue-400",
@@ -106,16 +128,25 @@ export function ActivityFeed({ activities, isLoading }: ActivityFeedProps) {
                             <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-3">
                                 <div className="flex items-start gap-4">
                                     <div className={cn(
-                                        "mt-1 flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[var(--muted)]",
-                                        activity.type === "COMMIT" && "text-blue-500 dark:text-blue-400",
-                                        activity.type === "PULL_REQUEST" && "text-purple-500 dark:text-purple-400"
+                                        "mt-1 flex h-9 w-9 shrink-0 items-center justify-center rounded-full",
+                                        getStatusColor(activity.type, activity.state)
                                     )}>
-                                        {activity.type === "COMMIT" ? <GitCommit className="h-5 w-5" /> : <GitPullRequest className="h-5 w-5" />}
+                                        {getActivityStateIcon(activity.type, activity.state)}
                                     </div>
                                     <div className="space-y-1">
-                                        <CardTitle className="text-base font-medium leading-tight">
-                                            {activity.title}
-                                        </CardTitle>
+                                        <div className="flex items-center gap-2">
+                                            <CardTitle className="text-base font-medium leading-tight">
+                                                {activity.title}
+                                            </CardTitle>
+                                            {activity.type === "PULL_REQUEST" && activity.state && (
+                                                <Badge variant="outline" className={cn(
+                                                    "h-5 px-1.5 text-[10px] uppercase tracking-wide border-0",
+                                                    getStatusColor(activity.type, activity.state)
+                                                )}>
+                                                    {activity.state}
+                                                </Badge>
+                                            )}
+                                        </div>
                                         <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-secondary">
                                             <span className="font-medium text-[var(--foreground)]" title={activity.author}>
                                                 {activity.author.length > 20 ? `${activity.author.substring(0, 20)}...` : activity.author}
