@@ -10,9 +10,11 @@ export function rehypeSmartReferences() {
         visit(tree, 'text', (node: Text, index: number | undefined, parent: Element | Root | undefined) => {
             if (!node.value || !parent || !('children' in parent)) return;
 
-            // Regex to find [R1] pattern (single brackets, R followed by numbers)
+            // Regex to find Smart Reference patterns:
+            // 1. Legacy: [R123]
+            // 2. Persistent: [R-TEAM-123] or [R-BACKEND-001]
             // Captures the ID inside the brackets
-            const citationRegex = /\[(R\d+)\]/g;
+            const citationRegex = /\[(R[-\w]+)\]/g;
 
             if (!citationRegex.test(node.value)) return;
 
