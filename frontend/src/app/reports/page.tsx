@@ -470,6 +470,7 @@ export default function ReportsPage() {
     }, [authLoading, isAuthenticated, router]);
 
     // Fetch history when tab changes
+    // Fetch history when tab changes
     const fetchHistory = useCallback(async (page = 1) => {
         setIsLoadingHistory(true);
         try {
@@ -479,7 +480,8 @@ export default function ReportsPage() {
             );
             if (!response.ok) throw new Error("Failed to fetch history");
             const data: ReportListResponse = await response.json();
-            setHistoryReports(page === 1 ? data.items : [...historyReports, ...data.items]);
+
+            setHistoryReports(prev => page === 1 ? data.items : [...prev, ...data.items]);
             setHasMoreHistory(data.has_more);
             setHistoryPage(page);
         } catch (err) {
@@ -487,7 +489,7 @@ export default function ReportsPage() {
         } finally {
             setIsLoadingHistory(false);
         }
-    }, [historyReports]);
+    }, []);
 
     useEffect(() => {
         if (activeTab === "history" && historyReports.length === 0) {

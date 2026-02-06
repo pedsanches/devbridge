@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { useSidebar } from "./SidebarContext";
+import { OrganizationSwitcher } from "./OrganizationSwitcher";
 
 interface NavItem {
     href:
@@ -26,7 +27,8 @@ interface NavItem {
     | "/teams"
     | "/metrics"
     | "/reports"
-    | "/settings/data-sources";
+    | "/settings/data-sources"
+    | "/settings/members";
     label: string;
     icon: React.ElementType;
     isHighlighted?: boolean | undefined;
@@ -41,6 +43,7 @@ const mainNavItems: NavItem[] = [
 
 const settingsNavItems: NavItem[] = [
     { href: "/settings/data-sources", label: "Configurações", icon: Settings },
+    { href: "/settings/members", label: "Membros", icon: Users },
 ];
 
 // Custom hook to track pathname changes and auto-close sidebar
@@ -62,7 +65,7 @@ function useAutoCloseSidebar(pathname: string) {
 export function Sidebar() {
     const pathname = usePathname();
     const router = useRouter();
-    const { user, isAuthenticated, logout } = useAuth();
+    const { user, isAuthenticated, isAdmin, logout } = useAuth();
     const { isCollapsed, toggle } = useSidebar();
     const [isMobileOpen, setIsMobileOpen] = useAutoCloseSidebar(pathname);
 
@@ -176,6 +179,13 @@ export function Sidebar() {
                     </button>
                 </div>
 
+                {/* Organization Switcher */}
+                {!isCollapsed && (
+                    <div className="px-3 py-2 border-b border-white/10 dark:border-white/5">
+                        <OrganizationSwitcher />
+                    </div>
+                )}
+
                 {/* New Chat CTA */}
                 <div className="p-3">
                     <button
@@ -216,18 +226,22 @@ export function Sidebar() {
                         />
                     ))}
 
-                    <div className="my-3 border-t border-[var(--border)]" />
+                    {isAdmin && (
+                        <>
+                            <div className="my-3 border-t border-[var(--border)]" />
 
-                    {settingsNavItems.map((item) => (
-                        <NavLink
-                            key={item.href}
-                            href={item.href}
-                            icon={item.icon}
-                            label={item.label}
-                            isActive={isActive(item.href)}
-                            isCollapsed={isCollapsed}
-                        />
-                    ))}
+                            {settingsNavItems.map((item) => (
+                                <NavLink
+                                    key={item.href}
+                                    href={item.href}
+                                    icon={item.icon}
+                                    label={item.label}
+                                    isActive={isActive(item.href)}
+                                    isCollapsed={isCollapsed}
+                                />
+                            ))}
+                        </>
+                    )}
                 </nav>
 
                 {/* User Section */}
@@ -281,7 +295,8 @@ interface NavLinkProps {
     | "/teams"
     | "/metrics"
     | "/reports"
-    | "/settings/data-sources";
+    | "/settings/data-sources"
+    | "/settings/members";
     icon: React.ElementType;
     label: string;
     isActive: boolean;

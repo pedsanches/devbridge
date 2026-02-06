@@ -1,16 +1,34 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { Mail, ArrowRight, Loader2, CheckCircle } from "lucide-react";
 import { requestMagicLink } from "@/services/api";
+import { useAuth } from "@/hooks/use-auth";
 
 
 export default function LoginPage() {
+    const { isAuthenticated, isLoading: isAuthLoading } = useAuth();
+    const router = useRouter();
+
     const [email, setEmail] = useState("");
     const [isLoading, setIsLoading] = useState(false);
     const [isSent, setIsSent] = useState(false);
     const [error, setError] = useState("");
-    // const router = useRouter();
+
+    useEffect(() => {
+        if (!isAuthLoading && isAuthenticated) {
+            router.push("/dashboard");
+        }
+    }, [isAuthenticated, isAuthLoading, router]);
+
+    if (isAuthLoading) {
+        return (
+            <div className="flex min-h-screen items-center justify-center bg-neutral-50 dark:bg-neutral-900">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            </div>
+        );
+    }
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();

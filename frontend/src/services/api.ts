@@ -32,6 +32,7 @@ export interface User {
     email: string;
     name: string | null;
     organization_id: string;
+    role: "owner" | "admin" | "member" | "viewer";
 }
 
 export async function requestMagicLink(email: string): Promise<{ message: string; email: string }> {
@@ -54,6 +55,106 @@ export async function getCurrentUser(): Promise<User> {
 
 export async function logout(): Promise<{ message: string }> {
     return fetchAPI("/auth/logout", { method: "POST" });
+}
+
+// Organization API
+export interface Organization {
+    id: string;
+    name: string;
+    slug: string;
+    role: "owner" | "admin" | "member" | "viewer";
+}
+
+export interface OrganizationsListResponse {
+    organizations: Organization[];
+    current_organization_id: string;
+}
+
+export async function getMyOrganizations(): Promise<OrganizationsListResponse> {
+    return fetchAPI<OrganizationsListResponse>("/auth/organizations");
+}
+
+export async function switchOrganization(organizationId: string): Promise<User> {
+    return fetchAPI<User>("/auth/switch-org", {
+        method: "POST",
+        body: JSON.stringify({ organization_id: organizationId }),
+    });
+}
+
+export interface OrganizationDetail {
+    id: string;
+    name: string;
+    slug: string;
+    plan: string;
+}
+
+export interface CreateOrganizationResponse {
+    organization: OrganizationDetail;
+    switched: boolean;
+    message: string;
+}
+
+export async function createOrganization(name: string, slug?: string): Promise<CreateOrganizationResponse> {
+    return fetchAPI<CreateOrganizationResponse>("/organizations", {
+        method: "POST",
+        body: JSON.stringify({ name, slug }),
+    });
+}
+
+// Invitation API
+export interface InviteAcceptResponse {
+    id: string;
+    email: string;
+    name: string | null;
+    organization_id: string;
+    organization_name: string;
+    teams: string[];
+}
+
+export interface Invitation {
+    id: string;
+    email: string;
+    organization_id: string;
+    role: string;
+    status: "pending" | "accepted" | "expired" | "revoked";
+    expires_at: string;
+    created_at: string;
+    invited_by_email: string | null;
+}
+
+export interface InvitationsListResponse {
+    items: Invitation[];
+    total: number;
+}
+
+export async function acceptInvitation(token: string): Promise<InviteAcceptResponse> {
+    return fetchAPI("/auth/invite/accept", {
+        method: "POST",
+        body: JSON.stringify({ token }),
+    });
+}
+
+export async function createInvitation(data: {
+    email: string;
+    team_ids?: string[];
+    role?: string;
+}): Promise<Invitation> {
+    return fetchAPI("/invitations", {
+        method: "POST",
+        body: JSON.stringify(data),
+    });
+}
+
+export async function getInvitations(): Promise<InvitationsListResponse> {
+    return fetchAPI<InvitationsListResponse>("/invitations");
+}
+
+export async function revokeInvitation(id: string): Promise<void> {
+    return fetchAPI(`/invitations/${id}`, { method: "DELETE" });
+}
+
+export async function resendInvitation(id: string): Promise<Invitation> {
+    return fetchAPI<Invitation>(`/invitations/${id}/resend`, { method: "POST" });
 }
 
 // Chat API

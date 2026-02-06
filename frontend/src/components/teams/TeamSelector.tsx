@@ -139,22 +139,26 @@ export function TeamSelector({
         <Popover open={open} onOpenChange={setOpen}>
             <PopoverTrigger asChild>
                 <Button
-                    variant="outline"
+                    variant="ghost"
                     role="combobox"
                     aria-expanded={open}
-                    className={cn("w-[220px] justify-between", className)}
+                    className={cn(
+                        "glass hover-lift active:scale-[0.98] w-[220px] justify-between border-0 shadow-lg",
+                        "hover:bg-white/10 data-[state=open]:bg-white/10 data-[state=open]:ring-2 data-[state=open]:ring-primary/20",
+                        className
+                    )}
                     disabled={disabled || isLoading}
                 >
                     <div className="flex items-center gap-2 truncate">
                         {selectedTeam?.color ? (
                             <span
-                                className="h-2 w-2 rounded-full"
+                                className="h-2 w-2 rounded-full ring-1 ring-white/20"
                                 style={{ backgroundColor: selectedTeam.color }}
                             />
                         ) : (
-                            <Users className="h-4 w-4 shrink-0 opacity-50" />
+                            <Users className="h-4 w-4 shrink-0 opacity-70" />
                         )}
-                        <span className="truncate">
+                        <span className="truncate font-medium">
                             {selectedTeam
                                 ? selectedTeam.name
                                 : allowAll
@@ -165,7 +169,11 @@ export function TeamSelector({
                     <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                 </Button>
             </PopoverTrigger>
-            <PopoverContent className="w-[220px] p-0" align="start">
+            <PopoverContent
+                className="glass-panel w-[220px] p-0 border-0 shadow-2xl backdrop-blur-3xl"
+                align="start"
+                sideOffset={8}
+            >
                 <TeamSelectorContent
                     selectedTeamId={selectedTeamId}
                     onTeamChange={(id, team) => {
@@ -174,7 +182,7 @@ export function TeamSelector({
                     }}
                     allowAll={allowAll}
                     allLabel={allLabel}
-                    teams={teams} // Pass pre-fetched teams to avoid double fetch if possible, or let it fetch
+                    teams={teams}
                 />
             </PopoverContent>
         </Popover>
@@ -196,10 +204,12 @@ export function TeamSelectorContent({
     const teams = parentTeams ?? teamSnapshot.teams;
 
     return (
-        <Command>
-            <CommandInput placeholder="Procurar time..." />
-            <CommandList>
-                <CommandEmpty>Time não encontrado.</CommandEmpty>
+        <Command className="bg-transparent">
+            <CommandInput placeholder="Procurar time..." className="border-none focus:ring-0" />
+            <CommandList className="max-h-[240px] sidebar-scroll p-1">
+                <CommandEmpty className="py-2 text-center text-sm text-muted-foreground">
+                    Time não encontrado.
+                </CommandEmpty>
 
                 {allowAll && (
                     <>
@@ -207,7 +217,10 @@ export function TeamSelectorContent({
                             <CommandItem
                                 value="all-teams-global-view"
                                 onSelect={() => onTeamChange(null, null)}
-                                className="flex items-center gap-2"
+                                className={cn(
+                                    "flex items-center gap-2 rounded-lg px-2 py-2 aria-selected:bg-primary/10 aria-selected:text-primary",
+                                    selectedTeamId === null && "bg-primary/10 text-primary"
+                                )}
                             >
                                 <Check
                                     className={cn(
@@ -219,17 +232,20 @@ export function TeamSelectorContent({
                                 {allLabel}
                             </CommandItem>
                         </CommandGroup>
-                        <CommandSeparator />
+                        <CommandSeparator className="my-1 h-px bg-white/10" />
                     </>
                 )}
 
-                <CommandGroup heading="Meus Times">
+                <CommandGroup heading="Meus Times" className="text-muted-foreground">
                     {teams.map((team) => (
                         <CommandItem
                             key={team.id}
                             value={team.name}
                             onSelect={() => onTeamChange(team.id, team)}
-                            className="flex items-center gap-2"
+                            className={cn(
+                                "flex items-center gap-2 rounded-lg px-2 py-2 aria-selected:bg-primary/10 aria-selected:text-primary",
+                                selectedTeamId === team.id && "bg-primary/10 text-primary"
+                            )}
                         >
                             <Check
                                 className={cn(
@@ -241,7 +257,7 @@ export function TeamSelectorContent({
                             />
                             {team.color ? (
                                 <span
-                                    className="h-2 w-2 rounded-full"
+                                    className="h-2 w-2 rounded-full ring-1 ring-white/10"
                                     style={{ backgroundColor: team.color }}
                                 />
                             ) : (
@@ -249,7 +265,7 @@ export function TeamSelectorContent({
                             )}
                             <span className="truncate">{team.name}</span>
                             {team.is_default && (
-                                <span className="ml-auto text-[10px] text-muted-foreground">
+                                <span className="ml-auto text-[10px] text-muted-foreground border border-border px-1 rounded-sm">
                                     Padrão
                                 </span>
                             )}
@@ -257,12 +273,17 @@ export function TeamSelectorContent({
                     ))}
                 </CommandGroup>
             </CommandList>
-            <div className="border-t p-1">
+            <div className="border-t border-white/10 p-1.5">
                 <Link
-                    href="/settings"
-                    className="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-xs text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+                    href="/settings/members"
+                    className="
+                        flex w-full items-center justify-center gap-2 rounded-lg px-2 py-2 text-xs font-medium
+                        text-muted-foreground transition-all duration-200
+                        hover:bg-primary/10 hover:text-primary group
+                        border border-dashed border-muted-foreground/30 hover:border-primary/30
+                    "
                 >
-                    <Settings className="h-3 w-3" />
+                    <Settings className="h-3.5 w-3.5 group-hover:rotate-45 transition-transform" />
                     Gerenciar times
                 </Link>
             </div>
