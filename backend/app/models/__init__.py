@@ -14,6 +14,7 @@ from app.models.derived_artifact import DerivedArtifact
 from app.models.developer_profile import DeveloperProfile
 from app.models.feedback import EventLog, Feedback, FeedbackSource, FeedbackType
 from app.models.ingest_ledger import IngestEventLedger
+from app.models.invitation import InvitationStatus, PendingInvitation
 from app.models.issue import Issue, IssueState
 from app.models.magic_link import MagicLink
 from app.models.membership import MemberRole, Membership
@@ -43,6 +44,8 @@ __all__ = [
     "OrganizationSettings",
     # Auth
     "MagicLink",
+    "PendingInvitation",
+    "InvitationStatus",
     # Core
     "Repository",
     "Activity",

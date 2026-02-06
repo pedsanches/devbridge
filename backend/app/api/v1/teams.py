@@ -7,7 +7,7 @@ CRUD operations for team management and data sources organization.
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import get_current_org_id, get_current_user, get_db
+from app.api.deps import get_current_admin_required, get_current_org_id, get_db
 from app.models import User
 from app.schemas.team import (
     SetDefaultTeamRequest,
@@ -48,7 +48,7 @@ async def create_team(
     data: TeamCreate,
     db: AsyncSession = Depends(get_db),
     org_id: str = Depends(get_current_org_id),
-    _user: User = Depends(get_current_user),
+    _user: User = Depends(get_current_admin_required),
 ) -> TeamResponse:
     """
     Create a new team.
@@ -77,7 +77,7 @@ async def get_default_team(
 async def ensure_default_team(
     db: AsyncSession = Depends(get_db),
     org_id: str = Depends(get_current_org_id),
-    _user: User = Depends(get_current_user),
+    _user: User = Depends(get_current_admin_required),
 ) -> TeamResponse:
     """
     Ensure a default team exists.
@@ -94,7 +94,7 @@ async def ensure_default_team(
 async def sync_github_teams(
     db: AsyncSession = Depends(get_db),
     org_id: str = Depends(get_current_org_id),
-    _user: User = Depends(get_current_user),
+    _user: User = Depends(get_current_admin_required),
 ) -> dict:
     """
     Synchronize GitHub Teams with DevBridge Teams.
@@ -122,7 +122,7 @@ async def set_default_team(
     data: SetDefaultTeamRequest,
     db: AsyncSession = Depends(get_db),
     org_id: str = Depends(get_current_org_id),
-    _user: User = Depends(get_current_user),
+    _user: User = Depends(get_current_admin_required),
 ) -> TeamResponse:
     """
     Set a team as the default.
@@ -163,7 +163,7 @@ async def update_team(
     data: TeamUpdate,
     db: AsyncSession = Depends(get_db),
     org_id: str = Depends(get_current_org_id),
-    _user: User = Depends(get_current_user),
+    _user: User = Depends(get_current_admin_required),
 ) -> TeamResponse:
     """
     Update a team.
@@ -185,7 +185,7 @@ async def delete_team(
     team_id: str,
     db: AsyncSession = Depends(get_db),
     org_id: str = Depends(get_current_org_id),
-    _user: User = Depends(get_current_user),
+    _user: User = Depends(get_current_admin_required),
 ) -> None:
     """
     Delete a team.
@@ -208,7 +208,7 @@ async def add_repositories(
     data: TeamAddRepositories,
     db: AsyncSession = Depends(get_db),
     org_id: str = Depends(get_current_org_id),
-    _user: User = Depends(get_current_user),
+    _user: User = Depends(get_current_admin_required),
 ) -> dict:
     """
     Add repositories to a team.
@@ -231,7 +231,7 @@ async def remove_repositories(
     data: TeamRemoveRepositories,
     db: AsyncSession = Depends(get_db),
     org_id: str = Depends(get_current_org_id),
-    _user: User = Depends(get_current_user),
+    _user: User = Depends(get_current_admin_required),
 ) -> dict:
     """
     Remove repositories from a team.

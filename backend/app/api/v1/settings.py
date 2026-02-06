@@ -7,7 +7,7 @@ API for organization settings and data source integrations.
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
-from app.api.deps import CurrentOrgId, CurrentUserRequired, DbSession
+from app.api.deps import CurrentAdminRequired, CurrentOrgId, CurrentUserRequired, DbSession
 from app.schemas.settings import (
     ConnectGitHubRequest,
     ConnectGitHubResponse,
@@ -47,7 +47,7 @@ async def connect_github(
     db: DbSession,
     request: ConnectGitHubRequest,
     org_id: CurrentOrgId,
-    _current_user: CurrentUserRequired,
+    _current_user: CurrentAdminRequired,
 ) -> ConnectGitHubResponse:
     """
     Connect GitHub integration using a Personal Access Token.
@@ -76,7 +76,7 @@ async def connect_github(
 async def disconnect_github(
     db: DbSession,
     org_id: CurrentOrgId,
-    _current_user: CurrentUserRequired,
+    _current_user: CurrentAdminRequired,
 ) -> None:
     """
     Disconnect GitHub integration.
@@ -103,7 +103,7 @@ class RefreshRepositoriesResponse(BaseModel):
 async def refresh_repositories(
     db: DbSession,
     org_id: CurrentOrgId,
-    _current_user: CurrentUserRequired,
+    _current_user: CurrentAdminRequired,
 ) -> RefreshRepositoriesResponse:
     """
     Refresh/rediscover GitHub repositories.

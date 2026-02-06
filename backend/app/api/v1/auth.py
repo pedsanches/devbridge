@@ -7,7 +7,7 @@ Magic link login with httpOnly cookie session management.
 from fastapi import APIRouter, HTTPException, Response
 from pydantic import BaseModel, EmailStr
 
-from app.api.deps import CurrentUserRequired, DbSession
+from app.api.deps import CurrentOrgId, CurrentUserRequired, DbSession
 from app.core.config import settings
 from app.services import auth_service
 
@@ -40,6 +40,7 @@ class UserResponse(BaseModel):
     email: str
     name: str | None
     organization_id: str
+    role: str
 
 
 @router.post("/magic", response_model=MagicLinkResponse)
@@ -99,32 +100,49 @@ async def verify_magic_link(
         email=result["user"]["email"],
         name=result["user"]["name"],
         organization_id=result["organization_id"],
+        role=result.get("role", "member"),
     )
 
 
 @router.get("/me", response_model=UserResponse)
-async def get_current_user(user: CurrentUserRequired, db: DbSession) -> UserResponse:
+async def get_current_user(
+    user: CurrentUserRequired,
+    db: DbSession,
+    current_org_id: CurrentOrgId,
+) -> UserResponse:
     """
     Get the current authenticated user.
     """
-    # Get user's default organization
     from sqlalchemy import select
 
     from app.models import Membership
 
+    # Get membership for the current context (from token)
     result = await db.execute(
-        select(Membership)
-        .where(Membership.user_id == user.id)
-        .order_by(Membership.created_at.asc())
-        .limit(1)
+        select(Membership).where(
+            Membership.user_id == user.id,
+            Membership.organization_id == current_org_id,
+            Membership.team_id.is_(None),
+        )
     )
     membership = result.scalar_one_or_none()
+
+    # If for some reason the context org is invalid (e.g. removed), fallback to first org
+    if not membership:
+        result = await db.execute(
+            select(Membership)
+            .where(Membership.user_id == user.id)
+            .order_by(Membership.created_at.asc())
+            .limit(1)
+        )
+        membership = result.scalar_one_or_none()
 
     return UserResponse(
         id=user.id,
         email=user.email,
         name=user.name,
         organization_id=membership.organization_id if membership else "",
+        role=membership.role.value if membership else "member",
     )
 
 
@@ -258,4 +276,328 @@ async def dev_login(
         email=user.email,
         name=user.name,
         organization_id=membership.organization_id,
+        role=membership.role.value,
+    )
+
+
+class InviteAcceptRequest(BaseModel):
+    """Request schema for accepting an invitation."""
+
+    token: str
+
+
+class InviteAcceptResponse(BaseModel):
+    """Response schema for accepted invitation."""
+
+    id: str
+    email: str
+    name: str | None
+    organization_id: str
+    organization_name: str
+    teams: list[str]
+
+
+@router.post("/invite/accept", response_model=InviteAcceptResponse)
+async def accept_invitation(
+    db: DbSession,
+    request: InviteAcceptRequest,
+    response: Response,
+) -> InviteAcceptResponse:
+    """
+    Accept an invitation to join an organization.
+
+    This endpoint:
+    1. Validates the invitation token (with FOR UPDATE lock)
+    2. Creates or retrieves the user
+    3. Creates the membership(s)
+    4. Marks the invitation as accepted
+    5. Sets the session cookie
+    """
+    from datetime import UTC, datetime
+
+    from sqlalchemy import select, text
+
+    from app.core.security import create_access_token
+    from app.models import Organization, PendingInvitation, Team, User
+    from app.models.invitation import InvitationStatus, hash_token
+    from app.models.membership import MemberRole, Membership
+
+    # Hash the token to find the invitation
+    token_hashed = hash_token(request.token)
+
+    # Lock the invitation row (FOR UPDATE) to prevent double-accept race condition
+    result = await db.execute(
+        select(PendingInvitation)
+        .where(
+            PendingInvitation.token_hash == token_hashed,
+            PendingInvitation.status == InvitationStatus.PENDING,
+            PendingInvitation.expires_at > datetime.now(UTC),
+        )
+        .with_for_update()
+    )
+    invitation = result.scalar_one_or_none()
+
+    if not invitation:
+        raise HTTPException(
+            status_code=401,
+            detail="Invalid, expired, or already used invitation",
+        )
+
+    # Get or create user
+    user_result = await db.execute(select(User).where(User.email == invitation.email))
+    user = user_result.scalar_one_or_none()
+
+    if not user:
+        # Create new user
+        user = User(
+            email=invitation.email,
+            email_verified_at=datetime.now(UTC),
+        )
+        db.add(user)
+        await db.flush()
+
+    # Get organization
+    org_result = await db.execute(
+        select(Organization).where(Organization.id == invitation.organization_id)
+    )
+    org = org_result.scalar_one()
+
+    # Determine role
+    member_role = MemberRole.ADMIN if invitation.role == "admin" else MemberRole.MEMBER
+
+    # Set RLS context for the organization we are joining
+    # This is critical because RLS policies on 'memberships' will hide rows
+    # if app.current_org_id does not match.
+    await db.execute(
+        text("SELECT set_config('app.current_org_id', :org_id, true)"),
+        {"org_id": str(invitation.organization_id)},
+    )
+
+    # Create org-level membership (check if not already member)
+    existing_membership = await db.execute(
+        select(Membership).where(
+            Membership.organization_id == invitation.organization_id,
+            Membership.user_id == user.id,
+            Membership.team_id.is_(None),
+        )
+    )
+    if not existing_membership.scalar_one_or_none():
+        org_membership = Membership(
+            organization_id=invitation.organization_id,
+            user_id=user.id,
+            role=member_role,
+        )
+        db.add(org_membership)
+        await db.flush()  # Ensure it is sent to DB (RLS checked here)
+
+    # Create team memberships if specified
+    team_names = []
+    if invitation.team_ids:
+        teams_result = await db.execute(select(Team).where(Team.id.in_(invitation.team_ids)))
+        teams = list(teams_result.scalars().all())
+        team_names = [t.name for t in teams]
+
+        for team in teams:
+            # Check if not already a member
+            existing_team_membership = await db.execute(
+                select(Membership).where(
+                    Membership.organization_id == invitation.organization_id,
+                    Membership.user_id == user.id,
+                    Membership.team_id == team.id,
+                )
+            )
+            if not existing_team_membership.scalar_one_or_none():
+                team_membership = Membership(
+                    organization_id=invitation.organization_id,
+                    user_id=user.id,
+                    team_id=team.id,
+                    role=member_role,
+                )
+                db.add(team_membership)
+
+    # Mark invitation as accepted
+    invitation.accept(user.id)
+
+    # Get the membership for the token
+    membership_result = await db.execute(
+        select(Membership).where(
+            Membership.organization_id == invitation.organization_id,
+            Membership.user_id == user.id,
+            Membership.team_id.is_(None),
+        )
+    )
+    membership = membership_result.scalar_one()
+
+    # Create JWT
+    access_token = create_access_token(
+        data={
+            "sub": user.id,
+            "email": user.email,
+            "org_id": membership.organization_id,
+            "role": membership.role.value,
+        }
+    )
+
+    # Set httpOnly cookie
+    response.set_cookie(
+        key="session",
+        value=access_token,
+        httponly=True,
+        secure=settings.ENVIRONMENT != "development",
+        samesite="lax",
+        max_age=60 * 60 * 24 * 7,  # 7 days
+    )
+
+    await db.commit()
+    await db.refresh(user)
+
+    return InviteAcceptResponse(
+        id=user.id,
+        email=user.email,
+        name=user.name,
+        organization_id=org.id,
+        organization_name=org.name,
+        teams=team_names,
+    )
+
+
+# ============================================================
+# Organization Listing and Switching Endpoints
+# ============================================================
+
+
+class OrganizationSummary(BaseModel):
+    """Summary of an organization the user belongs to."""
+
+    id: str
+    name: str
+    slug: str
+    role: str
+
+
+class OrganizationsListResponse(BaseModel):
+    """List of organizations for the current user."""
+
+    organizations: list[OrganizationSummary]
+    current_organization_id: str
+
+
+class SwitchOrganizationRequest(BaseModel):
+    """Request to switch organization context."""
+
+    organization_id: str
+
+
+@router.get("/organizations", response_model=OrganizationsListResponse)
+async def list_user_organizations(
+    user: CurrentUserRequired,
+    db: DbSession,
+    current_org_id: CurrentOrgId,
+) -> OrganizationsListResponse:
+    """
+    List organizations the current user is a member of.
+    """
+    from sqlalchemy import select
+
+    from app.models import Membership, Organization
+
+    # Get all memberships for this user (org-level only, team_id is NULL)
+    result = await db.execute(
+        select(Membership, Organization)
+        .join(Organization, Membership.organization_id == Organization.id)
+        .where(
+            Membership.user_id == user.id,
+            Membership.team_id.is_(None),  # Only org-level memberships
+        )
+        .order_by(Membership.created_at.asc())
+    )
+    rows = result.all()
+
+    organizations = [
+        OrganizationSummary(
+            id=org.id,
+            name=org.name,
+            slug=org.slug,
+            role=membership.role.value,
+        )
+        for membership, org in rows
+    ]
+
+    return OrganizationsListResponse(
+        organizations=organizations,
+        current_organization_id=current_org_id,
+    )
+
+
+@router.post("/switch-org", response_model=UserResponse)
+async def switch_organization(
+    user: CurrentUserRequired,
+    db: DbSession,
+    request: SwitchOrganizationRequest,
+    response: Response,
+) -> UserResponse:
+    """
+    Switch the user's active organization context.
+
+    Issues a new JWT scoped to the selected organization and sets the session cookie.
+    """
+    from sqlalchemy import select
+
+    from app.core.security import create_access_token
+    from app.models import Membership, Organization
+
+    # Verify user is a member of the target organization
+    result = await db.execute(
+        select(Membership).where(
+            Membership.user_id == user.id,
+            Membership.organization_id == request.organization_id,
+            Membership.team_id.is_(None),
+        )
+    )
+    membership = result.scalar_one_or_none()
+
+    if not membership:
+        raise HTTPException(
+            status_code=403,
+            detail="You are not a member of this organization",
+        )
+
+    # Get org details for response
+    org_result = await db.execute(
+        select(Organization).where(Organization.id == request.organization_id)
+    )
+    org = org_result.scalar_one_or_none()
+
+    if not org:
+        raise HTTPException(
+            status_code=404,
+            detail="Organization not found",
+        )
+
+    # Create new JWT scoped to the new organization
+    access_token = create_access_token(
+        data={
+            "sub": user.id,
+            "email": user.email,
+            "org_id": membership.organization_id,
+            "role": membership.role.value,
+        }
+    )
+
+    # Set httpOnly cookie
+    response.set_cookie(
+        key="session",
+        value=access_token,
+        httponly=True,
+        secure=settings.ENVIRONMENT != "development",
+        samesite="lax",
+        max_age=60 * 60 * 24 * 7,  # 7 days
+    )
+
+    return UserResponse(
+        id=user.id,
+        email=user.email,
+        name=user.name,
+        organization_id=org.id,
+        role=membership.role.value,
     )

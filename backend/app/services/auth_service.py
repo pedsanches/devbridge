@@ -160,6 +160,7 @@ async def verify_magic_link(db: AsyncSession, token: str) -> dict | None:
             "name": user.name,
         },
         "organization_id": membership.organization_id,
+        "role": membership.role.value,
     }
 
 
